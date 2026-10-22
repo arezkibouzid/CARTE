@@ -1,0 +1,5 @@
+ORDER LOG-01 - Logistic movement (synthetic sample, not a real order)
+Phase: day
+Convoy C1: 6 x heavy_truck, 2 x fuel_tanker from Alpha to Delta, depart 06:00, arrive before 08:30, priority 1, cargo: fuel, rations.
+Convoy C2: 2 x tank_transporter from Bravo to Echo, depart 06:00, arrive before 09:00, priority 2.
+Convoy C3: 4 x medium_truck, 1 x ambulance from Alpha to Echo, depart 06:00, priority 3.

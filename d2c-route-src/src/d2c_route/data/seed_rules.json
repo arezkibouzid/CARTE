@@ -1,0 +1,232 @@
+[
+ {
+  "id": "H-BRIDGE-MLC",
+  "type": "hard",
+  "predicate": "not edge.bridge or edge.mlc >= vehicle.mlc",
+  "rationale": "A bridge may only be crossed by vehicles whose military load class does not exceed the bridge classification. An unclassified bridge is not used until reconnoitred.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)",
+  "on_unknown": "forbid"
+ },
+ {
+  "id": "H-WEIGHT",
+  "type": "hard",
+  "predicate": "edge.max_weight_t is None or edge.max_weight_t >= vehicle.weight_t",
+  "rationale": "Posted gross weight restrictions must be respected; no posted limit means no restriction.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "H-CLEARANCE",
+  "type": "hard",
+  "predicate": "not edge.tunnel or edge.max_height_m >= vehicle.height_m + 0.3",
+  "rationale": "Tunnels and underpasses need at least 0.3 m vertical clearance above the tallest vehicle.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "H-WIDTH",
+  "type": "hard",
+  "predicate": "edge.width_m is None or edge.width_m >= vehicle.width_m + 0.5",
+  "rationale": "Carriageway must be at least 0.5 m wider than the widest vehicle. Missing widths are priced by S-ROAD-CLASS.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "H-SLOPE",
+  "type": "hard",
+  "predicate": "edge.slope_pct is None or edge.slope_pct <= vehicle.max_slope_pct",
+  "rationale": "Gradients must stay within the climbing capability of the least capable vehicle.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "H-HEAVY-UNPAVED",
+  "type": "hard",
+  "scope": {
+   "vehicle_classes": [
+    "heavy"
+   ]
+  },
+  "predicate": "edge.road_rank < 6 or edge.paved",
+  "rationale": "Heavy wheeled vehicles shall not use unpaved tracks.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)",
+  "relaxable": true
+ },
+ {
+  "id": "H-CLOSED",
+  "type": "hard",
+  "predicate": "not edge.closed",
+  "rationale": "Roads reported closed or destroyed shall not be used.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "H-THREAT",
+  "type": "hard",
+  "predicate": "edge.threat < 0.8",
+  "rationale": "Routes shall not cross areas assessed as high threat.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "H-HAZMAT-TUNNEL",
+  "type": "hard",
+  "scope": {
+   "cargo": [
+    "fuel",
+    "ammunition"
+   ]
+  },
+  "predicate": "not edge.tunnel",
+  "rationale": "Convoys carrying fuel or ammunition shall not use tunnels.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)",
+  "relaxable": true
+ },
+ {
+  "id": "S-BUILTUP",
+  "type": "soft",
+  "feature": "edge.built_up",
+  "weight": 1.0,
+  "rationale": "Avoid built-up areas to limit interference with civilian traffic and exposure.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "S-HAZMAT-BUILTUP",
+  "type": "soft",
+  "scope": {
+   "cargo": [
+    "fuel",
+    "ammunition"
+   ]
+  },
+  "feature": "edge.built_up",
+  "weight": 2.0,
+  "rationale": "Dangerous goods convoys should bypass built-up areas.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "S-CHOKEPOINT",
+  "type": "soft",
+  "feature": "edge.centrality",
+  "weight": 0.5,
+  "rationale": "Avoid chokepoints where a single event would block the route.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "S-SLOPE",
+  "type": "soft",
+  "scope": {
+   "vehicle_classes": [
+    "heavy"
+   ]
+  },
+  "feature": "edge.slope_pct / 15",
+  "weight": 0.5,
+  "rationale": "Prefer gentle gradients for heavy vehicles (fuel use, speed, safety).",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "S-ROAD-CLASS",
+  "type": "soft",
+  "scope": {
+   "vehicle_classes": [
+    "medium",
+    "heavy"
+   ]
+  },
+  "feature": "edge.road_rank / 6",
+  "weight": 0.8,
+  "rationale": "Prefer major roads, which have the width and pavement strength for military traffic.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "S-THREAT",
+  "type": "soft",
+  "feature": "edge.threat",
+  "weight": 3.0,
+  "rationale": "Minimise exposure to assessed threats.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "S-COVER",
+  "type": "soft",
+  "scope": {
+   "phases": [
+    "day"
+   ]
+  },
+  "feature": "not edge.forest",
+  "weight": 0.3,
+  "rationale": "By day, prefer roads under cover to reduce air observation.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "S-WEATHER",
+  "type": "soft",
+  "feature": "edge.weather",
+  "weight": 2.0,
+  "rationale": "Avoid roads degraded by weather.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "N-ALTERNATE",
+  "type": "network",
+  "params": {
+   "min_alternates": 1,
+   "max_overlap": 0.5,
+   "max_detour": 1.8
+  },
+  "rationale": "Each main supply route (MSR) needs at least one alternate supply route (ASR) that is mostly disjoint.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "N-HEADWAY",
+  "type": "network",
+  "params": {
+   "min_headway_min": 10
+  },
+  "rationale": "Successive convoys on the same road keep a minimum time gap.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "T-CONVOY-SPEED",
+  "type": "temporal",
+  "params": {
+   "max_speed_kmh": 60
+  },
+  "rationale": "Convoy march speed is capped.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "T-HEAVY-SPEED",
+  "type": "temporal",
+  "scope": {
+   "vehicle_classes": [
+    "heavy"
+   ]
+  },
+  "params": {
+   "max_speed_kmh": 50
+  },
+  "rationale": "Heavy convoys march at a lower speed.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "T-NIGHT",
+  "type": "temporal",
+  "scope": {
+   "phases": [
+    "night"
+   ]
+  },
+  "params": {
+   "speed_factor": 0.7
+  },
+  "rationale": "Night (blackout) driving reduces march speed.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ },
+ {
+  "id": "T-HALT",
+  "type": "temporal",
+  "params": {
+   "halt_every_min": 120,
+   "halt_duration_min": 15
+  },
+  "rationale": "Scheduled halts for maintenance and crew rest.",
+  "source": "stand-in rule (illustrative of public movement-control principles; not quoted from a NATO publication)"
+ }
+]

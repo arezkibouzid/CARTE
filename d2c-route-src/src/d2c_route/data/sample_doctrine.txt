@@ -1,0 +1,12 @@
+SYNTHETIC DOCTRINE EXCERPT - written for testing the D2C-Route compiler. It paraphrases common public
+movement-control principles and is NOT a quotation of any NATO publication.
+
+1. Route classification. A bridge shall only be crossed by a vehicle whose military load class (MLC) does not exceed the classification of the bridge. Tunnels and underpasses require a clearance of at least 0.3 m above the tallest vehicle of the column.
+
+2. Dangerous goods. Convoys transporting fuel or ammunition shall not use tunnels. Dangerous goods convoys should bypass built-up areas wherever an alternative exists.
+
+3. Heavy equipment. Heavy wheeled vehicles must not use unpaved tracks. The march speed of heavy convoys shall not exceed 50 km/h.
+
+4. Route network. Each main supply route shall be backed by at least one alternate supply route that shares no more than 50 % of its length with it. Planners should avoid chokepoints where a single event would close the route. Convoys should avoid built-up areas.
+
+5. Movement control. A minimum of 10 minutes headway between successive convoys shall be kept on the same road. At night, under blackout driving, the march speed is reduced by 30 %. Convoy speed shall not exceed 60 km/h. A halt is made every 2 hours for 15 minutes for maintenance and crew rest.
