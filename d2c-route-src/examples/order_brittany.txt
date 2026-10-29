@@ -1,5 +1,0 @@
-ORDER LOG-BZH - Logistic movement (synthetic example for an OSM area; place coordinates are approximate)
-Phase: night
-Convoy C1: 6 x heavy_truck, 2 x fuel_tanker from Rennes to Guer, depart 22:00, priority 1, cargo: fuel.
-Convoy C2: 2 x tank_transporter from Redon to Guer, depart 22:15, priority 2.
-Convoy C3: 4 x medium_truck, 1 x ambulance from Montfort to Ploermel, depart 22:00, priority 3.

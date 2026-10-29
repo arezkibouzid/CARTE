@@ -1,0 +1,16 @@
+SYNTHETIC DOCTRINE EXCERPT - written for testing the COA-Net requirement compiler. It paraphrases common public
+movement-control principles and is NOT a quotation of any NATO publication.
+
+1. Route classification. A bridge shall only be crossed by a vehicle whose military load class (MLC) does not exceed the classification of the bridge. Tunnels and underpasses require a clearance of at least 0.3 m above the tallest vehicle of the column. The carriageway shall be at least 0.5 m wider than the widest vehicle.
+
+2. Dangerous goods. Convoys transporting fuel or ammunition shall not use tunnels. Dangerous goods convoys should bypass built-up areas wherever an alternative exists. A dangerous goods convoy should cross no more than one built-up area on its route.
+
+3. Heavy equipment. Heavy wheeled vehicles must not use unpaved tracks. The march speed of heavy convoys shall not exceed 50 km/h. Tank transporters shall not be routed through turns sharper than 120 degrees.
+
+4. Route network. Each main supply route shall be backed by an alternate supply route that remains usable if any single bridge, tunnel or defile of the main route is lost. An alternate route shall not take more than 1.8 times the travel time of the main route. Convoys should avoid built-up areas. Opposite flows should be separated on narrow roads. A traffic control post should be placed at every bridge and tunnel of a designated route and at least every 15 km.
+
+5. Movement control. A minimum of 10 minutes headway between successive convoys shall be kept on the same road. At night, under blackout driving, the march speed is reduced by 30 %. Convoy speed shall not exceed 60 km/h. A halt of 15 minutes is made at a designated halt area at least every 2 hours of driving. Convoys should not transit built-up areas between 07:30 and 09:00. Columns shall not halt or wait within 800 m of a bridge or tunnel. Columns should refuel before crossing the river.
+
+6. Protection. Routes shall not cross areas assessed as high threat. Exposure to assessed threats should be minimised.
+
+7. Communications and support. Each march unit commander must report the crossing of every control point by radio. Medical evacuation requests shall be sent through the medical chain.
