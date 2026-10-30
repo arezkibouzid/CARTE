@@ -157,6 +157,40 @@ tests/             pytest suite
 
 The figures are regenerated with `python docs/figures/make_figures.py --bench docs/benchmark_100_seeds.md` (PNG output needs `pip install playwright && playwright install chromium`; without it, HTML pages are written).
 
+## Contracts
+
+Each code folder has a README that lists its public interface, the rules developers must keep (invariants) and its side effects, with every entry tied to a code symbol:
+
+- [src/coa_net/README.md](src/coa_net/README.md): the planner, stage by stage (S0 to S10).
+- [src/README.md](src/README.md): the source root.
+- [examples/README.md](examples/README.md): the Python API example and the Brittany inputs.
+- [docs/README.md](docs/README.md) and [docs/figures/README.md](docs/figures/README.md): the documents and the figure generator.
+
+### Rules that hold across the system
+
+- **No model draws a route.** Model outputs pass through `call_validated`, and generated prose is checked with `unsupported` against the computed facts. On any failure, the system uses the deterministic template or pattern path instead. [`llm.py:call_validated`, `llm.py:unsupported`]
+- **Plan validity.** A plan is valid when no T0/T1 requirement is violated. Missing map data is reported as `unknown` and priced as risk, never counted as a violation. [`verify.py:VerificationReport.ok`]
+- **Requirements must be approved before they apply.**
+  - Only `approved` requirements are activated.
+  - Requirements compiled from doctrine are `draft` until a person approves them.
+  - The bundled `data/seed_requirements.json` file is pre-approved, but its sources are not doctrine. Each record cites either an earlier D2C-Route rule or "new COA-Net template, default value (assumption, to confirm with the instructors)". 13 records are marked `assumption: true`.
+
+  So "valid" in the demo means valid against this seed base. [`requirements.py:activate`, `doctrine.py:compile_doctrine`]
+- **Reproducibility.** CP-SAT runs single-threaded with seed 0. The synthetic theatres, missions, incidents and simulations are seeded. Results can still vary when a solver time limit is reached, and recorded wall-clock timings always vary. [`design.py`, `schedule.py`, `simulate.py`]
+- **Without OR-Tools, the guarantees are weaker.** `--no-cpsat` (or a missing OR-Tools install) switches to greedy design and scheduling, whose status is `heuristic`. These versions do not guarantee the T1 survivability, network-size or separation rules. [`design.py:greedy`, `schedule.py:_greedy`]
+
+### Side effects
+
+- **Outputs:** written under `outputs/`, which git ignores, unless `--out` is given:
+  - `report.html`, `panel_*.svg`, `network.geojson`, `facts.md`, `fragos.txt`, `metrics.json`
+  - `bench.md`
+  - `compiled_requirements.json`
+- **Model server:** an optional OpenAI-compatible model server, configured with `COA_LLM_BASE_URL`, `COA_LLM_MODEL`, `COA_LLM_API_KEY` and `COA_LLM_JSON_SCHEMA`.
+- **Map data:**
+  - Optional OSM downloads through osmnx, cached as GraphML; `cache/` and `*.graphml` are git-ignored.
+  - Optional local BD TOPO GeoPackage and DEM files.
+- **Figures:** `docs/figures/make_figures.py` rewrites the figure HTML and PNG files in `docs/figures/`.
+
 ## Next steps before the event
 
 1. Run the language-model roles with Mistral Small 3.2 24B and Qwen3-32B and measure tokens, precision of the compiled requirements and the red team's agreement with instructors.
