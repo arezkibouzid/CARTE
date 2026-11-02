@@ -1,4 +1,4 @@
-"""Small-LLM access, hardware agnostic (reused from D2C-Route).
+"""Small-LLM access, hardware agnostic.
 
 COA-Net talks to any OpenAI-compatible chat endpoint, which covers the
 usual local runtimes for <= tens-of-billions-parameter open models: vLLM

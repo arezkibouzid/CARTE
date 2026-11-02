@@ -1,6 +1,6 @@
 """Benchmark on the synthetic family F1 (methodology 10.2-10.6): baselines, COA-Net, and the incident loop.
 
-Planning. For every seed: the D2C-Route theatre generator and its random mission, then B0-B3, COA-Net
+Planning. For every seed: the synthetic theatre generator and its random mission, then B0-B1, COA-Net
 with the greedy design (ablation A5-like, no CP-SAT) and COA-Net with CP-SAT, all under the default
 priority order. Every plan gets the same movement-credit scheduler and the same Monte Carlo script
 (one loss, uniform over the critical elements designated by any pipeline of that seed, common random
@@ -11,7 +11,7 @@ Metrics, per pipeline (means over seeds, with 95 % bootstrap intervals for the m
 * road-valid: share of seeds with no T0/T1 violation of the road and route levels (SEG, RTE) on the
   designated routes; valid: no T0/T1 violation at any level (network survivability, schedule, protection);
 * SPOF groups: share of groups whose main route crosses a bridge or tunnel that every designated
-  alternate also crosses (the pilot's definition), and the same for reducible elements only;
+  alternate also crosses, and the same for reducible elements only;
 * ASR share and ASR/MSR time ratio;
 * objectives of the default order (resilience, threat exposure, travel time, network size);
 * simulated on-time probability, weighted delay and share of replications where a column reached a
@@ -19,7 +19,7 @@ Metrics, per pipeline (means over seeds, with 95 % bootstrap intervals for the m
 * design time.
 
 Incident loop. For every seed, COA-Net's plan and one random incident 10 minutes after the first
-departure (the generator of D2C-Route's repair study), handled with and without playbooks (A7):
+departure (bridge destroyed, road blocked or threat zone), handled with and without playbooks (A7):
 mode, computation time, validity after the repair.
 """
 
@@ -45,7 +45,7 @@ from .schedule import schedule
 from .simulate import monte_carlo, plan_elements, plan_from, script_uniform
 from .verify import verify
 
-PIPELINES = ["B0", "B1", "B2", "B3", "COA-Net (greedy)", "COA-Net"]
+PIPELINES = ["B0", "B1", "COA-Net (greedy)", "COA-Net"]
 
 
 def _crossings(H: CorridorGraph, r) -> set[str]:

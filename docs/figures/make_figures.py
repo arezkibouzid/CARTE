@@ -4,9 +4,8 @@
 
 Writes one self-contained HTML page per figure (SVG inside) and, when the
 ``playwright`` Python package and its Chromium are installed, the PNG next to
-it (``pip install playwright && playwright install chromium``). The diagrams
-follow the style of D2C-Route's architecture figure: blue boxes are
-language-model steps, grey boxes symbolic steps, dashed boxes inputs.
+it (``pip install playwright && playwright install chromium``). In the diagrams,
+blue boxes are language-model steps, grey boxes symbolic steps, dashed boxes inputs.
 """
 
 from __future__ import annotations
@@ -186,7 +185,7 @@ def _crossings(H, r) -> list[str]:
 
 def demo_figures() -> tuple[dict[str, tuple[str, int]], dict[str, str]]:
     """Maps, road movement graph and COA chart of the demo session, and the measured incident timings."""
-    from coa_net.baselines import b2, make_design
+    from coa_net.baselines import b1, make_design
     from coa_net.parsing import parse_time
     from coa_net.pipeline import COANet
     from coa_net.refine import refine
@@ -196,7 +195,7 @@ def demo_figures() -> tuple[dict[str, tuple[str, int]], dict[str, str]]:
     s = COANet.from_graph(synthetic_theatre(0).G, sim_reps=50)
     s.plan(sample_text("sample_order.txt"))
     figs: dict[str, tuple[str, int]] = {}
-    # survivability for C1: D2C-Route's alternate rule (B2) against COA-Net's design, same graph and costs
+    # survivability for C1: fastest route with no designed alternate (B1) against COA-Net's design, same graph and costs
     H, crit, prob = s.H, s.crit, s.prob
     coa = s.coas[s.default].design
     gid = "C1"
@@ -209,15 +208,15 @@ def demo_figures() -> tuple[dict[str, tuple[str, int]], dict[str, str]]:
         m, asrs = d.msr[gid], d.asrs.get(gid, [])
         shared = [n for n in _crossings(H, m) if all(n in _crossings(H, a) for a in asrs)]
         if not asrs:
-            return f"{gid} has no ASR"
+            return f"{gid} has no alternate: one strike on {', '.join(_crossings(H, m))} stops it"
         a = min(asrs, key=lambda r: r.time_min)
         if shared:
             return f"{gid}'s ASR also crosses {', '.join(shared)}: one strike stops both routes"
         return f"{gid}'s ASR avoids {', '.join(_crossings(H, m))} ({a.time_min:.1f} min, {a.time_min / t_star:.2f} x the best time)"
 
-    left, right = one(b2(prob)), one(coa)
+    left, right = one(b1(prob)), one(coa)
     colors = {gid: "#1f6feb"}
-    m_left = render_map(H, refine(H, s.ctx.groups, left, crit), left, crit, title="D2C-Route rule: alternate with < 50 % overlap",
+    m_left = render_map(H, refine(H, s.ctx.groups, left, crit), left, crit, title="Fastest route, no designed alternate",
                         subtitle=note(left), width=760, height=640, colors=colors, labels=False)
     m_right = render_map(H, refine(H, s.ctx.groups, right, crit), right, crit, title="COA-Net rule: survive any single loss",
                          subtitle=note(right), width=760, height=640, colors=colors, labels=False)
@@ -242,7 +241,7 @@ def demo_figures() -> tuple[dict[str, tuple[str, int]], dict[str, str]]:
     return figs, timings
 
 
-BENCH_LABELS = {"B0": "B0 fastest route", "B1": "B1 vehicle-aware", "B2": "B2 D2C-Route style", "B3": "B3 D2C + disjoint fix",
+BENCH_LABELS = {"B0": "B0 fastest route", "B1": "B1 vehicle-aware",
                 "COA-Net (greedy)": "COA-Net, greedy design", "COA-Net": "COA-Net, CP-SAT design"}
 BENCH_PANELS = (("valid (all levels)", "Valid plans", ("no hard violation at any level", "higher is better")),
                 ("reducible SPOF groups", "Avoidable SPOFs", ("groups whose MSR bridge or tunnel", "every ASR also crosses; lower is better")),
@@ -272,7 +271,7 @@ def bench_chart(md: str) -> str:
     pw = (W - 40 - label_w - 2 * gap - 64) / 3
     top, bar_h, step = 230, 26, 46
     bottom = top + step * len(names) - 12
-    c = Canvas(W, bottom + 60, "Same graph, same costs: only the design rule changes",
+    c = Canvas(W, bottom + 60, "COA-Net against fastest-route baselines, same graph and costs",
                f"Synthetic benchmark, {seeds} random theatres and missions; bars are shares of seeds, groups or simulated replications.")
     for i, n in enumerate(names):
         c.text(40, top + step * i + bar_h / 2 + 6, BENCH_LABELS[n], 18, INK)

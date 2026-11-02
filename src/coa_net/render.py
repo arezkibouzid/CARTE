@@ -1,6 +1,6 @@
 """Rendering: route network overlay, road movement graph, COA chart and HTML report.
 
-Dependency-free SVG (any coordinate system) as in D2C-Route, with the COA-Net
+Dependency-free SVG (any coordinate system), with these
 layers: named routes (MSR solid, ASR dashed) coloured by group, control posts,
 halt areas, critical elements with the irreducible single points of failure
 ringed, start and release points, and incidents. ``render_folium`` draws the

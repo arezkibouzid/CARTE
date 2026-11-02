@@ -1,4 +1,4 @@
-"""S0: annotated road graph (reused from D2C-Route, with COA-Net additions).
+"""S0: annotated road graph.
 
 Every loader (synthetic, OSM, BD TOPO) produces a ``networkx.DiGraph`` with
 node attributes ``x``, ``y`` (graph CRS; ``G.graph["crs"]`` is ``"EPSG:4326"``
@@ -93,7 +93,7 @@ def is_two_lane(d: dict, vehicle_width_m: float = 2.55, margin_m: float = 0.5) -
 
 
 def finalize_graph(G: nx.DiGraph, centrality_samples: int = 200, seed: int = 0) -> nx.DiGraph:
-    """Normalise attributes and compute an edge betweenness indicator (used by the D2C-style baseline)."""
+    """Normalise attributes and compute an edge betweenness indicator (a chokepoint indicator)."""
     for _, _, d in G.edges(data=True):
         normalize_edge(d)
     if G.number_of_edges() and centrality_samples:

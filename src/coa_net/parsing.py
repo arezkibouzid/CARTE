@@ -3,7 +3,7 @@
 Each parser asks the language model for a typed record (schema-constrained),
 validates it by code (names resolve on the graph, times consistent, grading
 valid), retries once, and falls back to a deterministic pattern parser,
-ported from D2C-Route and extended with:
+which handles:
 
 * orders: the ``Intent:`` line (kept verbatim for the intent mapper),
   prohibited places (``Avoid X`` / ``Do not cross X`` / ``Do not enter X``)

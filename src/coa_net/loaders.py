@@ -1,4 +1,4 @@
-"""S0 loaders: OpenStreetMap (stand-in) and IGN BD TOPO (target data), reused from D2C-Route.
+"""S0 loaders: OpenStreetMap (stand-in) and IGN BD TOPO (target data).
 
 Both produce the canonical graph described in :mod:`coa_net.graph`.
 Attributes OSM does not carry (bridge MLC, most widths) stay unknown. COA-Net

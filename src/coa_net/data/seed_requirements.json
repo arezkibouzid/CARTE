@@ -15,7 +15,7 @@
   },
   "on_unknown": "forbid",
   "source": {
-   "document": "seed base: D2C-Route rule H-BRIDGE-MLC",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "H-BRIDGE-MLC",
    "quote": "A bridge may only be crossed by vehicles whose military load class does not exceed the bridge classification. An unclassified bridge is not used until reconnoitred."
   },
@@ -39,7 +39,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule H-WEIGHT",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "H-WEIGHT",
    "quote": "Posted gross weight restrictions must be respected; no posted limit means no restriction."
   },
@@ -64,7 +64,7 @@
   },
   "on_unknown": "forbid",
   "source": {
-   "document": "seed base: D2C-Route rule H-CLEARANCE",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "H-CLEARANCE",
    "quote": "Tunnels and underpasses need at least 0.3 m vertical clearance above the tallest vehicle."
   },
@@ -89,7 +89,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule H-WIDTH",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "H-WIDTH",
    "quote": "Carriageway must be at least 0.5 m wider than the widest vehicle."
   },
@@ -111,7 +111,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule H-SLOPE",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "H-SLOPE",
    "quote": "Gradients must stay within the climbing capability of the least capable vehicle."
   },
@@ -139,7 +139,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule H-HEAVY-UNPAVED",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "H-HEAVY-UNPAVED",
    "quote": "Heavy wheeled vehicles shall not use unpaved tracks."
   },
@@ -165,7 +165,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule H-CLOSED",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "H-CLOSED",
    "quote": "Roads reported closed or destroyed shall not be used."
   },
@@ -189,7 +189,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule H-THREAT",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "H-THREAT",
    "quote": "Routes shall not cross areas assessed as high threat."
   },
@@ -220,7 +220,7 @@
   },
   "on_unknown": "forbid",
   "source": {
-   "document": "seed base: D2C-Route rule H-HAZMAT-TUNNEL",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "H-HAZMAT-TUNNEL",
    "quote": "Convoys carrying fuel or ammunition shall not use tunnels."
   },
@@ -244,7 +244,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule S-BUILTUP",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "S-BUILTUP",
    "quote": "Avoid built-up areas to limit interference with civilian traffic and exposure."
   },
@@ -275,7 +275,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule S-HAZMAT-BUILTUP",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "S-HAZMAT-BUILTUP",
    "quote": "Dangerous goods convoys should bypass built-up areas."
   },
@@ -300,7 +300,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule S-CHOKEPOINT, N-ALTERNATE",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "S-CHOKEPOINT, N-ALTERNATE",
    "quote": "Avoid chokepoints where a single event would block the route. Each main supply route (MSR) needs at least one alternate supply route (ASR) that is mostly disjoint."
   },
@@ -326,7 +326,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule S-SLOPE",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "S-SLOPE",
    "quote": "Prefer gentle gradients for heavy vehicles (fuel use, speed, safety)."
   },
@@ -354,7 +354,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule S-ROAD-CLASS",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "S-ROAD-CLASS",
    "quote": "Prefer major roads, which have the width and pavement strength for military traffic."
   },
@@ -376,7 +376,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule S-THREAT",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "S-THREAT",
    "quote": "Minimise exposure to assessed threats."
   },
@@ -402,7 +402,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule S-COVER",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "S-COVER",
    "quote": "By day, prefer roads under cover to reduce air observation."
   },
@@ -426,7 +426,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule S-WEATHER",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "S-WEATHER",
    "quote": "Avoid roads degraded by weather."
   },
@@ -450,7 +450,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule N-ALTERNATE",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "N-ALTERNATE",
    "quote": "Each main supply route (MSR) needs at least one alternate supply route (ASR) that is mostly disjoint."
   },
@@ -474,7 +474,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule N-HEADWAY",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "N-HEADWAY",
    "quote": "Successive convoys on the same road keep a minimum time gap."
   },
@@ -498,7 +498,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule T-CONVOY-SPEED",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "T-CONVOY-SPEED",
    "quote": "Convoy march speed is capped."
   },
@@ -524,7 +524,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule T-HEAVY-SPEED",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "T-HEAVY-SPEED",
    "quote": "Heavy convoys march at a lower speed."
   },
@@ -550,7 +550,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule T-NIGHT",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "T-NIGHT",
    "quote": "Night (blackout) driving reduces march speed."
   },
@@ -574,7 +574,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule T-HALT",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "T-HALT",
    "quote": "Scheduled halts for maintenance and crew rest."
   },
@@ -599,7 +599,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: D2C-Route rule T-HALT",
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
    "paragraph": "T-HALT",
    "quote": "Scheduled halts for maintenance and crew rest."
   },
@@ -624,7 +624,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: new COA-Net template, default value (assumption, to confirm with the instructors)",
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
    "paragraph": "",
    "quote": ""
   },
@@ -652,7 +652,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: new COA-Net template, default value (assumption, to confirm with the instructors)",
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
    "paragraph": "",
    "quote": ""
   },
@@ -674,7 +674,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: new COA-Net template, default value (assumption, to confirm with the instructors)",
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
    "paragraph": "",
    "quote": ""
   },
@@ -698,7 +698,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: new COA-Net template, default value (assumption, to confirm with the instructors)",
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
    "paragraph": "",
    "quote": ""
   },
@@ -722,7 +722,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: new COA-Net template, default value (assumption, to confirm with the instructors)",
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
    "paragraph": "",
    "quote": ""
   },
@@ -747,7 +747,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: new COA-Net template, default value (assumption, to confirm with the instructors)",
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
    "paragraph": "",
    "quote": ""
   },
@@ -773,7 +773,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: new COA-Net template, default value (assumption, to confirm with the instructors)",
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
    "paragraph": "",
    "quote": ""
   },
@@ -795,7 +795,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: new COA-Net template, default value (assumption, to confirm with the instructors)",
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
    "paragraph": "",
    "quote": ""
   },
@@ -822,7 +822,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: new COA-Net template, default value (assumption, to confirm with the instructors)",
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
    "paragraph": "",
    "quote": ""
   },
@@ -848,7 +848,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: new COA-Net template, default value (assumption, to confirm with the instructors)",
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
    "paragraph": "",
    "quote": ""
   },
@@ -872,7 +872,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: new COA-Net template, default value (assumption, to confirm with the instructors)",
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
    "paragraph": "",
    "quote": ""
   },
@@ -901,7 +901,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: new COA-Net template, default value (assumption, to confirm with the instructors)",
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
    "paragraph": "",
    "quote": ""
   },
@@ -927,7 +927,7 @@
   },
   "on_unknown": "risk",
   "source": {
-   "document": "seed base: new COA-Net template, default value (assumption, to confirm with the instructors)",
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
    "paragraph": "",
    "quote": ""
   },

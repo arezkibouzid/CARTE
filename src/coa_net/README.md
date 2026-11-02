@@ -88,7 +88,7 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
   - Display: `catalogue_markdown`.
 - **`doctrine.py`**
   - `compile_doctrine` (role L1) returns `(draft requirements, CompileReport)`.
-  - Helpers: `split_sentences`, `pattern_sentence`, `d2c_class`.
+  - Helpers: `split_sentences`, `pattern_sentence`.
 
 ### S2: order, intent and mission
 
@@ -116,8 +116,8 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
   - Scoring: `evaluate`, `route_terms`, `stability_count`, `coa_label`.
   - Objective settings: `MENU`, `OBJECTIVE_INFO`, `ETA`, `DEFAULT_EPS`, `ARCHETYPES`, `DEFAULT_ORDER`.
 - **`baselines.py`**
-  - Comparison pipelines `b0` to `b3`, registered in `BASELINES`.
-  - Helpers: `make_design`, `d2c_arc_costs`, `diverse_routes`, `select_alternates`.
+  - Comparison pipelines `b0` and `b1` (fastest route, no alternate), registered in `BASELINES`.
+  - Helper: `make_design`.
 
 ### S6 and S7: refinement and schedule
 

@@ -634,7 +634,7 @@ def generate_candidates(
         replacement[e] = r
         if r is not None:
             queue.extend(x for x in sorted(r.elements, key=str) if x not in replacement and x not in aps)
-    # penalty method (D2C-Route's diversity generator) for a few more distinct routes
+    # penalty method (cost multiplied on used corridors) for a few more distinct routes
     used: dict[str, float] = {}
     for _ in range(3):
         for r in pool.values():

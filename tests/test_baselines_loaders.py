@@ -1,6 +1,6 @@
 import networkx as nx
 
-from coa_net.baselines import b0, b1, b2, b3
+from coa_net.baselines import b0, b1
 from coa_net.bench import network_metrics, run_incident_bench, run_planning_bench
 from coa_net.loaders import osm_edge_attrs, osm_to_graph, parse_number
 
@@ -8,18 +8,16 @@ from coa_net.loaders import osm_edge_attrs, osm_to_graph, parse_number
 def test_baselines_on_the_demo(planned):
     prob = planned.prob
     H, crit = planned.H, planned.crit
-    d0, d1, d2, d3 = b0(prob), b1(prob), b2(prob), b3(prob)
+    d0, d1 = b0(prob), b1(prob)
     assert not d0.asrs and not d1.asrs
-    assert all(d2.asrs.get(g) is not None for g in d2.msr)
-    m2, m3 = network_metrics(H, d2, crit), network_metrics(H, d3, crit)
-    assert m3["reducible_spof_groups"] <= m2["reducible_spof_groups"]
+    m1 = network_metrics(H, d1, crit)
     coa = network_metrics(H, planned.coas[planned.default].design, crit)
-    assert coa["reducible_spof_groups"] == 0.0
+    assert coa["reducible_spof_groups"] == 0.0 <= m1["reducible_spof_groups"]
 
 
 def test_bench_runs_on_two_seeds():
     res = run_planning_bench(range(2), reps=5)
-    assert set(res) >= {"B0", "B1", "B2", "B3", "COA-Net"}
+    assert set(res) >= {"B0", "B1", "COA-Net"}
     assert all(r["valid"] == 1.0 for r in res["COA-Net"])
     inc = run_incident_bench(range(2))
     assert all(r["valid"] == 1.0 for rows in inc.values() for r in rows)

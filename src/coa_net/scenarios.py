@@ -1,12 +1,10 @@
 """Synthetic theatre and scenario generator (stand-in until real data arrives).
 
-The road network is D2C-Route's synthetic theatre, unchanged, so that results
-can be compared with D2C-Route's on the same graph: a jittered road grid with
+The road network is a jittered road grid with
 a river crossed by four bridges of different load classes (one unclassified),
 a town on the direct axis, a forest with tracks, a hilly sector, a low
-tunnel on the N7 and a road limited to 12 t. COA-Net adds halt-area
-candidates (with a capacity in vehicles) and fuel points; the roads are not
-changed.
+tunnel on the N7 and a road limited to 12 t, plus halt-area candidates (with
+a capacity in vehicles) and fuel points.
 """
 
 from __future__ import annotations
@@ -196,7 +194,7 @@ VEHICLE_MIXES = [
 
 
 def random_mission(theatre: Theatre, seed: int, n_convoys: int | None = None, phase: str | None = None) -> MissionSpec:
-    """Same generator as D2C-Route's benchmark (same seeds give the same missions)."""
+    """Seeded random mission (same seed, same mission)."""
     rng = random.Random(seed)
     south = [p for p, (_, r) in theatre.places.items() if r < RIVER_ROW and not p.startswith("Pont")]
     north = [p for p, (_, r) in theatre.places.items() if r > RIVER_ROW + 1 and not p.startswith("Pont")]

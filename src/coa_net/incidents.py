@@ -114,7 +114,7 @@ class IncidentOutcome:
 
 
 def locate(H: CorridorGraph, inc: Incident) -> tuple[list[tuple[Any, Any]], list[str], tuple[float, float] | None]:
-    """Directed road edges and critical elements an incident applies to (D2C-Route's rule, element-aware)."""
+    """Directed road edges and critical elements an incident applies to (radius around the location, element-aware)."""
     G = H.G
     if inc.type == IncidentType.BREAKDOWN:
         return [], [], None

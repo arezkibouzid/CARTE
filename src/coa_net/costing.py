@@ -8,7 +8,7 @@ also lists it for reconnaissance), ``risk`` keeps it usable and records the
 unknown. Corridor (arc) values are sums or extremes over their edges, so no
 information is lost by contraction.
 
-Travel time uses D2C-Route's speed model, so times are comparable:
+Travel time model:
 speed = min(road speed, march speed cap) x night factor x (1 - 0.5 weather).
 """
 
@@ -22,7 +22,7 @@ from .graph import edge_midpoint, point_distance, speed_kmh, ukey
 from .requirements import ActiveSet
 from .vehicles import Profile
 
-DAY_INTERVAL_M = 50.0  # D2C-Route's vehicle interval, used when no SCH.MARCH instance sets one
+DAY_INTERVAL_M = 50.0  # default vehicle interval, used when no SCH.MARCH instance sets one
 
 
 @dataclass

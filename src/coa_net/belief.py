@@ -16,7 +16,7 @@ Decision rule (tier 0): a road is closed if P_e >= 0.5; suspect if
 0.2 <= P_e < 0.5, which keeps it usable with an exposure penalty and asks for
 a confirmation; below 0.2 the report is only logged. A threat report raises the
 threat level of the roads in its radius to severity x q, falling off with
-distance as in D2C-Route. Confirmed reports (credibility 1) do not decay; they
+distance. Confirmed reports (credibility 1) do not decay; they
 stay until cleared or until their stated duration expires.
 """
 

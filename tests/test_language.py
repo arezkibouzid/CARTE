@@ -62,8 +62,6 @@ def test_doctrine_compiler_coverage_and_quotes():
     text = sample_text("sample_doctrine.txt")
     reqs, rep = compile_doctrine(text, "sample")
     assert rep.coverage >= 0.9
-    exact, approx = rep.d2c_coverage
-    assert exact < rep.coverage and approx <= rep.coverage + 1e-9
     assert reqs and all(r.status == "draft" and r.source.quote for r in reqs)
     norm = " ".join(text.split()).lower()
     assert all(" ".join(r.source.quote.split()).lower() in norm for r in reqs)

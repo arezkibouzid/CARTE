@@ -12,10 +12,6 @@ trigger words, and the parameter ranges; instances stay *draft* until a human
 signs them off. Without a model, a pattern compiler covers the phrasings of
 the sample doctrine and common variants; it is a fallback, not a general
 reader of doctrine.
-
-``D2C_EXPRESSIBLE`` gives, for each template (and tier), whether D2C-Route's
-rule format can state the same requirement exactly, approximately or not at
-all; it is the basis of the expressiveness comparison (hypothesis H5).
 """
 
 from __future__ import annotations
@@ -29,30 +25,12 @@ from pydantic import ValidationError
 from .llm import call_validated
 from .requirements import TEMPLATES, Requirement, find_trigger, merge_conflicts, tier_from_trigger, validate_instance
 
-# D2C-Route's four rule types (hard predicate, soft feature, network and temporal parameters) against the templates
-D2C_EXPRESSIBLE: dict[str, str] = {
-    "SEG.LOAD": "exact", "SEG.GAUGE": "exact", "SEG.GRADE": "exact", "SEG.SURFACE": "exact", "SEG.STATUS": "exact",
-    "SEG.CARGO/T1": "exact", "SEG.CARGO/T2": "approximate", "SEG.AVOID/T1": "exact", "SEG.AVOID/T2": "approximate",
-    "SEG.AVOID/T3": "approximate", "RTE.GAP_MAX": "approximate", "RTE.TURN": "none", "RTE.CROSSINGS_MAX": "none",
-    "RTE.DETOUR": "approximate", "RTE.ACCESS": "none", "RTE.RANGE": "none", "NET.SURVIVE": "approximate",
-    "NET.SEPARATE": "none", "NET.LATERAL": "none", "NET.CONTROL": "none", "NET.SIZE": "none", "NET.STATUS": "none",
-    "SCH.HEADWAY": "approximate", "SCH.MARCH": "exact", "SCH.WINDOW": "none", "SCH.HALT": "approximate",
-    "SCH.VARY": "none", "PRO.EXPOSURE/T1": "exact", "PRO.EXPOSURE/T2": "approximate", "PRO.CRITPOINT": "none",
-}
-RANK = {"exact": 0, "approximate": 1, "none": 2}
-
-
-def d2c_class(req: Requirement) -> str:
-    return D2C_EXPRESSIBLE.get(f"{req.template}/{req.tier}") or D2C_EXPRESSIBLE.get(req.template, "none")
-
-
 @dataclass
 class SentenceResult:
     paragraph: str
     sentence: str
     status: str  # mapped | inexpressible | out_of_scope
     requirements: list[Requirement] = field(default_factory=list)
-    d2c: str = "none"
     note: str = ""
 
 
@@ -66,26 +44,17 @@ class CompileReport:
         n = sum(1 for s in self.sentences if s.status in ("mapped", "inexpressible"))
         return sum(1 for s in self.sentences if s.status == "mapped") / n if n else 0.0
 
-    @property
-    def d2c_coverage(self) -> tuple[float, float]:
-        """Share of in-scope sentences D2C-Route can state (exactly, exactly or approximately)."""
-        ins = [s for s in self.sentences if s.status in ("mapped", "inexpressible")]
-        if not ins:
-            return 0.0, 0.0
-        return (sum(1 for s in ins if s.d2c == "exact") / len(ins), sum(1 for s in ins if s.d2c in ("exact", "approximate")) / len(ins))
-
     def table(self) -> list[dict[str, Any]]:
         return [{"paragraph": s.paragraph, "sentence": s.sentence, "status": s.status,
-                 "templates": [f"{r.template} ({r.tier})" for r in s.requirements], "d2c": s.d2c, "note": s.note} for s in self.sentences]
+                 "templates": [f"{r.template} ({r.tier})" for r in s.requirements], "note": s.note} for s in self.sentences]
 
     def markdown(self) -> str:
-        lines = ["| # | Sentence | COA-Net | D2C-Route |", "| --- | --- | --- | --- |"]
+        lines = ["| # | Sentence | Requirements |", "| --- | --- | --- |"]
         for i, s in enumerate(self.sentences, start=1):
             what = ", ".join(f"{r.template} {r.tier}" for r in s.requirements) or s.status.replace("_", " ")
-            lines.append(f"| {i} | {s.sentence} | {what} | {s.d2c if s.status != 'out_of_scope' else 'out of scope'} |")
-        ex, ap = self.d2c_coverage
+            lines.append(f"| {i} | {s.sentence} | {what} |")
         lines.append("")
-        lines.append(f"COA-Net coverage {self.coverage:.1%}; D2C-Route exact {ex:.1%}, exact or approximate {ap:.1%} (in-scope sentences).")
+        lines.append(f"Coverage {self.coverage:.1%} of in-scope sentences.")
         return "\n".join(lines)
 
 
@@ -229,9 +198,6 @@ def compile_doctrine(text: str, doc_name: str = "doctrine", llm=None, id_prefix:
                 sr.status, sr.note = "inexpressible", "no template states it (to log as a catalogue gap)"
             else:
                 sr.status, sr.note = "out_of_scope", "no movement requirement"
-            sr.d2c = "none"
-        else:
-            sr.d2c = max((d2c_class(r) for r in sr.requirements), key=lambda c: RANK[c])
         reqs += sr.requirements
         results.append(sr)
     merged, notes = merge_conflicts(reqs)
@@ -284,4 +250,4 @@ def _llm_instances(text: str, llm, log: list[str]) -> dict[str, list[dict]]:
     return out
 
 
-__all__ = ["CompileReport", "D2C_EXPRESSIBLE", "SentenceResult", "compile_doctrine", "d2c_class", "pattern_sentence", "split_sentences"]
+__all__ = ["CompileReport", "SentenceResult", "compile_doctrine", "pattern_sentence", "split_sentences"]
