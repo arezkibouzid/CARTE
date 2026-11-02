@@ -60,6 +60,28 @@ def group_colors(groups) -> dict[str, str]:
 MAP_KEY = ["blue = bridge", "black dashed = tunnel", "orange = built-up", "green = forest", "red halo = threat", "□ control post (■ with escort)",
            "△ halt area", "red ring = single point of failure (SPOF)", "navy ring = critical element with an alternate", "✕ = closed",
            "now = position at the incident"]
+# Above this many roads (the Scenario 1 BD TOPO extract has 287,836), a map draws only the roads of the corridor
+# backbone's ranks, merged into one path per style, and names only the bridges and tunnels of the designated routes and
+# of the incidents: drawing every road made each panel 27 MB and the report 164 MB, for detail finer than a pixel.
+LARGE_MAP_ROADS = 20_000
+_LAYER = {"#b6bcc6": 0, "#9cc79f": 1, "#f2a93b": 1, "#2563eb": 2, "#111827": 3}  # bridges and tunnels drawn on top
+
+
+def _road_style(d: dict) -> tuple[str, float, str]:
+    rank = d.get("road_rank", 5)
+    w = max(0.6, 3.0 - 0.4 * rank)
+    color, dash = "#b6bcc6", ""
+    if d.get("built_up"):
+        color = "#f2a93b"
+    elif d.get("forest"):
+        color = "#9cc79f"
+    if rank >= 6:
+        dash = ' stroke-dasharray="3,3"'
+    if d.get("bridge"):
+        color, w = "#2563eb", w + 1.6
+    if d.get("tunnel"):
+        color, dash = "#111827", ' stroke-dasharray="6,2"'
+    return color, w, dash
 
 
 def _wrap(items: list[str], width_px: float, char_px: float = 5.9) -> list[str]:
@@ -83,8 +105,20 @@ def render_map(H: CorridorGraph, ref=None, design=None, crit=None, title: str = 
     ``xy`` (+ ``radius_m``), and an optional ``label``. ``origins`` (group -> start node of the mission): a
     route that starts elsewhere (re-planned from a current position) is marked "now" instead of "SP"."""
     G = H.G
+    seen = set()
+    edges = []
+    for u, v, d in G.edges(data=True):
+        k = ukey(u, v)
+        if k in seen:
+            continue
+        seen.add(k)
+        edges.append((u, v, d))
+    large = len(edges) > LARGE_MAP_ROADS
+    keep_rank = H.max_rank if H.max_rank is not None else 4
     top = 52 if title else 10
-    key = _wrap(MAP_KEY, width - 28) if legend else []
+    items = MAP_KEY + ([f"grey = roads of rank {keep_rank} or better (the {len(edges):,} roads of the graph are too many to draw)"]
+                       if large else [])
+    key = _wrap(items, width - 28) if legend else []
     bottom = 49 + 15 * len(key) if legend else 10
     proj = _projector(G, width, height - top - bottom, top=top)
     out = [
@@ -96,35 +130,27 @@ def render_map(H: CorridorGraph, ref=None, design=None, crit=None, title: str = 
     if subtitle:
         out.append(f'<text x="14" y="42" font-size="12" fill="#6b7280">{_esc(subtitle)}</text>')
     # threat halos below everything
-    seen = set()
-    edges = []
-    for u, v, d in G.edges(data=True):
-        k = ukey(u, v)
-        if k in seen:
-            continue
-        seen.add(k)
-        edges.append((u, v, d))
     for u, v, d in edges:
         if d.get("threat", 0) > 0:
             (x1, y1), (x2, y2) = proj(u), proj(v)
             out.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="#ef4444" '
                        f'stroke-opacity="{0.12 + 0.45 * d["threat"]:.2f}" stroke-width="12" stroke-linecap="round"/>')
-    for u, v, d in edges:
-        (x1, y1), (x2, y2) = proj(u), proj(v)
-        rank = d.get("road_rank", 5)
-        w = max(0.6, 3.0 - 0.4 * rank)
-        color, dash = "#b6bcc6", ""
-        if d.get("built_up"):
-            color = "#f2a93b"
-        elif d.get("forest"):
-            color = "#9cc79f"
-        if rank >= 6:
-            dash = ' stroke-dasharray="3,3"'
-        if d.get("bridge"):
-            color, w = "#2563eb", w + 1.6
-        if d.get("tunnel"):
-            color, dash = "#111827", ' stroke-dasharray="6,2"'
-        out.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" stroke-width="{w:.1f}"{dash}/>')
+    if large:
+        paths: dict[tuple[str, float, str], list[str]] = {}
+        for u, v, d in edges:
+            if d.get("road_rank", 5) > keep_rank:
+                continue
+            (x1, y1), (x2, y2) = proj(u), proj(v)
+            a, b = f"{x1:.1f} {y1:.1f}", f"{x2:.1f} {y2:.1f}"
+            if a != b:
+                paths.setdefault(_road_style(d), []).append(f"M{a}L{b}")
+        for (color, w, dash), segs in sorted(paths.items(), key=lambda kv: (_LAYER.get(kv[0][0], 0), -kv[0][1])):
+            out.append(f'<path d="{"".join(segs)}" fill="none" stroke="{color}" stroke-width="{w:.1f}" stroke-linecap="round"{dash}/>')
+    else:
+        for u, v, d in edges:
+            (x1, y1), (x2, y2) = proj(u), proj(v)
+            color, w, dash = _road_style(d)
+            out.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" stroke-width="{w:.1f}"{dash}/>')
     # designated routes
     colors = colors or (group_colors(design.msr) if design is not None else {})
     if ref is not None:
@@ -188,9 +214,15 @@ def render_map(H: CorridorGraph, ref=None, design=None, crit=None, title: str = 
                 tw = 24 if role != "now" else 30
                 out.append(f'<rect x="{x - tw / 2:.1f}" y="{y + dy - 10:.1f}" width="{tw}" height="13" rx="3" fill="{col}"/>')
                 out.append(f'<text x="{x:.1f}" y="{y + dy:.1f}" text-anchor="middle" font-size="9" font-weight="bold" fill="#fff">{role}</text>')
-    # bridge and tunnel labels
+    # bridge and tunnel labels (on a large map, those of the designated routes and of the incidents only)
+    named = None
+    if large:
+        named = {i.get("element") for i in incidents or []}
+        for g in (design.msr if design is not None else {}):
+            for r in design.routes(g):
+                named |= set(r.elements)
     for eid, el in H.elements.items():
-        if el.kind not in ("bridge", "tunnel"):
+        if el.kind not in ("bridge", "tunnel") or (named is not None and eid not in named):
             continue
         x, y = proj.xy(*el.xy)
         txt = el.name

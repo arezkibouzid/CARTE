@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from .candidates import compact_names
 from .corridors import CorridorGraph
 from .criticality import Criticality
 from .design import ETA, OBJECTIVE_INFO, Design, coa_label
@@ -65,7 +66,7 @@ class COAFacts:
 def _route_text(H: CorridorGraph, ref: Refinement | None, r) -> str:
     nm = ref.name_of(r) if ref is not None else None
     els = [H.elements[e].name for e in r.ordered_elements(H) if H.elements[e].kind != "articulation"]
-    via = f" via {', '.join(els)}" if els else ""
+    via = f" via {compact_names(els)}" if els else ""
     return f"{nm + ' ' if nm else ''}{r.length_m / 1000:.1f} km {r.time_min:.1f} min{via}"
 
 
@@ -80,6 +81,19 @@ def _unknowns(ctx: MissionContext, d: Design) -> list[str]:
     return [f"{k} for {', '.join(sorted(v))}" for k, v in sorted(seen.items())]
 
 
+def recce_status(t) -> str:
+    """Timing of a reconnaissance task in the facts. "not in time" only when a group's plan depends on the answer and the
+    answer comes after that group departs: on Scenario 1 every task read "not in time", the 16 not valued (beyond the
+    cap) and the valued ones no plan depends on included, and each was raised as a concern."""
+    if t.feasible:
+        return "in time"
+    if not t.answers:
+        return "not valued"
+    if t.deadline is None:
+        return "no deadline: " + ("affected groups already moving" if t.affected else "no plan depends on it")
+    return "not in time"
+
+
 def facts_table(H: CorridorGraph, ctx: MissionContext, designs: list[Design], refs: dict[str, Refinement], crit: Criticality,
                 sims: dict[str, Any] | None = None, recce: dict[str, list] | None = None,
                 reports: dict[str, VerificationReport] | None = None) -> list[COAFacts]:
@@ -87,13 +101,15 @@ def facts_table(H: CorridorGraph, ctx: MissionContext, designs: list[Design], re
     for d in designs:
         ref = refs.get(d.name)
         routes = {g: {"MSR": _route_text(H, ref, r), "ASR": [_route_text(H, ref, a) for a in d.asrs.get(g, [])]} for g, r in d.msr.items()}
+        # junctions every route must pass are listed too: on Scenario 1 the row read "none" while the verification of the
+        # same COA counted 1 irreducible point (C1's first junction out of Vannes)
         irr = [f"{g}: {H.elements[e].name}" for g, r in d.msr.items() for e in r.ordered_elements(H)
-               if e in d.irreducible.get(g, set()) and H.elements[e].kind != "articulation"]
+               if e in d.irreducible.get(g, set())]
         acc = [f"{g}: {H.elements[e].name}" for g, s in d.accepted.items() for e in sorted(s) if H.elements[e].kind != "articulation"]
         unknowns = _unknowns(ctx, d)
         sim = (sims or {}).get(d.name)
         on_time = {u: round(sim.on_time(u), 2) for u in sorted({k for r in sim.reps for k in r.units})} if sim is not None else {}
-        rec = [f"{t.id} {t.name} ({'in time' if t.feasible else 'not in time'})" for t in (recce or {}).get(d.name, [])]
+        rec = [f"{t.id} {t.name} ({recce_status(t)})" for t in (recce or {}).get(d.name, [])]
         rep = (reports or {}).get(d.name)
         out.append(COAFacts(d.name, coa_label(d), d.description, list(d.order), routes, d.designated_length_km(H),
                             len(ref.posts) if ref else 0, irr, acc, dict(d.objectives), on_time, rec, unknowns,

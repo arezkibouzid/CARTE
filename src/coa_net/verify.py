@@ -310,7 +310,7 @@ def _check_schedule(H: CorridorGraph, ctx: MissionContext, sched: Schedule, rep:
         for i, l in enumerate(c.legs):
             if l.halt_before > 0:
                 drive = 0.0
-            drive += l.t_out - l.t_in
+            drive += l.t_out - l.t_in - l.stop_min  # a breakdown stop inside the leg is not driving
             n += 1
             if max_drive is not None and drive > max_drive + TOL_MIN:
                 rep.findings.append(Finding("RTE", gap_id, "T1", "violation", c.unit, f"{drive:.0f} min of driving without a halt (max {max_drive:g})"))

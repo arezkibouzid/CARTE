@@ -15,6 +15,8 @@ Runnable usage examples and sample inputs for the `coa_net` package. `run_python
   - `session.report("outputs/api")`
 - `order_brittany.txt`: a sample logistic order in plain text.
 - `places_brittany.json`: a gazetteer in the form `{"name": [lon, lat]}`, which lets orders and incidents refer to named places.
+- `places_scenario1.json`: the same form, with 15 town positions read by OCR on the organisers' Scenario 1 1:100 000 scan (`coa_net.scanmap.places_from_labels`).
+- `order_scenario1.txt`: a test order on the Scenario 1 map (three convoys between those towns), written for the validation in `docs/real_data_validation.md`; it is not an ETLO order.
 
 ## Invariants
 

@@ -147,11 +147,18 @@ def _objective_sentence(k: str, a: float, b: float) -> str:
 
 
 def explain_msr_vs_road(H: CorridorGraph, ctx: MissionContext, crit: Criticality, design: Design, gid: str,
-                        ref: Refinement | None = None, phase: str = "day") -> Contrast:
+                        ref: Refinement | None = None, phase: str = "day", road_cache: dict | None = None) -> Contrast:
+    """``road_cache`` (group id -> route): the doctrine-free route depends on the group only, not on the COA; on
+    Scenario 1 each one costs a fresh evaluation of the 553,313 roads (about 10 s), once per group and COA without it."""
     g = ctx.groups[gid]
     msr = design.msr[gid]
     subject = f"{gid} {_route_name(ref, msr, 'MSR')} ({_brief(H, msr)})"
-    road = road_route(H, g)
+    if road_cache is not None and gid in road_cache:
+        road = road_cache[gid]
+    else:
+        road = road_route(H, g)
+        if road_cache is not None:
+            road_cache[gid] = road
     if road is None:
         return Contrast(subject, "no road route", "none", "no road route between start and destination", f"{gid}: no road route exists.")
     alt = f"fastest road route without doctrine ({_brief(H, road)})"
@@ -224,8 +231,9 @@ def _blocked_crossings(H: CorridorGraph, g: Group, skip: str) -> list[str]:
         k = next(iter(H.element_corridors(eid)), None)
         if k is None:
             continue
-        for u, v in H.corridors[k].arc_edges(1):
-            if H.edge_elements.get(ukey(u, v)) != eid:
+        c = H.corridors[k]
+        for u, v in c.arc_edges(1 if c.fwd else -1):  # one-way crossings (dual-carriageway bridges) exist in one direction only
+            if H.edge_elements.get(ukey(u, v)) != eid or not H.G.has_edge(u, v):
                 continue
             b = g.coster.evaluate(u, v).blocked
             if b:
@@ -332,10 +340,12 @@ def _road(H: CorridorGraph, arc) -> str:
 
 
 def explain_plan(H: CorridorGraph, ctx: MissionContext, prob: DesignProblem, design: Design, sched: Schedule | None = None,
-                 ref: Refinement | None = None, resolve: bool = True, llm=None, use_cpsat: bool = True) -> list[Contrast]:
+                 ref: Refinement | None = None, resolve: bool = True, llm=None, use_cpsat: bool = True,
+                 road_cache: dict | None = None) -> list[Contrast]:
+    """``road_cache``: shared by the COAs of one plan (same context), see explain_msr_vs_road."""
     out: list[Contrast] = []
     for gid in sorted(design.msr):
-        out.append(explain_msr_vs_road(H, ctx, prob.crit, design, gid, ref, prob.phase))
+        out.append(explain_msr_vs_road(H, ctx, prob.crit, design, gid, ref, prob.phase, road_cache=road_cache))
         if resolve:
             out.append(explain_msr_vs_next(H, ctx, prob, design, gid, ref, use_cpsat=use_cpsat))
     for gid in sorted(design.msr):

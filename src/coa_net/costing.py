@@ -123,10 +123,14 @@ class GroupCoster:
             check = r.p("check")
             if check in ("width", "both"):
                 need = p.width_m + r.p("width_margin_m")
+                prec = d.get("width_prec_m") or 0.0  # rounding of the width in the data
                 if d.get("width_m") is None:
                     undecided(r, "width unknown")
-                elif d["width_m"] < need:
+                elif d["width_m"] + prec < need:
                     blocked.append((r.id, r.tier, f"width {d['width_m']:g} m < {need:.2f} m"))
+                elif d["width_m"] - prec < need:
+                    # one text per requirement and profile, so that reports add these roads up instead of listing each value
+                    undecided(r, f"width may be under {need:.2f} m (rounded in the data)")
             if check in ("height", "both") and d.get("tunnel"):
                 need = p.height_m + r.p("height_margin_m")
                 if d.get("max_height_m") is None:
@@ -137,8 +141,11 @@ class GroupCoster:
             limit = r.params.get("max_slope_pct") or p.max_slope_pct
             if d.get("slope_pct") is None:
                 undecided(r, "slope unknown")
-            elif d["slope_pct"] > limit:
+            elif d.get("slope_lo_pct", d["slope_pct"]) > limit:
                 blocked.append((r.id, r.tier, f"slope {d['slope_pct']:g} % > {limit:g} %"))
+            elif d.get("slope_hi_pct", d["slope_pct"]) > limit:
+                # steeper than the limit only within the altitude precision of the data
+                undecided(r, f"slope may exceed {limit:g} % (altitude precision)")
         for r in A.of("SEG.SURFACE", ("T0", "T1")):
             if set(r.p("vehicle_classes")) & p.vehicle_classes and d.get("road_rank", 5) >= r.p("min_track_rank") and d.get("paved") is not True:
                 if d.get("paved") is None:
@@ -155,6 +162,9 @@ class GroupCoster:
         for r in A.of("SEG.AVOID", ("T1",)):
             if self._has(d, r.p("attribute"), r.p("min_road_rank")):
                 blocked.append((r.id, r.tier, f"{r.p('attribute')} prohibited"))
+        for r in A.of("SEG.TOWN", ("T0", "T1")):
+            if d.get("town_pop") is not None and d["town_pop"] > r.p("min_population"):
+                blocked.append((r.id, r.tier, f"inside {d.get('town') or 'a town'} ({d['town_pop']} inhabitants)"))
         for r in A.of("PRO.EXPOSURE", ("T1",)):
             if d.get("threat", 0.0) >= r.p("max_threat"):
                 blocked.append((r.id, r.tier, f"threat {d['threat']:.2f} >= {r.p('max_threat')}"))
@@ -201,6 +211,23 @@ class GroupCoster:
         if attribute == "unlit":
             return self.phase == "night" and d.get("lit") is False
         return bool(d.get(attribute))
+
+    def derived(self, overrides: dict[tuple[Any, Any], dict]) -> "GroupCoster":
+        """The same coster under other attribute overrides (a what-if world).
+
+        Copies the evaluations and re-evaluates only the roads whose overrides
+        differ, which gives the same result as a fresh coster at a fraction of
+        the cost on a large map (one what-if world per reconnaissance answer).
+        """
+        new = object.__new__(GroupCoster)
+        new.__dict__.update(self.__dict__)
+        new.overrides = dict(overrides)
+        new.evals = dict(self.evals)
+        new.arcs = dict(self.arcs)
+        changed = {k for k in set(overrides) | set(self.overrides) if overrides.get(k) != self.overrides.get(k)}
+        edges = [e for k in changed for e in (tuple(k), tuple(k)[::-1])]
+        new.recompute(edges)
+        return new
 
     # ------------------------------------------------------------------ arcs
     def recompute(self, edges: list[tuple[Any, Any]] | None = None) -> None:

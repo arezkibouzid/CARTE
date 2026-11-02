@@ -11,7 +11,7 @@ Prototype for the AMIAD hackathon (Rennes, 12-14 Nov 2026): design the maneuver 
 ```bash
 pip install -e ".[dev]"          # networkx, pydantic, requests, ortools, pytest
 coa-net demo                     # synthetic theatre, order LOG-01, three incidents
-pytest                           # 48 tests, about 20 s
+pytest                           # 82 tests, about 20 s
 coa-net bench --seeds 20         # baselines B0-B1 against COA-Net, incident loop with and without playbooks
 ```
 
@@ -63,7 +63,7 @@ Reading it: COA-Net removes every avoidable single point of failure (95 % of gro
 | Stage (methodology section 5) | Module | Status |
 | --- | --- | --- |
 | S0 theatre preparation | `graph.py`, `corridors.py`, `loaders.py`, `scenarios.py` | Road graph contracted into corridors between decision points (shortest paths stay exact); critical elements: bridges, tunnels, level crossings, fords, ferries, defiles, and per-group articulation points; OSM and BD TOPO loaders; synthetic theatre with planted constraints and halt areas. Missing attributes stay *unknown*. |
-| S1 requirement base (L1) | `requirements.py`, `doctrine.py` | 26 requirement templates at five levels (road, route, network, schedule, protection) and four tiers; compiler with a model path (schema, verbatim quote, tier and range checks) and a pattern fallback; coverage report (95.7 % of the sample doctrine). |
+| S1 requirement base (L1) | `requirements.py`, `doctrine.py` | 28 requirement templates (26 doctrinal, plus SEG.TOWN and NET.DISTINCT added for the organisers' exercise format) at five levels (road, route, network, schedule, protection) and four tiers; compiler with a model path (schema, verbatim quote, tier and range checks) and a pattern fallback; coverage report (95.7 % of the sample doctrine). |
 | S2 order and intent (L2, L3) | `parsing.py`, `mission.py`, `intent.py` | Order parser (model or regex fallback, unknown vehicle types flagged), convoy groups and march units, intent mapped to a priority order with quotes and imperatives to confirm. |
 | S3 candidate routes | `candidates.py` | Pareto routes, label-setting search for halts, crossings and range, turn-expanded search for long vehicles, replacement routes, cheapest element-disjoint pairs, articulation points. |
 | S4 criticality (L4) | `criticality.py` | Exact structural impact of every loss, irreducible SPOFs, likelihood from the red-team model or a table by element type, fused with reported threats; loss scenarios. |
@@ -76,7 +76,7 @@ Reading it: COA-Net removes every avoidable single point of failure (95 % of gro
 | Evaluation | `baselines.py`, `bench.py` | B0-B1, COA-Net greedy and CP-SAT, incident loop with and without playbooks. |
 | Outputs | `render.py`, `pipeline.py`, `cli.py` | HTML report, SVG maps, road movement graph, COA chart, GeoJSON, optional Folium map; `COANet` session object; command line. |
 
-**Not done yet:** the long-context and vision-language baselines (B2, B3), runs on real map extracts (F2) and on the organisers' scenario (F3), checking SCH.VARY (needs several rotations), most ablations (only A5a greedy and A7 no playbooks are in the benchmark), and the human evaluation. No language model was run for the numbers above: they come from the deterministic fallbacks, so token budgets are not measured yet. The deviations from the methodology are listed in its section 11.4.
+**Not done yet:** the long-context and vision-language baselines (B2, B3), runs on other real map extracts (F2), checking SCH.VARY (needs several rotations), most ablations (only A5a greedy and A7 no playbooks are in the benchmark), and the human evaluation. The organisers' Scenario 1 (F3) now runs end to end: exercise 1 and a full plan with incidents on a test order ([docs/real_data_validation.md](docs/real_data_validation.md)). No language model was run for any of these numbers: they come from the deterministic fallbacks, so token budgets are not measured yet. The deviations from the methodology are listed in its section 11.4 and, for the real data, in the validation document.
 
 ## Using a local language model
 
@@ -109,7 +109,24 @@ coa-net plan --graphml cache/guer.graphml --places examples/places_brittany.json
 coa-net plan --bdtopo BDTOPO_D035.gpkg --places places.json --order order.txt --out outputs/bdtopo
 ```
 
-`--places` seeds the gazetteer (`{"name": [lon, lat]}`) so that orders and incidents can name places. OSM and BD TOPO carry no military load class, so bridges stay *unknown* until a reconnaissance file or the organisers' data provides it; COA-Net turns the unknowns that matter into reconnaissance tasks. The loaders are unit-tested on parsing but have not been run against live data from this environment.
+`--places` seeds the gazetteer (`{"name": [lon, lat]}`) so that orders and incidents can name places. OSM and BD TOPO carry no military load class, so bridges stay *unknown* until a reconnaissance file or the organisers' data provides it; COA-Net turns the unknowns that matter into reconnaissance tasks. The osmnx and BD TOPO GeoPackage loaders are unit-tested on parsing but have not been run against live data from this environment.
+
+## Organisers' data (Scenario 1)
+
+The organisers' Scenario 1 delivery (BD TOPO v2 and OSM shapefiles without `.prj`, IGN 1:100 000 and 1:250 000 scans, the preparation exercise as a PDF) runs end to end. What was found in the files, what changed in the method, the measured results and the remaining limitations are in [docs/real_data_validation.md](docs/real_data_validation.md).
+
+```bash
+pip install -e ".[real]"         # geopandas, pyogrio, shapely, pyproj, rasterio, scipy, pandas, matplotlib, pillow, rapidocr, pypdf
+coa-net audit --data DATA        # files, CRS, encodings, OSM/BD TOPO agreement, scan alignment
+coa-net exercise --data DATA --pdf exercise_for_preparation.pdf --out outputs/exercise1
+coa-net plan --bdtopo DATA/Scenario1_BDTopo.shp --places examples/places_scenario1.json --order examples/order_scenario1.txt \
+    --max-rank 4 --recce-max 6 --reps 20 --incident "06:40@Bridge destroyed near Ploermel, confirmed by the gendarmerie (A1)." \
+    --out outputs/scenario1_plan
+```
+
+`exercise` reads the statement and the sketch from the PDF, the town populations and built-up areas from the 1:100 000 scan (OCR on CPU), georeferences the sketch's zones against the scan, compiles the constraints into requirements (NET.DISTINCT, SEG.TOWN on top of the seed base), searches the three separated itineraries with junction turns priced, checks them again from the geometry, and writes `itineraries.geojson` (with the difficult turns and their radii), `difficult_areas.geojson`, two map layers on the scan, `decision_process.txt` and `metrics.json`.
+
+![Exercise 1 itineraries on the 1:100 000 scan](docs/figures/real/exercise1-itineraries.jpg)
 
 ## Layout
 
@@ -118,9 +135,14 @@ src/coa_net/
   graph.py         annotated road graph, gazetteer, geometry
   corridors.py     S0 corridor graph, critical elements, map card
   loaders.py       OSM, BD TOPO, DEM
+  realdata.py      organisers' Scenario shapefiles (BD TOPO v2, OSM Geofabrik): CRS, encodings, attributes, graph
+  scanmap.py       IGN scans: built-up tint, OCR of town names and populations, sketch georeferencing and zones
+  exercise.py      exercise statements: parser, NET.DISTINCT solver, turn-aware router, turn radii, checks, difficult areas
+  scenario.py      `coa-net exercise` pipeline and its outputs (layers, GeoJSON, decision text)
+  audit.py         data audit: files, OSM/BD TOPO agreement, scan alignment, scan check of routes
   scenarios.py     synthetic theatre, random missions and incidents
   vehicles.py      vehicle catalogue (illustrative values), binding profiles, march columns
-  requirements.py  26 templates, tiers, seed requirement base
+  requirements.py  28 templates, tiers, seed requirement base
   doctrine.py      S1 doctrine compiler and coverage (L1)
   parsing.py       order parser (L2), incident parser (L6)
   intent.py        S2 intent to priority order (L3)
@@ -189,8 +211,8 @@ Each code folder has a README that lists its public interface, the rules develop
 
 ## Next steps before the event
 
-1. Run the language-model roles with Mistral Small 3.2 24B and Qwen3-32B and measure tokens, precision of the compiled requirements and the red team's agreement with instructors.
-2. Real extracts (F2): cache OSM and BD TOPO for three areas, plant unknown bridge classes, check corridor contraction and the reconnaissance tasks.
-3. Baselines B2 and B3 (whole map card or rendered map given to the model), to answer the brief's hypothesis on equal terms.
-4. Pre-register parameters (detour guard, tolerances, likelihood table, belief thresholds) before running F2 and F3.
-5. Ask the organisers the questions of methodology section 13 (doctrine corpus, map format, order format, incident format, expected outputs).
+1. Ask the ETLO for the PFM characteristics (weight, MLC, width, height, length) and any bridge classification, and calibrate the turn costs and difficult-turn thresholds with them (see [docs/real_data_validation.md](docs/real_data_validation.md), section 9).
+2. Give `parse_exercise` a model path (same schema, verbatim quotes checked, patterns as the fallback) and run the language-model roles with Mistral Small 3.2 24B and Qwen3-32B; measure tokens and the precision of the compiled requirements and exercise specs.
+3. Cross-check the OCR town populations with the INSEE populations joined on the BD TOPO commune codes.
+4. Baselines B2 and B3 (whole map card or rendered map given to the model), to answer the brief's hypothesis on equal terms.
+5. Pre-register parameters (detour guard, tolerances, likelihood table, belief thresholds, turn costs) before the event.

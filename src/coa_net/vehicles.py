@@ -57,6 +57,18 @@ DEFAULT_CATALOGUE: dict[str, VehicleType] = {
             length_m=20.0,
             description="heavy equipment transporter loaded with a main battle tank",
         ),
+        VehicleType(
+            "pfm_carrier",
+            "heavy",
+            32,
+            32,
+            3.0,
+            3.9,
+            70,
+            15,
+            length_m=12.0,
+            description="carrier of a motorised floating bridge (PFM) bay; ASSUMED values, to confirm with the ETLO",
+        ),
         VehicleType("ifv_tracked", "tracked", 30, 32, 3.3, 3.0, 60, 50, length_m=7.0, tracked=True, description="tracked IFV"),
     ]
 }

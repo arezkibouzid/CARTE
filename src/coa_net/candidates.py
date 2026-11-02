@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import heapq
 import itertools
+import math
+import weakref
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -46,6 +48,18 @@ WEIGHT_GRID = [
     ("balanced", (5.0, 2.0, 0.5, 1.0)),
     ("protected", (20.0, 8.0, 1.0, 3.0)),
 ]
+
+
+def compact_names(names: list[str]) -> str:
+    """Critical elements in driving order, runs of the same name counted: on BD TOPO a bridge is named after its road,
+    so a route read "N166, N166, N166, ..." (eleven bridges); it now reads "N166 x11"."""
+    out: list[str] = []
+    for n in names:
+        if out and out[-1][0] == n:
+            out[-1][1] += 1
+        else:
+            out.append([n, 1])
+    return ", ".join(n if k == 1 else f"{n} x{k}" for n, k in out)
 
 
 @dataclass
@@ -79,7 +93,7 @@ class Route:
 
     def describe(self, H: CorridorGraph) -> str:
         els = [H.elements[e].name for e in self.ordered_elements(H) if H.elements[e].kind != "articulation"]
-        via = f" via {', '.join(els)}" if els else ""
+        via = f" via {compact_names(els)}" if els else ""
         return f"{self.length_m / 1000:.1f} km, {self.time_min:.1f} min{via}"
 
     def ordered_elements(self, H: CorridorGraph) -> list[str]:
@@ -307,32 +321,69 @@ def rcsp(
 # ---------------------------------------------------------------------------
 
 
-def allowed_halt_nodes(H: CorridorGraph, group: Group) -> set[Any]:
-    """Halt areas, minus those too close to a critical element (PRO.CRITPOINT)."""
-    from .graph import node_xy, point_distance
+# halt areas far enough from critical elements, per corridor graph and (kinds, distance, halt areas): on a real
+# map with thousands of halt candidates the check costs seconds and every candidate search asks for it
+_FAR_FROM: "weakref.WeakKeyDictionary[CorridorGraph, dict]" = weakref.WeakKeyDictionary()
+
+
+def _far_from(H: CorridorGraph, nodes: frozenset, kinds: frozenset, dmin: float) -> frozenset:
+    """Nodes farther than ``dmin`` metres from every element of ``kinds`` (same distance as ``point_distance``)."""
+    import numpy as np
+
+    from .graph import is_geographic, node_xy
 
     G = H.G
-    nodes = {n for n, d in G.nodes(data=True) if d.get("halt_capacity")}
+    E = np.array([e.xy for e in H.elements.values() if e.kind in kinds], dtype=float).reshape(-1, 2)
+    if not len(E) or not nodes:
+        return frozenset(nodes)
+    ns = sorted(nodes, key=str)
+    P = np.array([node_xy(G, n) for n in ns], dtype=float)
+    keep = np.ones(len(ns), bool)
+    for i in range(0, len(ns), 512):
+        a = P[i:i + 512]
+        if is_geographic(G):
+            lon1, lat1 = np.radians(a[:, :1]), np.radians(a[:, 1:])
+            lon2, lat2 = np.radians(E[:, 0])[None, :], np.radians(E[:, 1])[None, :]
+            h = np.sin((lat2 - lat1) / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin((lon2 - lon1) / 2) ** 2
+            dist = 2 * 6_371_000 * np.arcsin(np.sqrt(h))
+        else:
+            dist = np.hypot(a[:, :1] - E[None, :, 0], a[:, 1:] - E[None, :, 1])
+        keep[i:i + 512] = (dist > dmin).all(axis=1)
+    return frozenset(n for n, k in zip(ns, keep) if k)
+
+
+def allowed_halt_nodes(H: CorridorGraph, group: Group) -> set[Any]:
+    """Halt areas, minus those too close to a critical element (PRO.CRITPOINT)."""
+    G = H.G
+    nodes = frozenset(n for n, d in G.nodes(data=True) if d.get("halt_capacity"))
+    out = set(nodes)
     for r in group.active.of("PRO.CRITPOINT", ("T1",)):
-        kinds = set(r.p("element_kinds"))
-        d = r.p("no_stop_within_m")
-        nodes = {n for n in nodes if all(point_distance(G, node_xy(G, n), e.xy) > d for e in H.elements.values() if e.kind in kinds)}
-    return nodes
+        key = (frozenset(r.p("element_kinds")), float(r.p("no_stop_within_m")), nodes)
+        memo = _FAR_FROM.setdefault(H, {})
+        if key not in memo:
+            memo[key] = _far_from(H, nodes, key[0], key[1])
+        out &= memo[key]
+    return out
 
 
-def halt_plan(H: CorridorGraph, coster: GroupCoster, arcs: tuple[Arc, ...], max_drive: float | None, halt_nodes: set) -> list[Any] | None:
-    """Fewest halts so that no stretch of driving exceeds max_drive (greedy farthest reach)."""
-    if max_drive is None:
+def halt_plan(H: CorridorGraph, coster: GroupCoster, arcs: tuple[Arc, ...], max_drive: float | None, halt_nodes: set,
+              driven_min: float = 0.0) -> list[Any] | None:
+    """Fewest halts so that no stretch of driving exceeds max_drive (greedy farthest reach).
+
+    ``driven_min``: driving already done since the last halt by a unit that continues from the first arc's start
+    (re-planning on the move); that start may then be a halt itself if it is a halt node."""
+    if max_drive is None or not arcs:
         return []
     times = [coster.arcs[a].time_min for a in arcs]
     ends = [H.arc_end(a) for a in arcs]
     total = sum(times)
-    if total <= max_drive + 1e-9:
+    if driven_min + total <= max_drive + 1e-9:
         return []
     stops: list[Any] = []
-    t_last = 0.0
+    t_last = -driven_min
     cum = 0.0
-    best = None
+    start = H.arc_start(arcs[0])
+    best = (0.0, start) if driven_min > 0 and start in halt_nodes else None
     for i, (dt, n) in enumerate(zip(times, ends)):
         if dt > max_drive + 1e-9:
             return None
@@ -456,35 +507,93 @@ def articulation_points(H: CorridorGraph, group: Group, fastest: tuple[Arc, ...]
     return out
 
 
-def disjoint_pair(H: CorridorGraph, group: Group, max_turn: float | None = None) -> tuple[tuple[Arc, ...], tuple[Arc, ...]] | None:
-    """Cheapest pair of routes that share no critical element (min-cost flow, element capacity 1).
+def _flow_network(H: CorridorGraph, coster) -> dict[tuple[Any, Any], tuple[int, int]]:
+    """(tail, head) -> (capacity, cost) of the element-capacity network used by :func:`disjoint_pair`.
 
-    Corridors without critical elements have capacity 2, so the two routes may
-    share ordinary roads; only bridges, tunnels and the like must be distinct."""
-    coster = group.coster
-    F = nx.DiGraph()
+    Each usable arc is u -> ("a", arc) [arc time, capacity 2] -> its critical
+    elements in order, each split into in -> out with capacity 1 -> v.
+    Element nodes are shared by every arc that crosses the element."""
+    net: dict[tuple[Any, Any], tuple[int, int]] = {}
     for u, outs in H.out.items():
         for arc, v in outs:
             ae = coster.arcs.get(arc)
             if ae is None or not ae.ok:
                 continue
             head = ("a", arc)
-            F.add_edge(u, head, capacity=2, weight=int(round(ae.time_min * 100)))
+            net[(u, head)] = (2, int(round(ae.time_min * 100)))
             prev = head
             for e in H.corridors[arc[0]].arc_elements(arc[1]):
                 ein, eout = ("e", e, "in"), ("e", e, "out")
-                F.add_edge(prev, ein, capacity=2, weight=0)
-                F.add_edge(ein, eout, capacity=1, weight=0)
+                net[(prev, ein)] = (2, 0)
+                net[(ein, eout)] = (1, 0)
                 prev = eout
-            F.add_edge(prev, v, capacity=2, weight=0)
-    if group.origin not in F or group.destination not in F:
+            net[(prev, v)] = (2, 0)
+    return net
+
+
+def _two_unit_min_cost_flow(net: dict[tuple[Any, Any], tuple[int, int]], s: Any, t: Any) -> dict[tuple[Any, Any], int] | None:
+    """Minimum-cost flow of value 2 from s to t by successive shortest paths.
+
+    Two Dijkstra runs on the residual network (the second with the first run's
+    distances as potentials, so reduced costs stay non-negative). Exact for
+    non-negative costs, and much faster than a general network simplex on
+    large corridor graphs. Returns the flow on each edge, or None if two units
+    cannot be routed."""
+    tails, heads, caps, costs = [], [], [], []
+    adj: dict[Any, list[int]] = {}
+    for (a, b), (c, w) in net.items():
+        i = len(heads)
+        tails += [a, b]
+        heads += [b, a]
+        caps += [c, 0]
+        costs += [w, -w]
+        adj.setdefault(a, []).append(i)
+        adj.setdefault(b, []).append(i + 1)
+    if s not in adj or t not in adj:
         return None
-    F.nodes[group.origin]["demand"] = -2
-    F.nodes[group.destination]["demand"] = 2
-    try:
-        flow = nx.min_cost_flow(F)
-    except (nx.NetworkXUnfeasible, nx.NetworkXError):
+    pot: dict[Any, float] = {}
+    for _ in range(2):
+        dist: dict[Any, float] = {s: 0.0}
+        pred: dict[Any, int] = {}
+        tie = itertools.count()
+        pq = [(0.0, next(tie), s)]
+        while pq:
+            d, _, a = heapq.heappop(pq)
+            if d > dist[a]:
+                continue
+            pa = pot.get(a, 0.0)
+            for i in adj[a]:
+                if caps[i] <= 0:
+                    continue
+                b = heads[i]
+                nd = d + costs[i] + pa - pot.get(b, 0.0)
+                if nd < dist.get(b, math.inf):
+                    dist[b] = nd
+                    pred[b] = i
+                    heapq.heappush(pq, (nd, next(tie), b))
+        if t not in dist:
+            return None
+        node = t
+        while node != s:
+            i = pred[node]
+            caps[i] -= 1
+            caps[i ^ 1] += 1
+            node = tails[i]
+        pot = {n: pot.get(n, 0.0) + d for n, d in dist.items()}
+    return {(tails[i], heads[i]): caps[i + 1] for i in range(0, len(heads), 2) if caps[i + 1] > 0}
+
+
+def disjoint_pair(H: CorridorGraph, group: Group, max_turn: float | None = None) -> tuple[tuple[Arc, ...], tuple[Arc, ...]] | None:
+    """Cheapest pair of routes that share no critical element (min-cost flow, element capacity 1).
+
+    Corridors without critical elements have capacity 2, so the two routes may
+    share ordinary roads; only bridges, tunnels and the like must be distinct."""
+    flow_e = _two_unit_min_cost_flow(_flow_network(H, group.coster), group.origin, group.destination)
+    if flow_e is None:
         return None
+    flow: dict[Any, dict[Any, int]] = {}
+    for (a, b), f in flow_e.items():
+        flow.setdefault(a, {})[b] = f
     paths = []
     for _ in range(2):
         node = group.origin
@@ -492,7 +601,7 @@ def disjoint_pair(H: CorridorGraph, group: Group, max_turn: float | None = None)
         guard = 0
         while node != group.destination and guard < 100000:
             guard += 1
-            nxt = next((m for m, f in flow[node].items() if f > 0), None)
+            nxt = next((m for m, f in flow.get(node, {}).items() if f > 0), None)
             if nxt is None:
                 return None
             flow[node][nxt] -= 1
@@ -699,6 +808,7 @@ __all__ = [
     "Route",
     "allowed_halt_nodes",
     "articulation_points",
+    "compact_names",
     "disjoint_pair",
     "generate_candidates",
     "halt_plan",

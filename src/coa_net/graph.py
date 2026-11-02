@@ -14,8 +14,10 @@ the dynamic ``threat``, ``weather`` and ``closed`` values from reports.
 
 from __future__ import annotations
 
+import functools
 import math
 import unicodedata
+import weakref
 from typing import Any, Iterable
 
 import networkx as nx
@@ -146,9 +148,15 @@ def turn_angle(G: nx.DiGraph, a: Any, b: Any, c: Any) -> float:
     return 360 - d if d > 180 else d
 
 
+@functools.lru_cache(maxsize=65536)
 def _fold(s: str) -> str:
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
     return " ".join(s.lower().replace("-", " ").split())
+
+
+# road-name part of the gazetteer per graph, rebuilt when the graph's size changes
+# (on a national road graph it costs seconds and every order and what-if world asks for it)
+_ROAD_NAMES: "weakref.WeakKeyDictionary[nx.DiGraph, tuple[tuple[int, int], dict[str, Any]]]" = weakref.WeakKeyDictionary()
 
 
 def gazetteer(G: nx.DiGraph) -> dict[str, Any]:
@@ -157,12 +165,19 @@ def gazetteer(G: nx.DiGraph) -> dict[str, Any]:
     for n, d in G.nodes(data=True):
         if d.get("name"):
             out.setdefault(_fold(d["name"]), n)
-    for u, v, d in G.edges(data=True):
-        name = d.get("name")
-        if isinstance(name, list):
-            name = name[0] if name else ""
-        if name:
-            out.setdefault(_fold(str(name)), u)
+    sig = (G.number_of_nodes(), G.number_of_edges())
+    cached = _ROAD_NAMES.get(G)
+    if cached is None or cached[0] != sig:
+        roads: dict[str, Any] = {}
+        for u, v, d in G.edges(data=True):
+            name = d.get("name")
+            if isinstance(name, list):
+                name = name[0] if name else ""
+            if name:
+                roads.setdefault(_fold(str(name)), u)
+        cached = _ROAD_NAMES[G] = (sig, roads)
+    for k, u in cached[1].items():
+        out.setdefault(k, u)
     return out
 
 

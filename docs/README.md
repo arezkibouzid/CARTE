@@ -7,6 +7,7 @@ Design and reference documents for COA-Net, and the figures they use. This folde
 - `COA-Net_methodology.md`: the methodology and design of COA-Net.
 - `benchmark_100_seeds.md`: output of the synthetic benchmark over 100 seeds.
 - `hackathon_brief.md`: the organisers' AMIAD hackathon brief, copied word for word in French.
+- `real_data_validation.md`: inspection of the organisers' Scenario 1 data, the changes it required, and the measured results of exercise 1 and of a full plan with incidents on that map.
 
 ## Subdirectories & Boundaries
 

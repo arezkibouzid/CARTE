@@ -1,7 +1,7 @@
 """S1: doctrine -> requirement instances (role L1; methodology 4.1-4.8, S1).
 
 Each sentence of a doctrine text is classified as *mapped* (one or more
-instances of the 26 templates), *inexpressible* (a movement requirement no
+instances of the 28 templates), *inexpressible* (a movement requirement no
 template can state) or *out of scope* (not about route or movement planning).
 Coverage = mapped / (mapped + inexpressible).
 

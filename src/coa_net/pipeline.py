@@ -72,6 +72,8 @@ class COANet:
     archetypes: list[str] | None = None
     explain: bool = True
     recce: bool = True
+    recce_max_elements: int | None = None  # cap on what-if evaluations per COA (large maps)
+    data_notes: list[str] = field(default_factory=list)  # data-driven policy changes and data facts, shown in the report
 
     mission: MissionSpec | None = None
     intent: IntentResult | None = None
@@ -120,6 +122,7 @@ class COANet:
                                           use_cpsat=self.use_cpsat, time_limit_s=self.time_limit_s)
         self._tick("S5 network design (all COAs)", t)
         self.coas = {}
+        worlds: dict = {}  # what-if worlds of the value of information, shared by the COAs (same context and criticality)
         for d in designs:
             t = time.perf_counter()
             ref = refine(H, self.ctx.groups, d, self.crit)
@@ -130,7 +133,9 @@ class COANet:
             t = time.perf_counter()
             rep = verify(H, self.ctx, d, ref, sc, self.crit)
             books = build_playbooks(H, self.ctx, d, self.crit, ref, use_cpsat=self.use_cpsat, mission_id=self.mission.id)
-            tasks = value_of_information(H, self.ctx, self.requirements, d, self.crit, ref=ref, use_cpsat=self.use_cpsat) if self.recce else []
+            tasks = value_of_information(H, self.ctx, self.requirements, d, self.crit, ref=ref, use_cpsat=self.use_cpsat,
+                                         max_elements=self.recce_max_elements, world_cache=worlds,
+                                         base_cands=self.cands, rebase=True) if self.recce else []
             self._tick("S8 verification, playbooks, reconnaissance", t, add=True)
             self.coas[d.name] = COA(d, ref, sc, rep, books, tasks)
         t = time.perf_counter()
@@ -138,8 +143,10 @@ class COANet:
         self._tick("S8 simulation", t)
         if self.explain:
             t = time.perf_counter()
+            roads: dict = {}  # doctrine-free road route per group, the same for every COA
             for c in self.coas.values():
-                c.explanations = explain_plan(H, self.ctx, self.prob, c.design, c.sched, c.ref, llm=self.llm, use_cpsat=self.use_cpsat)
+                c.explanations = explain_plan(H, self.ctx, self.prob, c.design, c.sched, c.ref, llm=self.llm, use_cpsat=self.use_cpsat,
+                                              road_cache=roads)
             self._tick("explanations", t)
         t = time.perf_counter()
         self.facts = facts_table(H, self.ctx, [c.design for c in self.coas.values()], {n: c.ref for n, c in self.coas.items()}, self.crit,
@@ -173,7 +180,8 @@ class COANet:
         c = self.coas[name]
         self.chosen = name
         self.state = PlanState(self.H, self.ctx, self.requirements, c.design.order, c.design.eps, c.design, self.crit, c.ref, c.sched,
-                               list(c.playbooks), llm=self.llm, use_cpsat=self.use_cpsat, time_limit_s=self.time_limit_s)
+                               list(c.playbooks), llm=self.llm, use_cpsat=self.use_cpsat, time_limit_s=self.time_limit_s,
+                               recce_max_elements=self.recce_max_elements)
         self.snapshots = [(f"COA {c.label}: designated network before departure", self.map())]
         return c
 
@@ -272,7 +280,9 @@ class COANet:
                 f"- {f.level} {f.req} {f.tier} {f.status}: {f.subject}: {f.detail}" for f in first.report.findings)),
         ]
         for o in self.outcomes:
-            body = [f"Mode: {o.mode}" + (f" ({o.playbook})" if o.playbook else "") + f"; computed in {o.seconds:.2f} s.", "", o.summary, ""]
+            done = f"no FRAGO needed, assessed in {o.seconds:.2f} s" if o.mode == "logged" else f"FRAGO computed in {o.seconds:.2f} s"
+            body = [f"Mode: {o.mode}" + (f" ({o.playbook})" if o.playbook else "") + f"; {done}"
+                    + (f", restoration options in {o.restore_seconds:.1f} s more." if o.restore_seconds else "."), "", o.summary, ""]
             body += [f"- {x}" for x in o.notes + o.restoration]
             if o.verification is not None:
                 body += ["", "Verification: " + o.verification.summary()]
@@ -297,6 +307,8 @@ class COANet:
                   for c in m.convoys]
         if m.ambiguities:
             lines += ["", "Ambiguities (flagged, not guessed): " + "; ".join(m.ambiguities)]
+        if self.data_notes:
+            lines += ["", "Data and assumptions (from the map data, to confirm):", ""] + [f"- {n}" for n in self.data_notes]
         lines += ["", "```", self.intent.describe() if self.intent else "", "```", "", "Critical elements (structural impact x likelihood):", ""]
         lines += ["| element | kind | impact | likelihood | source |", "| --- | --- | --- | --- | --- |"]
         for row in impact_table(self.H, self.crit)[:8]:
@@ -311,7 +323,8 @@ class COANet:
                               "solver": c.design.solver, "status": c.design.status, "seconds": round(c.design.seconds, 3),
                               "verification": c.report.summary(), "playbooks": len(c.playbooks),
                               "recce": [t.entry() for t in c.recce], "simulation": c.sim.summary() if c.sim else None}
-        out["incidents"] = [{"id": o.incident.id, "mode": o.mode, "seconds": round(o.seconds, 3), "affected": o.affected,
+        out["incidents"] = [{"id": o.incident.id, "mode": o.mode, "seconds": round(o.seconds, 3),
+                             "restore_seconds": round(o.restore_seconds, 3), "affected": o.affected,
                              "verification": o.verification.summary() if o.verification else None} for o in self.outcomes]
         if self.llm is not None and hasattr(self.llm, "usage"):
             u = self.llm.usage

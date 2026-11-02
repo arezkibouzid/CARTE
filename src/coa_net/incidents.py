@@ -28,6 +28,7 @@ back to the decision point it came from.
 
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -74,6 +75,7 @@ class PlanState:
     time_limit_s: float = 10.0
     use_cpsat: bool = True
     log: list[str] = field(default_factory=list)
+    recce_max_elements: int | None = None  # cap on the unknown elements valued for restoration options (large maps)
 
     def __post_init__(self) -> None:
         if self.belief is None:
@@ -104,7 +106,8 @@ class IncidentOutcome:
     diff: PlanDiff | None = None
     frago: str = ""
     frago_source: str = ""
-    seconds: float = 0.0
+    seconds: float = 0.0  # response time: from the report to the FRAGO
+    restore_seconds: float = 0.0  # restoration options, computed after the FRAGO
     notes: list[str] = field(default_factory=list)
 
 
@@ -194,13 +197,55 @@ def _remaining_arcs(c: Credit, pos: Position) -> tuple:
 # ---------------------------------------------------------------------------
 
 
+def _known_unit(state: PlanState, inc: Incident) -> str | None:
+    """The convoy or march unit a report names. The pattern parser only reads "convoy C2"; a report such as
+    "C2 breakdown, 30 min" names the convoy by its id alone, so known ids are looked for in the text."""
+    ids = {i for i in {u.convoy_id for u in state.ctx.units.values()} | set(state.ctx.units) if i}
+    if inc.convoy_id in ids:
+        return inc.convoy_id
+    for i in sorted(ids, key=lambda x: (-len(x), x)):  # "C2-1" before "C2"
+        if re.search(rf"(?<![\w-]){re.escape(i)}(?![\w-])", inc.text or ""):
+            return i
+    return inc.convoy_id
+
+
+GRADING = re.compile(r"(?:graded|grading|cotation|cot[ée])\s*\(?\s*[A-F]\s*[1-6]\s*\)?|\(\s*[A-F]\s*[1-6]\s*\)", re.I)
+ROAD_REF = re.compile(r"\bR?([ADN])(\d{1,4}[A-Z]?)\b")  # D766, RD766, RN12 (not "a 2 km radius")
+
+
+def located_note(H: CorridorGraph, inc: Incident, eid: str, center: tuple[float, float]) -> str:
+    """Which bridge a destruction report was matched to, and how sure the match is. A report gives a place or
+    coordinates and the nearest bridge is taken: on Scenario 1, "bridge destroyed near Ploermel" was matched to a bridge
+    on the D8 2 km from the town, and neither the console nor the report said so."""
+    G = H.G
+    el = H.elements[eid]
+    d = point_distance(G, el.xy, center)
+    others = sum(1 for e in H.elements.values()
+                 if e.kind == "bridge" and e.id != eid and point_distance(G, e.xy, center) <= d + 1000.0)
+    where = inc.location.name if inc.location is not None and inc.location.name else "the reported coordinates"
+    road = el.attrs.get("road") or el.name
+    named = sorted({a + n for a, n in ROAD_REF.findall(GRADING.sub(" ", inc.text).upper())})
+    text = f"matched to bridge {el.id} on the {road}, the bridge nearest to {where} ({d:,.0f} m)"
+    if named:
+        if set(named) & set(str(road).upper().replace(" ", "").split("/")):
+            return text + ", on the road the report names"
+        return text + f"; the report names the {', '.join(named)}: to confirm"
+    if others:
+        return text + f"; {others} other bridge{'s are' if others > 1 else ' is'} less than 1 km farther: to confirm"
+    return text
+
+
 def handle_incident(state: PlanState, inc: Incident) -> IncidentOutcome:
     t0 = time.perf_counter()
     H, G = state.H, state.H.G
     now = inc.time_min
+    if inc.type == IncidentType.BREAKDOWN:
+        inc = inc.model_copy(update={"convoy_id": _known_unit(state, inc)})
     edges, elements, center = locate(H, inc)
     pos = positions(H, state.sched, now)
     notes: list[str] = []
+    if inc.type == IncidentType.BRIDGE_DESTROYED and elements and center is not None:
+        notes.append(located_note(H, inc, elements[0], center))
     grading = f"{inc.reliability}{inc.credibility}"
     before = {e for e in H.elements if _closed(G, H, e)}
     changed: list = []
@@ -275,6 +320,14 @@ def handle_incident(state: PlanState, inc: Incident) -> IncidentOutcome:
         playbook = next(pb for pb in state.playbooks if pb.element == newly[0])
     else:
         mode = "repair"
+    if mode == "logged" and inc.type == IncidentType.THREAT_ZONE and changed:
+        # No column drives through the zone, but a designated route may: on Scenario 1 the ambush near Josselin lay on
+        # C1's alternate route and was logged without a word.
+        ch = set(changed)
+        for nr in state.ref.routes.values():
+            if any(e in ch for a in nr.route.arcs for e in H.arc_edges(a)):
+                notes.append(f"{nr.role} {nr.name} ({', '.join(nr.groups)}) crosses the threat zone; no column is on it now; "
+                             f"not to be used{' as an alternate' if nr.role == 'ASR' else ''} while the threat stands")
     summary = _summary(H, inc, edges, newly, changed)
     out = IncidentOutcome(inc, mode, summary, changed, newly, sorted(affected), playbook.id if playbook else None, notes=notes)
     if mode == "logged":
@@ -314,7 +367,7 @@ def handle_incident(state: PlanState, inc: Incident) -> IncidentOutcome:
                 new_routes[uid] = r
         state.ref = refine(H, ctx_r.groups, design, crit, previous=old_ref)
         out.design, out.ref = design, state.ref
-        out.restoration, out.recce = _restore(state, design, crit, ctx_r, now)
+        restore_args = (design, crit, ctx_r)
 
     # 5. movement credits
     tasks, fixed, kept = replan_tasks(H, state.ctx, state.sched, now, new_routes, delays, pulled, turn_back)
@@ -331,6 +384,12 @@ def handle_incident(state: PlanState, inc: Incident) -> IncidentOutcome:
     out.frago, out.frago_source = write_frago(out.diff, state.llm)
     out.seconds = time.perf_counter() - t0
     state.log.append(f"{hhmm(now)} {inc.id}: {summary}; {mode}" + (f" {playbook.id}" if playbook else ""))
+    # 7. restoration options, after the FRAGO: they need what-if plans (value of information), which took more than
+    # ten minutes on Scenario 1 when they were computed before the FRAGO and without the plan's cap
+    if mode in ("playbook", "repair", "recce"):
+        t1 = time.perf_counter()
+        out.restoration, out.recce = _restore(state, *restore_args, now)
+        out.restore_seconds = time.perf_counter() - t1
     return out
 
 
@@ -447,7 +506,8 @@ def _restore(state: PlanState, design: Design, crit: Criticality, ctx_r: Mission
     if any(e in crit.irreducible.get(g, set()) for e, gs in spof.items() for g in gs):
         try:
             tasks = value_of_information(H, ctx_r, state.requirements, design, crit, state.order, state.eps, now=now,
-                                         use_cpsat=state.use_cpsat, time_limit_s=state.time_limit_s, rebase=True)
+                                         use_cpsat=state.use_cpsat, time_limit_s=state.time_limit_s, rebase=True,
+                                         max_elements=state.recce_max_elements)
         except Exception as exc:  # noqa: BLE001 - restoration options must not break the loop
             lines.append(f"reconnaissance values not computed: {exc}")
     critpoint = next((r for g in ctx_r.groups.values() for r in g.active.of("PRO.CRITPOINT")), None)

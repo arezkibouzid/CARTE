@@ -242,11 +242,35 @@ def add_slopes_from_dem(G: nx.DiGraph, dem_path: str) -> None:
         d["slope_pct"] = round(abs(z[v] - z[u]) / d["length_m"] * 100, 1)
 
 
-def add_places(G: nx.DiGraph, places: dict[str, tuple[float, float]]) -> None:
-    from .graph import nearest_node
+def add_places(G: nx.DiGraph, places: dict[str, tuple[float, float]], snap_max_rank: int | None = None) -> dict[str, dict]:
+    """Name the node nearest to each place; returns where each place was put.
 
-    for name, xy in places.items():
-        G.nodes[nearest_node(G, xy)]["name"] = name
+    With ``snap_max_rank`` the node must be on a road of at most that rank: a
+    column starts and ends on a road it can use, not in the side street or on
+    the track nearest to the label of a town on a map (on the Scenario 1 map
+    the nearest node to "Questembert" is on an unpaved track)."""
+    import numpy as np
+
+    from .graph import is_geographic
+
+    if snap_max_rank is None:
+        cand = list(G.nodes)
+    else:
+        cand = sorted({n for u, v, d in G.edges(data=True) if d.get("road_rank", 5) <= snap_max_rank for n in (u, v)}, key=str) or list(G.nodes)
+    xs = np.array([G.nodes[n]["x"] for n in cand], float)
+    ys = np.array([G.nodes[n]["y"] for n in cand], float)
+    out: dict[str, dict] = {}
+    for name, (x, y) in places.items():
+        if is_geographic(G):
+            d = np.hypot((xs - x) * 111_320 * np.cos(np.radians(y)), (ys - y) * 110_540)
+        else:
+            d = np.hypot(xs - x, ys - y)
+        i = int(np.argmin(d))
+        n = cand[i]
+        G.nodes[n]["name"] = name
+        roads = sorted({str(dd.get("name")) for _, _, dd in G.edges(n, data=True) if dd.get("name")})
+        out[name] = {"node": n, "distance_m": round(float(d[i])), "roads": roads}
+    return out
 
 
 def add_halt_areas(G: nx.DiGraph, areas: dict[str, tuple[tuple[float, float], int]]) -> None:

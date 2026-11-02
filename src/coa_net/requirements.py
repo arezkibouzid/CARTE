@@ -1,6 +1,6 @@
 """Doctrine as prioritised requirements (methodology section 4, Appendix A).
 
-A requirement is an *instance* of one of 26 templates from a closed catalogue.
+A requirement is an *instance* of one of 28 templates from a closed catalogue.
 Each template belongs to one of five levels, which decides where it is
 enforced:
 
@@ -103,6 +103,11 @@ TEMPLATES: dict[str, Template] = {
                  "mask (T1); objectives builtup, cover, preferences", "risk",
                  "Attribute to avoid: built_up, forest, open (no cover), minor_road, unlit.",
                  ("avoid", "bypass", "prefer major roads", "cover", "éviter", "contourner", "agglomération")),
+        Template("SEG.TOWN", "SEG", ("T1", "T2"),
+                 (Param("min_population", "inhabitants", 10000, 0, 10**7, "min"),),
+                 "mask (T1); objective (T2)", "risk (town population unread)",
+                 "No road inside a town above a population threshold (town areas and populations read from the map).",
+                 ("towns of more than", "inhabitants", "agglomération de plus de", "habitants")),
         Template("RTE.GAP_MAX", "RTE", ("T1", "T2"),
                  (Param("max_drive_min", "min", 120, 15, 600, "min"), Param("halt_place", "", "halt_area")),
                  "path resource (candidates)", "risk",
@@ -143,6 +148,11 @@ TEMPLATES: dict[str, Template] = {
                  "design", "n/a",
                  "Separate opposite flows on narrow roads.",
                  ("separate", "outbound and return", "one-way circuit", "sens unique", "séparer les flux")),
+        Template("NET.DISTINCT", "NET", ("T1", "T2"),
+                 (Param("k", "", 3, 1, 10, "max"), Param("min_sep_km", "km", 5.0, 0, 100, "max"), Param("no_intersect", "", True)),
+                 "design (exercise mode, seeded sequential exclusion); checker", "n/a",
+                 "k itineraries between the same areas, pairwise at least d km apart and never intersecting.",
+                 ("itineraries must not intersect", "km apart", "itinéraires distincts", "écartés de")),
         Template("NET.LATERAL", "NET", ("T2",),
                  (Param("max_spacing_km", "km", 10, 1, 100, "min"), Param("link_max_km", "km", 3, 0.5, 20)),
                  "checker", "n/a",
@@ -204,7 +214,7 @@ TEMPLATES: dict[str, Template] = {
     ]
 }
 
-assert len(TEMPLATES) == 26, len(TEMPLATES)
+assert len(TEMPLATES) == 28, len(TEMPLATES)
 
 # ---------------------------------------------------------------------------
 # Trigger words and tiers (section 4.3)

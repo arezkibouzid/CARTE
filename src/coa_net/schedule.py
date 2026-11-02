@@ -55,10 +55,21 @@ class Movement:
     pass_min: float  # minutes for the whole column to pass a point
     wait_before: float = 0.0
     halt_before: float = 0.0
+    stop_min: float = 0.0  # unplanned stop inside the leg (a breakdown): part of t_out - t_in, not driving
 
     @property
     def tail_out(self) -> float:
         return self.t_out + self.pass_min
+
+
+def driven_since_halt(legs: list[Movement]) -> float:
+    """Minutes of driving since the last halt (or the departure) at the end of these legs; stops are not driving."""
+    d = 0.0
+    for l in legs:
+        if l.halt_before > 0:
+            d = 0.0
+        d += max(0.0, l.t_out - l.t_in - l.stop_min)
+    return d
 
 
 @dataclass
@@ -185,13 +196,15 @@ def _finish(task: Task) -> Task:
     co = task.group.coster
     task.taus = [co.arcs[a].time_min for a in task.arcs]
     task.passes = [co.pass_min(a, task.unit.vehicle_lengths) for a in task.arcs]
-    task.free_arrival = task.start_time + sum(task.taus) + sum(task.halts.get(task.group.coster.H.arc_start(a), 0.0) for a in task.arcs[1:])
+    # a continuation may halt where it restarts (task.halts at the first arc's start), so every arc counts
+    task.free_arrival = task.start_time + sum(task.taus) + sum(task.halts.get(task.group.coster.H.arc_start(a), 0.0) for a in task.arcs)
     return task
 
 
-def _halts(H: CorridorGraph, group: Group, arcs: tuple[Arc, ...]) -> dict[Any, float]:
+def _halts(H: CorridorGraph, group: Group, arcs: tuple[Arc, ...], driven_min: float = 0.0) -> dict[Any, float]:
+    """Halts on the arcs still to drive; ``driven_min``: driving since the unit's last halt (a unit already moving)."""
     max_drive = group.active.param("RTE.GAP_MAX", "max_drive_min", None)
-    nodes = halt_plan(H, group.coster, arcs, max_drive, allowed_halt_nodes(H, group)) or []
+    nodes = halt_plan(H, group.coster, arcs, max_drive, allowed_halt_nodes(H, group), driven_min=driven_min) or []
     dur = float(group.active.param("SCH.HALT", "halt_min", 15.0) or 15.0)
     return {n: dur for n in nodes}
 
@@ -252,7 +265,11 @@ def replan_tasks(
         i = max(j for j, l in enumerate(c.legs) if l.t_in <= now)
         cur = c.legs[i]
         history = [replace(l) for l in c.legs[: i + 1]]
-        history[-1].t_out = max(cur.t_out, now) + delay if delay else cur.t_out
+        if delay:
+            # stopped for the breakdown, from now or from its arrival at the leg's end if it was already there
+            # (waiting or halting): not driving, which R-23 limits
+            history[-1].stop_min += max(cur.t_out, now) - cur.t_out + delay
+            history[-1].t_out = max(cur.t_out, now) + delay
         node = cur.end
         turned = uid in turn_back and now < cur.t_out
         if turned:
@@ -271,8 +288,10 @@ def replan_tasks(
             kept[uid] = Credit(uid, u.convoy_id, g.id, full, history, c.earliest, c.deadline, c.weight, c.n, c.column_m,
                                c.free_arrival)
             continue
-        t = Task(u, g, full, tuple(rest_arcs), history[-1].t_out, history, _halts(H, g, tuple(rest_arcs)),
-                 allowed_halt_nodes(H, g) | {node})
+        # halts on the rest of the route count the driving done since the unit's last halt: planned from the restart
+        # point alone, a moving unit lost the halt it still needed (and the time it had already driven)
+        t = Task(u, g, full, tuple(rest_arcs), history[-1].t_out, history,
+                 _halts(H, g, tuple(rest_arcs), driven_since_halt(history)), allowed_halt_nodes(H, g) | {node})
         _finish(t)
         t.free_arrival = c.free_arrival + delay  # delay against the original plan, plus the breakdown
         tasks.append(t)
@@ -379,7 +398,7 @@ def _solve_cpsat(H: CorridorGraph, tasks: list[Task], fixed: list[Occupation], t
         n = len(tk.arcs)
         for i in range(n):
             tv[k, i] = m.NewIntVar(0, horizon, f"t_{k}_{i}")
-        m.Add(tv[k, 0] >= _ticks(tk.start_time))
+        m.Add(tv[k, 0] >= _ticks(tk.start_time) + _ticks(tk.halts.get(H.arc_start(tk.arcs[0]), 0.0)))  # halt where it restarts
         for i in range(1, n):
             node = H.arc_start(tk.arcs[i])
             halt = _ticks(tk.halts.get(node, 0.0))
@@ -553,8 +572,8 @@ def _solve_cpsat(H: CorridorGraph, tasks: list[Task], fixed: list[Occupation], t
         for i, a in enumerate(tk.arcs):
             t_in = solver.Value(tv[k, i]) * TICK
             node = H.arc_start(a)
-            halt = tk.halts.get(node, 0.0) if i else 0.0
-            wait = solver.Value(wv[k, i]) * TICK if (k, i) in wv else (t_in - tk.start_time if i == 0 else 0.0)
+            halt = tk.halts.get(node, 0.0)
+            wait = solver.Value(wv[k, i]) * TICK if (k, i) in wv else (t_in - tk.start_time - halt if i == 0 else 0.0)
             if i and prev_end is not None:
                 wait = max(0.0, t_in - prev_end - halt)
             t_out = t_in + D[k][i] * TICK
@@ -590,7 +609,7 @@ def _greedy(H: CorridorGraph, tasks: list[Task], fixed: list[Occupation]) -> Sch
         t = dep
         for i, a in enumerate(tk.arcs):
             node = H.arc_start(a)
-            halt = tk.halts.get(node, 0.0) if i else 0.0
+            halt = tk.halts.get(node, 0.0)
             t += halt
             out.append(Movement(a, node, H.arc_end(a), t, t + tk.taus[i], tk.passes[i], dep - tk.start_time if i == 0 else 0.0, halt))
             t += tk.taus[i]

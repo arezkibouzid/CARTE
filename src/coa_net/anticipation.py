@@ -361,7 +361,8 @@ class ReconTask:
     def entry(self) -> str:
         """Task in the format of Appendix C.5."""
         when = f"Report before {', '.join(self.affected)} depart{'s' if len(self.affected) == 1 else ''} ({hhmm(self.deadline)})" \
-            if self.deadline is not None else "No deadline (affected groups already moving: for the next movement)"
+            if self.deadline is not None else ("No deadline (affected groups already moving: for the next movement)" if self.affected
+                                               else "No deadline (no group's plan depends on the answer)")
         ok = "" if self.feasible or self.deadline is None else f" | NOT IN TIME (answer expected {hhmm(self.eta)})"
         return f"{self.id} | {self.question} | {when}{ok}\nWhy: {self.why}\nPriority {self.priority}."
 
@@ -446,6 +447,34 @@ def _base_overrides(ctx: MissionContext) -> dict:
     return dict(g.coster.overrides) if g is not None else {}
 
 
+def _alike(x, y) -> bool:
+    """Same evaluation, or unusable in both worlds (route searches never enter an unusable arc)."""
+    return x == y or (x is not None and y is not None and not x.ok and not y.ok)
+
+
+def _routes_alike(H: CorridorGraph, g: Group, b: Group, ov: dict) -> bool:
+    """True if group ``g`` (what-if world with overrides ``ov``) gets exactly the candidate routes of ``b`` (base world)."""
+    if (g.origin, g.destination, tuple(g.via)) != (b.origin, b.destination, tuple(b.via)):
+        return False
+    cg, cb = g.coster, b.coster
+    changed = {k for k in set(ov) | set(cb.overrides) if ov.get(k) != cb.overrides.get(k)}
+    cids = set()
+    for k in changed:
+        k = tuple(k)
+        for e in (k, k[::-1]):
+            if not _alike(cg.evals.get(e), cb.evals.get(e)):
+                return False
+        cid = H.edge_corridor.get(ukey(*k))
+        if cid is not None:
+            cids.add(cid)
+    return all(_alike(cg.arcs.get((c, d)), cb.arcs.get((c, d))) for c in cids for d in (1, -1))
+
+
+def _overrides_key(ov: dict) -> tuple:
+    """Hashable, order-independent key of an override set (road key -> {attribute: value})."""
+    return tuple(sorted((repr(k), tuple(sorted((a, repr(v)) for a, v in d.items()))) for k, d in ov.items()))
+
+
 def _lex_first(J0: dict[str, float], J1: dict[str, float], order: list[str]) -> tuple[str, float] | None:
     for k in order:
         d = J0.get(k, 0.0) - J1.get(k, 0.0)
@@ -476,11 +505,22 @@ def value_of_information(H: CorridorGraph, ctx: MissionContext, requirements: li
                          crit: Criticality, order: list[str] | None = None, eps: dict[str, float] | None = None,
                          now: float | None = None, asset: Any = None, ref: Refinement | None = None,
                          elements: list[str] | None = None, use_cpsat: bool = True, time_limit_s: float = 5.0,
-                         rebase: bool = False) -> list[ReconTask]:
+                         rebase: bool = False, max_elements: int | None = None,
+                         world_cache: dict | None = None, base_cands: dict | None = None) -> list[ReconTask]:
     """Reconnaissance tasks ranked by value of information (highest-priority objective first).
 
-    ``rebase`` (after a repair): x0* is re-planned without the information by the same procedure as the
-    answers, so that constraints of the repair (stability, fixed routes) are not counted as value."""
+    ``rebase``: x0* is re-planned without the information by the same procedure as the answers, so that what is
+    counted as value comes from the answer and not from the procedure: after a repair, its constraints (stability,
+    fixed routes); in the plan, the solver's time budget (on Scenario 1 the 5 s what-if solves of COA R found a design
+    as good on the higher priorities and 13.4 veh.min faster than the COA's own 10 s solve, whatever the answer). An
+    answer that leaves every group's roads as they are is not re-solved: its plan is x0*.
+
+    ``world_cache``: what-if worlds (context, candidates, criticality) by override set, shared by the COAs of
+    one plan (same mission, base context and criticality); only the design step depends on the COA.
+
+    ``base_cands``: the candidate sets of ``ctx`` (the plan's S3). A group whose routing the answer does not
+    change (same terminals; on every changed road the same evaluation, or unusable in both worlds) keeps
+    its base candidates instead of regenerating identical ones."""
     order = list(order or design.order)
     eps = dict(eps if eps is not None else design.eps)
     full = ["lateness"] + [k for k in order if k != "lateness"]
@@ -489,6 +529,18 @@ def value_of_information(H: CorridorGraph, ctx: MissionContext, requirements: li
     cands_e = recce_candidates(H, groups)
     if elements is not None:
         cands_e = {e: a for e, a in cands_e.items() if e in elements}
+    skipped: list[str] = []
+    all_cands = dict(cands_e)
+    if max_elements is not None and len(cands_e) > max_elements:
+        # large maps: evaluate the elements closest to the designated network first (each costs two what-if plans)
+        pts = [node_xy(H.G, n) for r in list(design.msr.values()) + [a for v in design.asrs.values() for a in v] for n in r.nodes]
+        if pts:
+            dist = {e: min(point_distance(H.G, H.elements[e].xy, p) for p in pts[:: max(1, len(pts) // 400)]) for e in cands_e}
+            ranked = sorted(cands_e, key=lambda e: (dist[e], e))
+        else:
+            ranked = sorted(cands_e)
+        skipped = ranked[max_elements:]
+        cands_e = {e: cands_e[e] for e in ranked[:max_elements]}
     start = min((g.earliest for g in groups.values()), default=0.0)
     now = start - 60.0 if now is None else now
     if asset is None:
@@ -496,10 +548,26 @@ def value_of_information(H: CorridorGraph, ctx: MissionContext, requirements: li
         asset = first.origin if first else None
     base = _base_overrides(ctx)
 
+    def world_of(ov):
+        key = _overrides_key(ov)
+        world = world_cache.get(key) if world_cache is not None else None
+        if world is None:
+            ctx_o = build_context(H, ctx.mission, requirements, overrides=ov, base=ctx)
+            cands_o = {}
+            for gid, g in ctx_o.groups.items():
+                b = groups.get(gid)
+                if base_cands is not None and gid in base_cands and b is not None and _routes_alike(H, g, b, ov):
+                    cands_o[gid] = base_cands[gid]
+                else:
+                    cands_o[gid] = generate_candidates(H, g)
+            crit_o = assess(H, ctx_o.groups, cands_o, base_likelihood=crit.base_likelihood or None)
+            world = (ctx_o, cands_o, crit_o)
+            if world_cache is not None:
+                world_cache[key] = world
+        return world
+
     def plan_world(ov):
-        ctx_o = build_context(H, ctx.mission, requirements, overrides=ov)
-        cands_o = {gid: generate_candidates(H, g) for gid, g in ctx_o.groups.items()}
-        crit_o = assess(H, ctx_o.groups, cands_o, base_likelihood=crit.base_likelihood or None)
+        ctx_o, cands_o, crit_o = world_of(ov)
         xo = solve(DesignProblem(H, ctx_o.groups, cands_o, crit_o, phase=phase), order, eps, "o", use_cpsat=use_cpsat,
                    time_limit_s=time_limit_s)
         return ctx_o, crit_o, xo
@@ -520,7 +588,15 @@ def value_of_information(H: CorridorGraph, ctx: MissionContext, requirements: li
             ov = dict(base)
             for k in el.edges:
                 ov[ukey(*k)] = {**ov.get(ukey(*k), {}), attr: val}
-            ctx_o, crit_o, xo = plan_world(ov)
+            ctx_o, cands_o, crit_o = world_of(ov)
+            if all(gid in groups and _routes_alike(H, g, groups[gid], ov) for gid, g in ctx_o.groups.items()):
+                # the answer leaves every group's roads as they are (a tunnel still too low for every vehicle): the plan
+                # cannot change, and a new solve would only measure the solver. On Scenario 1, COA R credited 6 tunnels
+                # with the same value for every answer, "too low for every vehicle" included.
+                xo = x0
+            else:
+                xo = solve(DesignProblem(H, ctx_o.groups, cands_o, crit_o, phase=phase), order, eps, "o", use_cpsat=use_cpsat,
+                           time_limit_s=time_limit_s)
             J1 = evaluate(H, ctx_o.groups, crit_o, replace(xo, recourse=_recourse(crit_o, xo.msr, xo.asrs, order)), phase)
             J0 = evaluate(H, ctx_o.groups, crit_o, replace(x0, recourse=_recourse(crit_o, x0.msr, x0.asrs, order)), phase)
             answers.append(Answer(label, q, val, J1, J0, {g: set(s) for g, s in crit_o.irreducible.items()},
@@ -551,6 +627,12 @@ def value_of_information(H: CorridorGraph, ctx: MissionContext, requirements: li
     tasks.sort(key=lambda t: (not t.feasible, full.index(t.level) if t.level in full else len(full), -abs(t.value), t.element))
     for i, t in enumerate(tasks, start=1):
         t.id, t.priority = f"RT-{i}", i
+    for eid in skipped:  # listed, not valued
+        el = H.elements[eid]
+        tasks.append(ReconTask(f"RT-{len(tasks) + 1}", eid, el.name, all_cands[eid],
+                               f"Reconnoitre {el.name}: {ATTRIBUTE_TEXT.get(all_cands[eid], all_cands[eid])}", [], None, 0.0, {}, {}, [],
+                               0.0, None, False, f"not valued: beyond the {max_elements} elements closest to the designated network"))
+        tasks[-1].priority = len(tasks)
     return tasks
 
 

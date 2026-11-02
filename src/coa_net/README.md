@@ -27,7 +27,7 @@ Package exports (`__init__.py`): `COA`, `COANet`, `__version__`. Run it as `pyth
 ### Session API (`pipeline.py`)
 
 - `COANet`: the session object.
-  - **Configuration:** `H`, `requirements`, `catalogue`, `llm`, `use_cpsat=True`, `time_limit_s=10.0`, `sim_reps=100`, `seed=0`, `explain=True`, `recce=True`.
+  - **Configuration:** `H`, `requirements`, `catalogue`, `llm`, `use_cpsat=True`, `time_limit_s=10.0`, `sim_reps=100`, `seed=0`, `explain=True`, `recce=True`, `recce_max_elements=None` (cap on the unknown elements valued per COA, for large maps), `data_notes=[]` (data facts and data-driven policy changes, listed in the report under "Data and assumptions").
   - `COANet.from_graph(G, **kw)` wraps an `nx.DiGraph` in a `CorridorGraph`.
   - `plan(order, intent_order=None, intent_eps=None)` runs S2 to S9 and returns the list of `COA`s, default COA first.
   - `simulate(reps, window)`, `choose(name=None)`, `incident(report, time_min=None)`.
@@ -41,7 +41,9 @@ Package exports (`__init__.py`): `COA`, `COANet`, `__version__`. Run it as `pyth
 | Subcommand | What it does |
 | --- | --- |
 | `demo` | Runs the synthetic theatre with the sample order and the sample incidents. |
-| `plan --order FILE` | Plans from an order file. The graph source is one of `--place` (OSM), `--graphml`, `--bdtopo` or `--synthetic N`. Optional: `--places`, `--dem`, `--incident "HH:MM@text"` (repeatable), `--out`. |
+| `plan --order FILE` | Plans from an order file. The graph source is one of `--place` (OSM), `--graphml`, `--bdtopo` (GeoPackage, or the organisers' v2 ROUTE `.shp`) or `--synthetic N`. Optional: `--places`, `--dem`, `--incident "HH:MM@text"` (repeatable), `--max-rank N` (corridor backbone), `--recce-max N`, `--out`. |
+| `exercise --data DIR --pdf FILE` | Solves an exercise on the organisers' Scenario files; the statement and the sketch are read from the exercise PDF (`--sketch IMG` and `--exercise TEXT` override them). Writes the itinerary and difficult-area layers, the GeoJSON with turns and radii, maps, the decision text and `metrics.json`. Options: `--out`, `--cache`, `--seeds`, `--no-turns`, `--no-compare`, `--no-osm`, explicit file paths. |
+| `audit --data DIR` | Audits a Scenario delivery: files, CRS, encodings, OSM/BD TOPO agreement, scan alignment. |
 | `compile-doctrine [FILE]` | Compiles doctrine into draft requirements. Option: `--out`. |
 | `bench` | Runs the planning and incident benchmarks. Options: `--seeds`, `--convoys`, `--reps`, `--out`. |
 | `fetch-osm --place --out` | Downloads an OSM extract and caches it. |
@@ -76,10 +78,26 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
   - Random generators: `random_mission`, `random_incident`.
   - Packaged samples: `sample_text`, `sample_incidents`.
 
+- **`realdata.py`** (organisers' Scenario data; needs the `real` extra)
+  - Readers: `read_lines` (CRS inferred from lon/lat bounds when there is no `.prj`), `load_scenario_bdtopo`, `load_scenario_osm`, each returning `(G, LoadReport)`.
+  - Attribute mapping: `_bd_attrs` (BD TOPO v2 ROUTE fields), `_osm_attrs` and `osm_segments` (Geofabrik fields; ways cut at shared vertices).
+  - Graph: `build_graph`, `simplify_chains`, `keep_largest_scc`; slopes with a precision interval (`slope_lo_pct`, `slope_hi_pct`).
+  - Policy: `systemic_unknowns` downgrades `forbid` to `risk` for an attribute missing on at least 90 % of the relevant roads; `roadside_halts` makes junctions of three or more main roads halt candidates (`RH-n`) when the data has no halt area.
+- **`scanmap.py`**
+  - Built-up areas from the scan tint: `builtup_polygons`.
+  - OCR (RapidOCR, ONNX, CPU): `ocr_labels`, `towns_from_labels`, `reread_populations`, `town_areas`, `places_from_labels`.
+  - Exercise sketch: `georeference_sketch` (place names matched to the scan, RANSAC affine), `sketch_zones`.
+- **`exercise.py`**
+  - `parse_exercise` compiles an exercise statement into an `ExerciseSpec` and requirement instances (NET.DISTINCT, SEG.TOWN).
+  - `RoadArrays`, `Router` (junction graph), `TurnRouter` (line graph with turn costs), `solve_distinct` (k itineraries, pairwise separation, no intersection).
+  - Geometry: `chord_radius`, `turns_on`, `itinerary_facts`, `difficult_areas`, `check`.
+- **`scenario.py`**: `run_exercise` (the `exercise` command), `ScenarioPaths`, `ScenarioRun`, `EXERCISE_1`, `decision_text`.
+- **`audit.py`**: `audit`, `coverage`, `raster_alignment`, `road_ink`, `scan_agreement`.
+
 ### S1: requirements and doctrine
 
 - **`requirements.py`**
-  - Catalogue: `TEMPLATES` (26 templates over the levels `SEG`, `RTE`, `NET`, `SCH`, `PRO` and the tiers `T0` to `T3`), `Template`, `Param`.
+  - Catalogue: `TEMPLATES` (28 templates over the levels `SEG`, `RTE`, `NET`, `SCH`, `PRO` and the tiers `T0` to `T3`), `Template`, `Param`.
   - The `Requirement` instance, with its `Scope` and `Source`.
   - Loading and saving: `load_requirements`, `save_requirements`.
   - Selecting active rules: `activate`, which returns an `ActiveSet`.
@@ -159,7 +177,7 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
 ### Output, LLM client and benchmark
 
 - `render.py`:
-  - SVG drawings: `render_map`, `render_movement`, `render_coa_chart`.
+  - SVG drawings: `render_map`, `render_movement`, `render_coa_chart`. Above `LARGE_MAP_ROADS` (20,000) roads, `render_map` draws only the backbone's road ranks, merged into one path per style, and names only the bridges and tunnels of the designated routes and incidents.
   - HTML: `write_html` and `md_to_html`.
   - Interactive map: `render_folium`, which needs folium and has no caller in the package.
 - `llm.py`:
@@ -198,6 +216,12 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
 - **Corridors are rebuilt by `ensure_decision_point`.** It renumbers the corridors, so `Arc`s and `Route`s held across the call become invalid. `build_context` calls it, so it must run before planning. [corridors.py:CorridorGraph.ensure_decision_point, mission.py:build_context]
 - **Direction-free keys use `ukey`.** Edge keys that ignore direction (overrides, element maps) must be built with `ukey`, which applies to both directions of a road. [graph.py:ukey]
 - **Coordinate systems.** Graphs from the loaders use `EPSG:4326`, with (lon, lat). Synthetic graphs use `'local'` metres. [graph.py:is_geographic, graph.py:finalize_graph]
+- **Scenario files without a CRS.** A shapefile without `.prj` is read as `EPSG:4326` only if its bounds are lon/lat; otherwise `read_lines` raises. Distances, separations and radii are computed in Lambert-93 (`EPSG:2154`). [realdata.py:read_lines, realdata.py:L93]
+- **Slopes are not trusted beyond their precision.** A section is blocked by SEG.GRADE only if its low slope bound (end altitudes moved by their stated precision) exceeds the limit; between the bounds it is undecided and follows `on_unknown`. [realdata.py:build_graph, costing.py:GroupCoster.evaluate]
+- **Implausible slopes are unknown.** A section steeper than `MAX_PLAUSIBLE_SLOPE_PCT` (35 %) gets no slope and `slope_suspect=True`. [realdata.build_graph]
+- **Convoy terminals sit on roads the column can use.** If a group's origin cannot reach the largest strongly connected set of its usable corridor arcs (or its destination cannot be reached from it), `build_context` moves it to the nearest junction of that set, at most `TERMINAL_MAX_MOVE_M` (5 km) away, names the junction if unnamed, and adds a note. [mission._usable_terminals]
+- **Systemic unknowns.** When an attribute is missing on at least 90 % of the roads a requirement looks at (bridge load class in BD TOPO and OSM), `forbid` would close every such road, so the policy becomes `risk` and the change is reported. [realdata.py:systemic_unknowns]
+- **Exercise itineraries are checked from the geometry.** Separation, intersection, zone membership, towns and blocked roads are recomputed on the output lines, not taken from the solver. [exercise.py:check]
 
 ### Design and schedule
 
@@ -219,11 +243,11 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
 - **How an incident is handled.** `handle_incident` picks the first mode that applies:
   1. A breakdown gives `reschedule` (re-timing only).
   2. A recce result gives `recce`.
-  3. If nothing was hit, `logged`.
+  3. If nothing was hit, `logged`. A logged threat zone still names each designated route that crosses it (on Scenario 1, C1's alternate route).
   4. Exactly one newly closed element with a matching playbook gives `playbook`.
   5. Otherwise, `repair`.
 
-  Repair frees only the affected units and replans the rest of the mission from current positions. [incidents.py:handle_incident, incidents.py:_replan]
+  Repair frees only the affected units and replans the rest of the mission from current positions. A destroyed bridge is the bridge nearest to the reported place or coordinates; the outcome says which one, and flags a report naming another road or several bridges nearly as close (`located_note`). [incidents.py:handle_incident, incidents.py:_replan]
 - **Belief model.** Report probabilities come from the Admiralty grading. A road is closed when `P ≥ 0.5` and suspect when `0.2 ≤ P < 0.5`. Unconfirmed reports decay with a 60-minute half-life. [belief.py:BeliefState.status, belief.py:BeliefState.q_at]
 - **Route names stay stable across repairs.** A retired name is never reused for a different route. [refine.py:refine]
 
@@ -232,7 +256,7 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
 - An unknown vehicle type raises `KeyError` in `convoy_profile`. [vehicles.py:convoy_profile]
 - `plan` raises `ValueError` when the order has no convoys. [pipeline.py:COANet.plan]
 - `report` requires `plan` to have run first. [pipeline.py:COANet.report]
-- The template catalogue must have exactly 26 entries, checked by an assert at import time. [requirements.py:TEMPLATES]
+- The template catalogue must have exactly 28 entries, checked by an assert at import time. [requirements.py:TEMPLATES]
 
 ## Side Effects
 
@@ -243,6 +267,7 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
 - **Disk reads:**
   - Order, doctrine and places files. [cli.py]
   - GraphML, BD TOPO and DEM files. [loaders.py]
+  - Scenario shapefiles, scans and the exercise sketch. [realdata.py, scanmap.py, scenario.py]
   - Packaged `data/`. [requirements.py:load_requirements, scenarios.py:sample_text]
   - The vehicle catalogue JSON. [vehicles.py:load_catalogue]
 - **Disk writes:**
@@ -251,6 +276,7 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
   - The bench markdown. [cli.py:cmd_bench]
   - The GraphML cache. [loaders.py:save_graphml_osm]
   - The folium map. [render.py:render_folium]
+  - Exercise outputs: `itineraries.geojson`, `difficult_areas.geojson`, `zones.geojson`, `towns_over_threshold.geojson`, `map_*.png`, `decision_process.txt`, `metrics.json`, and the OCR, built-up and zone cache. [scenario.py:run_exercise, scanmap.py:ocr_labels]
 - **Graph and state mutation:**
   - `finalize_graph` and `normalize_edge` rewrite edge attributes.
   - `BeliefState.apply` writes `closed`, `closed_p`, `threat` and `weather` into `G`.
@@ -259,11 +285,12 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
   - `PlanState` is mutated in place by every incident.
 
   [graph.py:finalize_graph, belief.py:BeliefState.apply, incidents.py:handle_incident, corridors.py:CorridorGraph.add_articulation]
-- **Global state:** the osmnx `settings.useful_tags_*` lists are extended. [loaders.py:load_osm]
+- **Global state:** the osmnx `settings.useful_tags_*` lists are extended. [loaders.py:load_osm] The road-name part of the gazetteer is cached per graph (weak reference, rebuilt when the graph's size changes). [graph.py:gazetteer]
 - **Compute:**
   - Each CP-SAT `Solve` uses up to `time_limit_s`, and one design runs several solves, one per objective level.
   - `explain_plan` re-solves once per group.
-  - `value_of_information` re-plans once per answer class per element.
+  - `value_of_information` re-plans once per answer class per element (at most `max_elements` elements; what-if worlds re-cost only the changed roads, `GroupCoster.derived`). The plan without the answer is re-solved by the same procedure (`rebase=True`, in the plan and after a repair), and an answer that leaves every group's roads as they are is not re-solved, so that solver differences are not counted as value.
+  - OCR of a full 1:100 000 scan takes minutes on a CPU; its result is cached. [scanmap.py:ocr_labels]
 
   [design.py:_solve_cpsat, explain.py:explain_plan, anticipation.py:value_of_information]
 - **Randomness:** only local, seeded `random.Random` instances (scenarios, simulator, bootstrap). The global RNG is never touched.
@@ -273,3 +300,4 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
 
 - Run: `pytest` (configured in `pyproject.toml`, `testpaths = ["tests"]`)
 - Run: `coa-net demo --out outputs/demo`
+- Run (organisers' data, `pip install -e ".[real]"`): `coa-net exercise --data DIR --sketch IMG --out outputs/exercise1`
