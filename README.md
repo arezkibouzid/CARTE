@@ -8,12 +8,14 @@ Prototype for the AMIAD hackathon (Rennes, 12-14 Nov 2026): design the maneuver 
 
 **Organisers' answer (3 Nov 2026).** The NATO doctrine is handed out during the hackathon as a set of textual documents, and orders are multimodal documents like the example exercise (text, an illustration with the zones drawn on a map crop, and the desired outputs). COA-Net therefore compiles the doctrine set at the event, with a citation (document, page, paragraph) on every requirement, a provisional base usable at once and a sign-off sheet for the instructors; it reads each order as a document, routes it to the right solver, and writes a readback of what it understood, what it cannot enforce and what it cannot produce. On the illustration, code finds the drawn zones and a vision-language model only names them. Methodology section 2.4 lists the changes; section 11.6 gives the measured results.
 
+**Model deployment (3 Nov 2026).** Every model role runs on one open model deployed locally, on a machine the team controls (the organisers' H100 at the event, a team machine before it), never through a hosted API. The doctrine method does not change: the model is used as published, without fine-tuning and without doctrine examples in its prompts, since no doctrine is available before the event. See [Using a local language model](#using-a-local-language-model), [deploy/README.md](deploy/README.md) and methodology section 6.5.
+
 ## Quick start
 
 ```bash
 pip install -e ".[dev]"          # networkx, pydantic, requests, ortools, pytest
 coa-net demo                     # synthetic theatre, order LOG-01, three incidents
-pytest                           # 95 tests, about 30 s (document tests skip without the `docs` extra)
+pytest                           # 109 tests, about 40 s (document tests skip without the `docs` extra)
 coa-net bench --seeds 20         # baselines B0-B1 against COA-Net, incident loop with and without playbooks
 ```
 
@@ -82,23 +84,30 @@ Reading it: COA-Net removes every avoidable single point of failure (95 % of gro
 
 ## Using a local language model
 
-Any OpenAI-compatible server works (vLLM, llama.cpp, Ollama), on one GPU or on a CPU:
+Every model role runs on one open model, Mistral Small 3.2 24B (Apache 2.0, takes images), served on a machine the team controls through an OpenAI-compatible endpoint: vLLM in bf16 on the organisers' H100 (about 55 GB of GPU memory), or llama.cpp or Ollama with a 4-bit GGUF file (14.3 GB) on a 24 GB GPU or a 32 GB Mac. No hosted API is needed, and doctrine and orders stay on that machine. [deploy/README.md](deploy/README.md) gives the machines, the offline download and the commands for before and at the event.
 
 ```bash
-vllm serve mistralai/Mistral-Small-3.2-24B-Instruct-2506 --tokenizer-mode mistral --config-format mistral --load-format mistral --port 8000
-# or: ollama serve & ollama pull mistral-small3.2
-
-export COA_LLM_BASE_URL=http://localhost:8000/v1      # Ollama: http://localhost:11434/v1
-export COA_LLM_MODEL=mistralai/Mistral-Small-3.2-24B-Instruct-2506
-export COA_LLM_JSON_SCHEMA=1                          # 0 if the server lacks structured output
-# COA_LLM_API_KEY if the server needs one
+deploy/serve_llamacpp.sh &       # llama.cpp on 127.0.0.1:8000, 4-bit model downloaded on the first run; deploy/serve_vllm.sh on the H100
+coa-net llm-check                # the server's models, a schema-constrained JSON answer, an image, the generation rate
 
 coa-net compile-doctrine path/to/doctrine/ --llm --out rules/     # drafts with citations, corpus report, sign-off sheet
 coa-net demo --llm --requirements rules/requirements.json --provisional
 coa-net exercise --data DATA --pdf exercise.pdf --llm --out outputs/ex1           # the sketch reader (L9) sends the numbered illustration
 ```
 
-Every model output is checked by code (schema, verbatim quotes, numbers stated by their quote or found in the order, identifiers that must appear in the computed facts, mark names taken from the order) and replaced by the deterministic fallback after one failed retry. The sketch reader needs a vision-language model behind the same endpoint (Mistral Small 3.2 takes images). Token usage per stage goes to `metrics.json`.
+COA-Net calls `http://127.0.0.1:8000/v1` by default and takes the model the server lists. The settings, all optional (template: `deploy/coa-llm.env.example`):
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `COA_LLM_BASE_URL` | `http://127.0.0.1:8000/v1` | the model server; Ollama listens on `http://127.0.0.1:11434/v1`. An address outside this machine and its private network is refused |
+| `COA_LLM_ALLOW_REMOTE` | unset | `1` accepts a remote endpoint; the report then says the model was remote. Prefer an SSH tunnel to 127.0.0.1 |
+| `COA_LLM_MODEL` | the first model the server lists | the model name, if the server serves several |
+| `COA_LLM_JSON_SCHEMA` | `1` | `0` for a server without schema-constrained output (`llm-check` tells) |
+| `COA_LLM_CONNECT_TIMEOUT`, `COA_LLM_TIMEOUT` | 5 and 120 seconds | after the first failure, the rest of the run uses the fallbacks at once |
+| `COA_LLM_LOG` | unset | a file on this machine where every prompt and answer is appended (JSON lines, without image data) |
+| `COA_LLM_API_KEY` | unset | only if the server asks for one |
+
+`--llm` asks the server for its models before the run and stops with advice if none answers. Every model output is checked by code (shape against the schema, verbatim quotes, numbers stated by their quote or found in the order, identifiers that must appear in the computed facts, mark names taken from the order) and replaced by the deterministic fallback after one failed retry. If the server stops answering during a run, the later roles fall back at once, and the report says so. The model, where it ran and the token usage per stage go to `metrics.json`. The doctrine method is the same with or without a model: the model's instances are united with the pattern compiler's, then reconciled and signed off.
 
 ## Doctrine and orders as documents
 
@@ -181,13 +190,14 @@ src/coa_net/
   belief.py        S10 belief model
   incidents.py     S10 incident loop
   orders.py        plan difference and FRAGO (L7)
-  llm.py           OpenAI-compatible client
+  llm.py           client for the locally deployed model (OpenAI-compatible): local-only endpoint, fast failure, checks
   render.py        maps, road movement graph, COA chart, HTML report
   pipeline.py      COANet session object
   baselines.py     B0-B1
   bench.py         benchmark
   cli.py           command line
   data/            seed requirements, sample doctrine, order and incidents
+deploy/            serving the model locally: vLLM (H100), llama.cpp (team machine), settings template
 docs/              methodology, benchmark table, figures (PNG) and the script that draws them
 examples/          Python API example, OSM order and gazetteer
 tests/             pytest suite
@@ -224,7 +234,7 @@ Each code folder has a README that lists its public interface, the rules develop
   - `bench.md`
   - `compile-doctrine`: `requirements.json`, `requirements_doctrine.json`, `corpus_report.md`, `signoff.csv`, `documents.json`
   - `exercise --pdf`: `exercise.txt`, `blocks.json`, `sketch_marks.png`, `readback.md`, with the layers and texts listed above
-- **Model server:** an optional OpenAI-compatible model server, configured with `COA_LLM_BASE_URL`, `COA_LLM_MODEL`, `COA_LLM_API_KEY` and `COA_LLM_JSON_SCHEMA`.
+- **Model server:** with `--llm` or `coa-net llm-check`, calls to a locally deployed OpenAI-compatible model server (`GET /models`, then `POST /chat/completions`), configured with the `COA_LLM_*` variables above; with `COA_LLM_LOG`, a local file of prompts and answers. The `deploy/` scripts download the model on their first run unless local files are given.
 - **Map data:**
   - Optional OSM downloads through osmnx, cached as GraphML; `cache/` and `*.graphml` are git-ignored.
   - Optional local BD TOPO GeoPackage and DEM files.
@@ -233,7 +243,7 @@ Each code folder has a README that lists its public interface, the rules develop
 ## Next steps before the event
 
 1. Ask the ETLO for the PFM characteristics (weight, MLC, width, height, length) and any bridge classification, and calibrate the turn costs and difficult-turn thresholds with them (see [docs/real_data_validation.md](docs/real_data_validation.md), section 9).
-2. Run the language-model roles with Mistral Small 3.2 24B on the organisers' H100 server, L1, L2 and L9 first; measure tokens, times and the precision of the compiled requirements and readbacks. Give `parse_exercise` a model path (same schema, verbatim quotes checked, patterns as the fallback).
+2. Run the language-model roles with Mistral Small 3.2 24B on a local server: the 4-bit build on a team machine first, then bf16 on the H100; L1, L2 and L9 first; measure tokens, generation rates and the precision of the compiled requirements and readbacks. Copy the weights and the server software onto two disks for the event. Give `parse_exercise` a model path (same schema, verbatim quotes checked, patterns as the fallback).
 3. Rehearse the first hours of the event (methodology section 12): a stand-in doctrine set of public NATO texts, and exercises written like exercise 1 with other colours, points instead of zones and a convoy movement.
 4. Cross-check the OCR town populations with the INSEE populations joined on the BD TOPO commune codes.
 5. Baselines B2 and B3 (whole map card or rendered map given to the model), to answer the brief's hypothesis on equal terms.

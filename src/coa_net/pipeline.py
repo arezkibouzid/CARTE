@@ -309,6 +309,7 @@ class COANet:
             lines += ["", "Ambiguities (flagged, not guessed): " + "; ".join(m.ambiguities)]
         if self.data_notes:
             lines += ["", "Data and assumptions (from the map data, to confirm):", ""] + [f"- {n}" for n in self.data_notes]
+        lines += ["", self._model_line()]
         lines += ["", "```", self.intent.describe() if self.intent else "", "```", "", "Critical elements (structural impact x likelihood):", ""]
         lines += ["| element | kind | impact | likelihood | source |", "| --- | --- | --- | --- | --- |"]
         for row in impact_table(self.H, self.crit)[:8]:
@@ -329,7 +330,24 @@ class COANet:
         if self.llm is not None and hasattr(self.llm, "usage"):
             u = self.llm.usage
             out["llm_usage"] = {"calls": u.calls, "input_tokens": u.input_tokens, "output_tokens": u.output_tokens, "by_stage": u.by_stage}
+            if hasattr(self.llm, "describe"):
+                out["llm_usage"]["server"] = self.llm.describe()
         return out
+
+    def _model_line(self) -> str:
+        """Which language model ran, where it was served, and whether it stopped answering (report, section 1)."""
+        llm = self.llm
+        if llm is None:
+            return "Language model: none; every model role used its deterministic fallback."
+        d = llm.describe() if hasattr(llm, "describe") else {"model": type(llm).__name__, "base_url": "in process", "local": True}
+        where = "local" if d.get("local") else "remote, accepted with COA_LLM_ALLOW_REMOTE=1"
+        s = f"Language model: {d.get('model')} served at {d.get('base_url')} ({where})"
+        u = getattr(llm, "usage", None)
+        if u is not None:
+            s += f"; {u.calls} calls, {u.input_tokens} input and {u.output_tokens} output tokens"
+        if d.get("down"):
+            s += f"; the server stopped answering ({d['down']}), so the later model roles used their deterministic fallbacks"
+        return s + "."
 
     def _tick(self, key: str, t0: float, add: bool = False) -> None:
         dt = time.perf_counter() - t0

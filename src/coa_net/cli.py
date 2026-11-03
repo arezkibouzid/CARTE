@@ -1,4 +1,5 @@
-"""Command line: ``coa-net demo | plan | exercise | read-order | compile-doctrine | signoff | audit | bench | fetch-osm | templates``."""
+"""Command line: ``coa-net demo | plan | exercise | read-order | compile-doctrine | signoff | llm-check | audit | bench | fetch-osm |
+templates``."""
 
 from __future__ import annotations
 
@@ -17,9 +18,20 @@ from .schedule import hhmm
 
 
 def _llm(args):
-    llm = from_env() if getattr(args, "llm", False) else None
-    if getattr(args, "llm", False) and llm is None:
-        sys.exit("--llm needs COA_LLM_BASE_URL and COA_LLM_MODEL (any OpenAI-compatible server: vLLM, llama.cpp, Ollama)")
+    """The locally deployed model for ``--llm`` (``llm.from_env``), checked before the run; None without ``--llm``."""
+    if not getattr(args, "llm", False):
+        return None
+    from .llm import LLMConfigError, LLMUnavailable
+
+    try:
+        llm = from_env()
+    except LLMConfigError as exc:
+        sys.exit(f"--llm refused: {exc}")
+    except LLMUnavailable as exc:
+        sys.exit(f"--llm: {exc}. Start the local model server (deploy/README.md) and check it with `coa-net llm-check`, "
+                 "or run without --llm: every model role has a deterministic fallback")
+    d = llm.describe()
+    print(f"language model: {d['model']} at {d['base_url']} ({'local' if d['local'] else 'remote, accepted with COA_LLM_ALLOW_REMOTE=1'})")
     return llm
 
 
@@ -241,6 +253,103 @@ def cmd_read_order(args) -> None:
     print(f"next: {nxt}")
 
 
+def _probe_image():
+    """A 256-pixel PNG data URL of a red square on white (the image probe of llm-check), or None without Pillow."""
+    try:
+        import base64
+        import io
+
+        from PIL import Image, ImageDraw
+    except ImportError:
+        return None
+    im = Image.new("RGB", (256, 256), "white")
+    ImageDraw.Draw(im).rectangle((64, 64, 192, 192), fill=(220, 30, 30))
+    buf = io.BytesIO()
+    im.save(buf, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+def cmd_llm_check(args) -> None:
+    """Checks the local model server before a run: where it is, which model, JSON answers, images (L9), and speed."""
+    from .llm import LLMConfigError, LLMUnavailable, call_validated
+
+    try:
+        llm = from_env()
+    except LLMConfigError as exc:
+        sys.exit(f"refused: {exc}")
+    except LLMUnavailable as exc:
+        sys.exit(f"{exc}\nstart the local model server (deploy/README.md), or run without --llm: every model role has a fallback")
+    d = llm.describe()
+    served = llm.models()
+    rows: list[tuple[str, str, str]] = []
+    report: dict = {"server": d, "served_models": served, "checks": {}}
+    print(f"server {d['base_url']} ({'local' if d['local'] else 'REMOTE, accepted with COA_LLM_ALLOW_REMOTE=1'}); model {d['model']}; "
+          f"served: {', '.join(served) or 'none listed'}")
+
+    def probe(name: str, system: str, user: str, schema: dict, ok, images: list[str] | None = None):
+        t0 = time.perf_counter()
+        before = llm.usage.output_tokens
+        try:
+            out = (llm.complete_json_images(system, user, schema, images, stage="check") if images
+                   else llm.complete_json(system, user, schema, stage="check"))
+            good, detail = ok(out)
+        except Exception as exc:  # noqa: BLE001 - a probe reports, it does not stop the check
+            good, detail = False, f"{type(exc).__name__}: {str(exc)[:160]}"
+        dt = time.perf_counter() - t0
+        rows.append((name, ("ok" if good else "FAILED") + f": {detail}", f"{dt:.1f}"))
+        report["checks"][name] = {"ok": good, "detail": detail, "seconds": round(dt, 2), "output_tokens": llm.usage.output_tokens - before}
+        return good, dt, llm.usage.output_tokens - before
+
+    def sum_ok(o):
+        return o.get("sum") == 42, f"sum = {o.get('sum')}"
+
+    json_ok, _, _ = probe("JSON answer", "You are a careful calculator.", "What is 17 + 25? Put the result in the field sum.",
+                          {"type": "object", "properties": {"sum": {"type": "integer"}}, "required": ["sum"]}, sum_ok)
+    schema_ok = llm.use_json_schema and llm.schema_rejected == 0
+    rows[-1] = (rows[-1][0] + (" (schema-constrained)" if schema_ok else " (plain JSON prompt)"), *rows[-1][1:])
+    report["checks"]["JSON answer"]["schema_constrained"] = schema_ok
+    if not args.no_image:
+        img = _probe_image()
+        if img is None:
+            rows.append(("image (L9)", "skipped: Pillow is not installed", "-"))
+        else:
+            def colour_ok(o):
+                c = str(o.get("colour", "")).lower()
+                return "red" in c, f"colour = {o.get('colour')}"
+
+            probe("image (L9)", "You describe images exactly.", "What colour is the square in the image? Put one word in the field colour.",
+                  {"type": "object", "properties": {"colour": {"type": "string"}}, "required": ["colour"]}, colour_ok, [img])
+    _, dt, n = probe("speed", "You write plain English.", "Write about 120 words on why convoys keep a fixed distance between "
+                     "vehicles. Put the text in the field text.",
+                     {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]},
+                     lambda o: (bool(str(o.get("text", "")).strip()), f"{len(str(o.get('text', '')).split())} words"))
+    if n and dt > 0:
+        rows[-1] = (rows[-1][0], rows[-1][1] + f", {n} tokens, {n / dt:.1f} tokens/s", rows[-1][2])
+        report["checks"]["speed"]["tokens_per_s"] = round(n / dt, 1)
+    t0 = time.perf_counter()
+    _, problems = call_validated(llm, "Reply with JSON.", "Return {\"ok\": true}.", {"type": "object", "properties": {"ok": {"type": "boolean"}},
+                                 "required": ["ok"]}, "check", lambda o: (o, [] if o.get("ok") is True else ["ok is not true"]))
+    dt = time.perf_counter() - t0
+    rows.append(("validated call (the path every role uses)", "ok" if not problems else "FAILED: " + "; ".join(problems)[:160], f"{dt:.1f}"))
+    report["checks"]["validated call"] = {"ok": not problems, "detail": "; ".join(problems), "seconds": round(dt, 2)}
+    w = max(len(r[0]) for r in rows)
+    for name, result, sec in rows:
+        print(f"  {name:<{w}}  {result}  ({sec} s)")
+    if not report["checks"].get("image (L9)", {"ok": True})["ok"]:
+        print("no image answer: the sketch reader (L9) will name the marks by the order's position words; "
+              "with llama.cpp, give the vision projector (--mmproj)")
+    report["down"] = llm.describe()["down"]
+    print(f"model time {llm.usage.seconds:.1f} s, {llm.usage.input_tokens} input and {llm.usage.output_tokens} output tokens over "
+          f"{llm.usage.calls} calls" + (f"; the server stopped answering ({llm.down})" if llm.down else ""))
+    print("for the runs: export COA_LLM_BASE_URL=" + d["base_url"] + " COA_LLM_MODEL=" + d["model"]
+          + ("" if schema_ok else " COA_LLM_JSON_SCHEMA=0"))
+    if args.out:
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.out).write_text(json.dumps(report, indent=1, ensure_ascii=False), encoding="utf-8")
+    if not json_ok or llm.down:
+        sys.exit(1)
+
+
 def cmd_bench(args) -> None:
     from .bench import incidents_markdown, run_incident_bench, run_planning_bench, to_markdown
 
@@ -407,6 +516,12 @@ def main(argv: list[str] | None = None) -> None:
     a.add_argument("--data", required=True)
     a.add_argument("--out", default="outputs/audit.json")
     a.set_defaults(fn=cmd_audit)
+
+    lc = sub.add_parser("llm-check", help="check the local model server (COA_LLM_*): where it is, which model, JSON answers, "
+                        "images for the sketch reader, speed")
+    lc.add_argument("--no-image", action="store_true", help="skip the image probe (text-only model: L9 then uses position words)")
+    lc.add_argument("--out", help="write the check as JSON here")
+    lc.set_defaults(fn=cmd_llm_check)
 
     t = sub.add_parser("templates", help="print the requirement template catalogue")
     t.set_defaults(fn=cmd_templates)

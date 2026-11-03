@@ -408,7 +408,11 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
     run.facts["study_area_km2"] = round(study.area / 1e6, 1)
     t = run.tick("difficult-manoeuvre areas (study area)", t)
 
-    # 11. outputs
+    # 11. outputs (every model call is done by now: the facts say which model ran where, for the decision text too)
+    if llm is not None:
+        u = llm.usage
+        run.facts["llm"] = {**(llm.describe() if hasattr(llm, "describe") else {"model": type(llm).__name__}),
+                            "calls": u.calls, "input_tokens": u.input_tokens, "output_tokens": u.output_tokens, "by_stage": u.by_stage}
     write_outputs(run, res, areas, zones_gdf, towns_big, spec, paths, checks)
     run.tick("outputs", t)
     run.timings["total"] = round(time.perf_counter() - T, 1)
@@ -569,6 +573,16 @@ def decision_text(run: ScenarioRun, res, spec, checks) -> str:
     L.append(f"   - Zones: the exercise sketch was georeferenced by matching {g['inliers']} place names read on the sketch with the same names "
              f"on the 1:100 000 scan (median residual {g['median_residual_m']} m); the two blue areas were vectorised. "
              + ", ".join(f"{z} zone {a} km2" for z, a in F["zones"].items()) + " (clipped to the data extent).")
+    named = {"model": "the language model (L9), its answer checked against the order",
+             "position words": "the order's position words"}.get(g.get("named_by", ""), "")
+    lm = F.get("llm")
+    if lm:
+        where = "local" if lm.get("local", True) else "remote"
+        L.append(f"   - Language model: {lm.get('model', '?')} served at {lm.get('base_url', '?')} ({where}), {lm.get('calls', 0)} calls"
+                 + (f"; the server stopped answering ({lm['down']}), so the later roles used their deterministic fallbacks"
+                    if lm.get("down") else "") + (f". The zones were named by {named}." if named else "."))
+    elif named:
+        L.append(f"   - Language model: none. The zones were named by {named}.")
     zn = F.get("zone_nodes", {})
     if zn.get("inner_margin_m"):
         L.append(f"   - Itineraries start and end at least {zn['inner_margin_m']} m (the georeferencing residual) inside the zones: "

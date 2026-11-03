@@ -2,13 +2,15 @@
 
 AMIAD hackathon (Rennes, 12-14 Nov 2026) · methodology · 3 Nov 2026
 
-> **Implementation status (3 Nov 2026).** COA-Net is implemented in this repository (`src/coa_net`, 95 tests). Section 7 gives the worked example as computed by the code; section 11 maps every stage to its module, gives the measured results on 100 synthetic scenarios and on the organisers' documents, and lists the known deviations from this specification. `docs/real_data_validation.md` reports the run on the organisers' Scenario 1 data and exercise 1. Several safety controls are specified here but not yet built; section 11.4 lists them. Where other sections say "estimate", section 11 has a measured value only for what it covers: tokens and model quality are still unmeasured, because no language model has been run yet.
+> **Implementation status (3 Nov 2026).** COA-Net is implemented in this repository (`src/coa_net`, 109 tests). Section 7 gives the worked example as computed by the code; section 11 maps every stage to its module, gives the measured results on 100 synthetic scenarios and on the organisers' documents, and lists the known deviations from this specification. `docs/real_data_validation.md` reports the run on the organisers' Scenario 1 data and exercise 1. Several safety controls are specified here but not yet built; section 11.4 lists them. Where other sections say "estimate", section 11 has a measured value only for what it covers: tokens and model quality are still unmeasured, because no language model has been run yet.
 
 > **Inputs clarified by the organisers (3 Nov 2026).** The NATO doctrine will be handed out during the hackathon as a set of textual documents (the rules, art. 10.4, describe them as STANAG and other NATO documents released to the public). Orders will be multimodal documents like the example `exercise_for_preparation.pdf`: a goal and constraints in text, the desired outputs, and an illustration of the situation with the geographical objectives drawn on a map crop. The format of incidents is not confirmed. This revision therefore compiles the doctrine at the event, reads each order as a document with its illustration, and adds a vision-language role (L9) that names the marks code finds on the illustration. Section 2.4 lists every change.
 
+> **Model deployment (3 Nov 2026).** Every model role runs on one open model deployed locally: a model server on a machine the team controls (the organisers' H100 at the event, a team machine before it), never a hosted API. COA-Net calls a server on its own machine by default, refuses an endpoint outside the machine and its private network unless told otherwise, checks the server before a run, and falls back at once for the rest of the run if the server stops answering. The doctrine method is unchanged (section 4 and stage S1): the model is used as published, without fine-tuning and without doctrine examples in its prompts, since no doctrine is available before the event. Section 6.5 gives the deployment, `deploy/README.md` the commands.
+
 ## At a glance
 
-**COA-Net designs the maneuver road network the way a movement-control cell does: it first designates one shared network (main and alternate routes, critical points, traffic control posts, halt areas, route status) that keeps working when any single bridge or tunnel is lost (defiles are specified but not detected yet), then gives every convoy a time slot on it (movement credits), and presents the result as two to four courses of action (COAs) with their trade-offs.** Small language models (8 to 32 billion parameters, written 8-32B) never draw routes. They turn the doctrine documents handed out at the event into typed requirements at five levels (road, route, network, schedule, protection), each citing its document, page and paragraph; read the order document, text and illustration, into a task specification that the operator confirms; turn the commander's intent into an order of priorities; rank the points an adversary is most likely to strike; write the COA comparison and the fragmentary orders (FRAGOs); and parse incident reports. On an illustration, code finds the drawn zones and a vision-language model only says which is which. CP-SAT models design the network and the schedule, a rule checker verifies every requirement, and a discrete-event simulator measures resilience.
+**COA-Net designs the maneuver road network the way a movement-control cell does: it first designates one shared network (main and alternate routes, critical points, traffic control posts, halt areas, route status) that keeps working when any single bridge or tunnel is lost (defiles are specified but not detected yet), then gives every convoy a time slot on it (movement credits), and presents the result as two to four courses of action (COAs) with their trade-offs.** Small open language models (8 to 32 billion parameters, written 8-32B), deployed locally rather than called through a hosted API, never draw routes. They turn the doctrine documents handed out at the event into typed requirements at five levels (road, route, network, schedule, protection), each citing its document, page and paragraph; read the order document, text and illustration, into a task specification that the operator confirms; turn the commander's intent into an order of priorities; rank the points an adversary is most likely to strike; write the COA comparison and the fragmentary orders (FRAGOs); and parse incident reports. On an illustration, code finds the drawn zones and a vision-language model only says which is which. CP-SAT models design the network and the schedule, a rule checker verifies every requirement, and a discrete-event simulator measures resilience.
 
 **Results so far** (implementation, every language-model role on its deterministic fallback):
 
@@ -17,6 +19,7 @@ AMIAD hackathon (Rennes, 12-14 Nov 2026) · methodology · 3 Nov 2026
 - **Incident loop** (section 11.3): a playbook or a repair, FRAGO included, in about 0.5 s on average and about 3 s at most, without language models. 85 % of the plans handled this way pass verification afterwards; the others keep schedule or halt violations, and the order is still written (section 11.4).
 - **Organisers' exercise 1, read from its PDF** (sections 5 and 11.6): the order is read in 0.3 s and routed as an itineraries task. The readback lists the six items understood, each with its quote and page, the two zones read on the illustration, and the four desired outputs, all produced; no constraint is left unenforced and every number kept is found in the document. The three itineraries (60.8, 55.0 and 65.6 km, at least 6.4 km apart) pass the 19 checks, as in `docs/real_data_validation.md`.
 - **Doctrine compiled at the event**, rehearsed on stand-ins because the real set arrives on 12 Nov (section 11.6): three documents (16 pages, 369 sentences) compile without a model in 1.7 s into 23 draft instances, each citing its document and paragraph, with no conflict; the seed base keeps 14 of its 37 instances for the gaps. The organisers' rules and description, which are not doctrine, give no instance.
+- **Local model server** (sections 6.5 and 11.7): no real model has run yet. Against a stand-in server on the same machine, a plan whose server hangs loses one call timeout (2.68 s with a 2 s timeout, against 0.62 s without a model) and then falls back for every later role; a server that is down costs nothing measurable (0.67 s).
 
 ## Contents
 
@@ -85,7 +88,7 @@ The reference benchmarks show that vision-language models are unreliable at rout
 | G4 | Schedule all convoys jointly, with direction-aware headways and halts at real halt areas | N4 |
 | G5 | Anticipate: contingency playbooks, redundancy restoration, reconnaissance of decision-relevant unknowns | N5 |
 | G6 | Show two to four COAs with their trade-offs, and select a default automatically from the commander's intent | N6 |
-| G7 | Stay within the brief's size limit (at most a few tens of billions of parameters) and our own frugality targets: models of 8-32B, one 24-48 GB GPU, under 20k tokens per plan (unmeasured), no route ever written by a model | brief, own targets |
+| G7 | Stay within the brief's size limit (at most a few tens of billions of parameters) and our own frugality targets: open models of 8-32B deployed locally, one 24-48 GB GPU, under 20k tokens per plan (unmeasured), no route ever written by a model | brief, own targets |
 
 ### 1.5 Non-goals
 
@@ -110,6 +113,8 @@ These are design reasons, not measurements, except where a section is cited.
 | Put the whole doctrine set in a long context at planning time | Its size is unknown until the event, every plan would pay its tokens, and nothing would check that a rule was applied or show where it came from |
 | A vision-language model reads the illustration and returns the zones | Models locate things on maps poorly (section 1.2). Code finds the marks by colour and georeferences them on the place names it reads; the model only names numbered marks, and code checks its answer (S2) |
 | Several model agents negotiating a plan | More tokens and harder checks; typed roles with validators keep each output testable |
+| A hosted model API (the rules offer hosted Mistral tokens, art. 10.1) | Documents would leave the team's machines, the jury's autonomy criterion weighs local deployment against hosted APIs (art. 13.3), and the run would depend on the event's network. A local server costs a download before the event and a GPU there (section 6.5) |
+| Fine-tune the model on doctrine | No doctrine is available before the event and there is no time to train there; the template cards, the retrieved passages and the checks adapt the model instead, and the sign-off yields the labelled data a later fine-tuning would need (section 6.5) |
 
 ## 2. COA-Net in one page
 
@@ -128,8 +133,10 @@ Three abstractions make this tractable with small models and modest hardware:
 ```
 BEFORE THE EVENT
   seed requirement base (stand-ins and method defaults, section 4.8), vehicle catalogue, tests
+  model weights copied for offline use; local model server rehearsed on a team machine (section 6.5)
 
 AT THE EVENT, ONCE
+  local model server on the H100, checked (llm-check) -> every model role below calls it, or falls back
   BD TOPO / OSM, scans, DEM -----> S0  road graph -> corridor graph, critical elements, halt and control-post candidates
   doctrine documents ------------> S1  intake: blocks with page, paragraph, section (OCR for scanned pages)
   (STANAG, public NATO texts)          -> compile each document (L1 on retrieved passages, united with the patterns)
@@ -161,13 +168,13 @@ PER INCIDENT (submitted at predefined times; format to confirm)
 
 ![COA-Net architecture](figures/coa-net-architecture.png)
 
-*Figure 2. The stages as implemented. One document intake serves the doctrine set and the orders. Blue boxes are language-model roles (L1-L9), each checked by code and backed by a deterministic fallback; grey boxes are symbolic steps; dashed boxes are inputs. Figure 3 details the incident loop.*
+*Figure 2. The stages as implemented. One document intake serves the doctrine set and the orders. Blue boxes are language-model roles (L1-L9), all served by one open model on a local server, each checked by code and backed by a deterministic fallback; grey boxes are symbolic steps; dashed boxes are inputs. Figure 3 details the incident loop.*
 
 ### 2.3 Who does what
 
 | Actor | Does | Never does |
 | --- | --- | --- |
-| Language models (8-32B) | Fill requirement templates from doctrine passages, parse orders and incidents, name the marks code found on an illustration, map intent to a priority order, rank likely targets from a given list, write the COA comparison and FRAGOs from computed facts | Output a route, a coordinate, a number not present in the input, a requirement without a verbatim quote, or a final decision |
+| Language models (8-32B, open, deployed locally) | Fill requirement templates from doctrine passages, parse orders and incidents, name the marks code found on an illustration, map intent to a priority order, rank likely targets from a given list, write the COA comparison and FRAGOs from computed facts | Output a route, a coordinate, a number not present in the input, a requirement without a verbatim quote, or a final decision |
 | Document code | Reads PDF, Word, text and images into blocks with page, paragraph number, section and position; drops running heads; joins paragraphs across pages; finds figures and captions; runs OCR where there is no text layer; finds and georeferences the marks of an illustration | Name what it finds: names come from the order, through L9 or position words |
 | Graph algorithms | Build corridors, generate candidate routes, compute impact of each loss, contingency trees | Interpret prose |
 | CP-SAT solvers | Choose the network, select alternates, schedule movement credits, repair after incidents | Relax a physical or "shall" requirement without an approved waiver (intended; waivers are applied automatically today, section 11.4) |
@@ -185,6 +192,8 @@ PER INCIDENT (submitted at predefined times; format to confirm)
 | Models | text-only roles L1-L8; images only in baseline B3 | one vision-language model for every role; images only for L9; L1 runs at the event, in batches | section 6 |
 | Outputs | report, overlay, march tables, FRAGOs | also the outputs each order lists, each mapped to its file, or reported NOT PRODUCED | S2 |
 | Evaluation | F3 = the school's order when available | F3 = the event's exercises and doctrine set; hypotheses H8 (order understanding) and H9 (doctrine at the event); ablations A14 and A15 | section 9 |
+
+**Model deployment (3 Nov, our decision, not the organisers').** Every model role runs on one open model deployed locally, on a machine the team controls, and never through a hosted API (section 6.5). The doctrine method does not change: section 4 and stage S1 stay as described. Since no doctrine is available before the event, the model is used as published, without fine-tuning and without doctrine examples in its prompts, and the same commands compile whatever set is handed out.
 
 ## 3. Data model
 
@@ -637,7 +646,7 @@ $$\mathrm{VOI}(u)=\sum_{o}q_o\,\big(J(x_0^{*}\mid o)-J(x_o^{*}\mid o)\big)$$
 
 ### 6.1 Roles
 
-Models: one vision-language model for every role, Mistral Small 3.2 24B by default. It takes images (L9 needs them, and the organisers recommend multimodal models); its Apache 2.0 licence restricts neither defence use nor redistribution, which the rules ask teams to prefer (art. 9.4); and one model means one server and one set of prompts to validate. It is served on the organisers' H100 server or locally, through an OpenAI-compatible server with schema-constrained decoding. Qwen3-32B (text) and Qwen2.5-VL-32B (images) are the comparisons, and Qwen3-8B the small model of ablation A11; their licences are to be checked in the same way. bge-m3 is the retrieval model to compare with the lexical stand-in, and RapidOCR reads the text on images.
+Models: one vision-language model for every role, Mistral Small 3.2 24B by default. It takes images (L9 needs them, and the organisers recommend multimodal models); its Apache 2.0 licence restricts neither defence use nor redistribution, which the rules ask teams to prefer (art. 9.4); and one model means one server and one set of prompts to validate. It is deployed locally: a model server (vLLM or llama.cpp) on a machine the team controls, the organisers' H100 at the event and a team machine before it, answers through an OpenAI-compatible endpoint with schema-constrained decoding, and no role calls a hosted API (section 6.5). Qwen3-32B (text) and Qwen2.5-VL-32B (images) are the comparisons, and Qwen3-8B the small model of ablation A11 (Apache 2.0, by its model page); the licences of the two comparisons are to be checked in the same way. bge-m3 is the retrieval model to compare with the lexical stand-in, and RapidOCR reads the text on images.
 
 | # | Role | Stage | Input | Typed output | Checks | Fallback |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -690,20 +699,57 @@ The models do what the reference papers show small models do well (reading text,
 
 No single call exceeds about 4.5k tokens, the L9 call included if its image stays near 3k tokens, so an 8k context window is enough. The two red-team samples share their prompt, so with prefix caching the second costs little more than its output. Generation is the slow part: about 3k output tokens per plan, which at 20 to 40 tokens per second for a 24B model on one GPU (estimate) means one to two and a half minutes of model time per plan. With the one 24B model, incident handling generates about 900 tokens, 20 to 45 seconds at those rates (estimate); the 8B model of ablation A11 would cut that. At the event, L1 is the largest cost: up to 22k output tokens, about 10 minutes at 40 tokens per second if the calls run one after the other, less in parallel (estimate).
 
-Retries are not in the table. A retry of the red team and the briefing adds up to about 12k tokens, so the worst case is about 30k per plan, above the 20k target. The table should be redone from measured tokens at the first real model run.
+Retries are not in the table. A retry of the red team and the briefing adds up to about 12k tokens, so the worst case is about 30k per plan, above the 20k target. The table should be redone from measured tokens at the first real model run; `coa-net llm-check` measures the generation rate of the server actually used (section 6.5).
 
 ### 6.4 Guardrails
 
 - No model ever outputs a route, a coordinate, or an identifier that is not in its input.
-- Every output is schema-constrained, then validated by code; a failed validation triggers one retry, then the deterministic fallback.
+- Every output is schema-constrained, then validated by code: its shape against the schema (type, required fields, field types; this matters when a server refuses the schema and gets a plain JSON prompt), then the role's own checks. A failed validation triggers one retry, then the deterministic fallback.
 - Parser checks cover schema, catalogue, places and times. For orders, every number the parser kept must also appear in the document, so a changed deadline or vehicle count no longer passes L2; constraint blocks that no recognised value covers are listed NOT ENFORCED, and desired outputs with no writer NOT PRODUCED. L1's numbers must be stated by their quote. L6 still takes the nearest bridge with no distance limit, and a report with no location ends as `logged` (R18).
 - Documents are data. Doctrine passages and the texts of orders and reports reach the model marked as data, never as instructions (L1, L2, L6, L9), and their effect is bounded by the typed outputs and the checks above; this has not been tested with crafted documents (R15).
 - Every number, time and upper-case identifier in generated prose must appear in the facts it was given (normalised string match); every quote must appear in its source. This does not catch swapped values or wrong place names.
 - The solvers decide. The operator is meant to confirm the priority order, the COA, every waiver, every reconnaissance task and every FRAGO containing model-written text. These steps are not built yet: nothing in the code pauses for confirmation (section 11.4).
-- Prompts, outputs and validation results are to be logged for after-action review. Today only token counts and times are recorded.
-- Everything is meant to run offline, so that doctrine and orders never leave the machine. This depends on configuration: `COA_LLM_BASE_URL` accepts any host. The event's documents are public (rules, art. 10.4), so serving the model on the organisers' server is acceptable there; restricted documents would need a local server.
+- Prompts and answers are logged on the machine for after-action review when `COA_LLM_LOG` names a file: one JSON line per call with the role, the model, the time taken, the answer or the error, and the token counts, image data left out. A retry's prompt carries the problems found; the final verdict (accepted, or fallback) is not logged yet (section 11.4). Token counts and times per role also go to `metrics.json`.
+- Doctrine and orders never leave the machines the team works on. COA-Net calls `http://127.0.0.1:8000/v1` by default and refuses an endpoint outside this machine and its private network unless `COA_LLM_ALLOW_REMOTE=1` is set, and the report then says the model was remote. The model servers listen on 127.0.0.1 only; the H100 is reached through an SSH tunnel, so the endpoint stays local for COA-Net (section 6.5). The H100 belongs to the organisers; the event's documents are public (rules, art. 10.4), so that is acceptable there, and restricted documents would need a machine of the team's own.
+- A server that stops answering costs one timeout per run, not one per role. The connection times out after 5 s and a call after 120 s by default; after the first failure the client stops calling the server, every later role takes its deterministic fallback at once, and the report and `metrics.json` say from when.
 
 Every role has a deterministic fallback, so the whole pipeline also runs without any model. This is ablation A12 in section 9, and the safety net during the event.
+
+### 6.5 Local deployment
+
+**Decision.** Every role runs on one open model deployed locally: a model server on a machine the team controls answers COA-Net on that machine or through an SSH tunnel, and no role calls a hosted API. The reasons:
+
+- the jury's autonomy criterion weighs local deployment against hosted APIs, open against proprietary models, retraining and licences (rules, art. 13.3);
+- doctrine and orders stay on the team's machines (R12);
+- once the weights are copied, the run does not depend on the event's network (R29);
+- there is no cost per token, so the token budget of section 6.3 is a matter of time only.
+
+The hosted Mistral tokens that the rules offer (art. 10.1) are not needed by the pipeline.
+
+**The doctrine method does not change.** Deployment fixes where L1 runs, not what S1 does: intake, retrieval, at most eight passages per call and four calls per template, the checks of section 4.2, the union with the pattern compiler, reconciliation across documents, the seed for the gaps, the provisional base and the sign-off stay as in section 4 and S1. The model is used as published: nothing is fine-tuned, and no prompt carries worked examples of doctrine, because no doctrine is available before the event and examples written by the team would teach the model our wording rather than the documents'. What fits the model to the doctrine is the template card (definition, tiers, parameters with units and ranges), the passages retrieved from the set handed out, and the checks that drop any instance whose quote or numbers are not in those passages. The instructors' sign-off yields labelled pairs (passage, instance) that a later fine-tuning could use; that is beyond the event.
+
+**Machines.** Mistral Small 3.2 24B in the build the machine can hold, and a smaller model only to rehearse on a 16 GB laptop:
+
+| Machine | Model build | Server | Images (L9) |
+| --- | --- | --- | --- |
+| The organisers' H100 (80 GB), at the event | bf16, about 55 GB of GPU memory (model card) | vLLM 0.9.1 or later (`deploy/serve_vllm.sh`) | yes |
+| A 24 GB GPU, or an Apple Silicon Mac with 32 GB | 4-bit GGUF (Q4_K_M, 14.3 GB) and the vision projector | llama.cpp (`deploy/serve_llamacpp.sh`) or Ollama | yes |
+| A 32 to 48 GB GPU, or a Mac with 48 GB or more | 8-bit GGUF (Q8_0, 25.1 GB) and the vision projector | llama.cpp or Ollama | yes |
+| A laptop with 32 GB of RAM and no GPU | Q4_K_M on the CPU | llama.cpp (`NGL=0`) | yes, slowly |
+| A 16 GB laptop | Mistral Small does not fit. Qwen3-8B (Q4_K_M, 5.03 GB, Apache 2.0, text only; the small model of ablation A11) rehearses the text roles | llama.cpp | no: position words |
+| No model | none | none | no: every role falls back (A12) |
+
+File sizes are those of the GGUF repositories. With a 16k context, the cache adds about 2.7 GB at 16 bits (estimate), so the 4-bit build fits a 24 GB GPU with its projector. Qwen3-8B's card advises against greedy decoding, which COA-Net uses, so its answers are to be checked with `llm-check` before a rehearsal relies on them. Speeds are not measured on any of these machines yet.
+
+**Serving.** COA-Net needs two calls of the OpenAI-compatible interface, `GET /v1/models` and `POST /v1/chat/completions`, so vLLM, llama.cpp's `llama-server` and Ollama all serve it. The settings are the same everywhere: temperature 0 (the model card recommends 0.15 for chat; COA-Net only asks for typed records), and the role's JSON schema as `response_format`. A server that refuses the schema gets a plain JSON prompt; the client counts it, and the shape check of section 6.4 still applies. vLLM loads the model with its Mistral formats (`--tokenizer-mode mistral --config-format mistral --load-format mistral`); llama.cpp needs `--jinja` for the chat template and `--mmproj` for images. The servers listen on 127.0.0.1 only.
+
+**Before a run.** `coa-net llm-check` asks the server for its models, then checks a schema-constrained JSON answer, an image (for L9), the generation rate on a 120-word answer, and one call through the guard every role uses. It prints the variables to export (with `COA_LLM_JSON_SCHEMA=0` if the schema was refused) and exits with an error if the JSON answer fails. Every command given `--llm` asks the server for its models first and stops with advice if none answers, so a run never starts on a dead server.
+
+**During a run.** The connection times out after 5 s and a call after 120 s (`COA_LLM_CONNECT_TIMEOUT`, `COA_LLM_TIMEOUT`). After the first connection error or timeout, the client is marked down for the rest of the run: later roles do not wait, they fall back at once. The report's data notes give the model, where it ran, the calls and tokens, and when the server stopped answering if it did; `metrics.json` gives the same per role, and an exercise's `decision_process.txt` says which model named the zones of the illustration, or that position words did.
+
+**Offline at the event.** The weights are downloaded before the event: the bf16 repository for the H100 (24 billion parameters at 2 bytes, about 48 GB) and the Q4_K_M file with its projector for team machines. With the server software (a vLLM install or container, a llama.cpp build), they are to be copied onto two disks, since the event's network and the server's access to Hugging Face are not known (question 9). The servers then start from the local folder with `HF_HUB_OFFLINE=1`.
+
+**Measured so far.** Nothing with a real model: the development container cannot download weights. The client was tested against a stand-in server on the same machine that speaks the same interface (14 tests, section 11.7).
 
 ## 7. Worked example on the demo theatre
 
@@ -794,8 +840,8 @@ The rules (art. 13.3) give the jury's criteria, whose weights are announced at t
 | Exercises solved in the time allowed | orders read as documents and routed to a solver in seconds; a provisional base from the first hour; deterministic fallbacks for every model role | exercise 1: every desired output produced, 19 of 19 checks |
 | Context elements taken into account | the doctrine compiled at the event into cited instances; every constraint of an order enforced or reported | stand-in set: 23 instances; exercise 1: every constraint enforced |
 | Mastery of the model: error detection, clarity of the choice criteria, type of model | typed outputs checked by code (quotes, numbers, names); readback; rule checker; contrastive explanations in priority order | checks tested with a scripted model; no real model run yet |
-| Model size | one 24B model for every role | not run yet |
-| Autonomy | open weights under Apache 2.0, served locally or on the organisers' server, no hosted API needed; every role has a fallback | the whole pipeline runs without a model |
+| Model size | one 24B model for every role: 4-bit (14.3 GB) on a team machine, bf16 (about 55 GB of GPU memory) on the H100 | not run yet |
+| Autonomy | open weights under Apache 2.0, deployed locally (vLLM or llama.cpp on a machine the team controls), no hosted API, no retraining; remote endpoints refused by default; every role has a fallback | the whole pipeline runs without a model; the client tested against a stand-in local server (section 11.7); no real model run yet |
 | Time to answer | seconds per plan on synthetic theatres; minutes on the real network | exercise 1: under 3 min once the road graph is cached; a full plan with three convoys and four incidents: 27 min 24 s (`docs/real_data_validation.md`) |
 | Final report | measured results only, pre-registered parameters, commands to reproduce | this document, section 11 |
 
@@ -874,6 +920,7 @@ B2, B3 and COA-Net use the same models (Mistral Small 3.2 24B; Qwen3-32B for the
 | A13 | one plan instead of COAs | value of COAs for decision support (panel only) |
 | A14 | no L9: marks named by position words only | what the vision-language model adds on illustrations |
 | A15 | seed base only, no doctrine compiled at the event | what the event's doctrine changes in the plans: instances, routes, schedules |
+| A16 | bf16 model on the H100 (vLLM) → 4-bit build (Q4_K_M, llama.cpp) | what quantisation costs per role (instances kept, checks failed, fallbacks), and whether a 24 GB team machine is enough |
 
 ### 9.6 Statistics
 
@@ -911,11 +958,11 @@ Before running F2 and F3 (by 5 November), commit to the repository the hypothese
 | R9 | Self-fulfilling evaluation | medium | high | independent incident scripts (section 9.3) and pre-registration |
 | R10 | Tight joint schedules are brittle | medium | medium | Monte Carlo verification, minimum slack, robust headway |
 | R11 | Wrong or invented content in briefings or FRAGOs | unmeasured | high | number and identifier checks, templated fallback; the templated FRAGO stays the authoritative order and the model only rephrases it (intended; section 11.4) |
-| R12 | Doctrine or orders are restricted | low (the event's documents are public, rules art. 10.4) | high | local models, no external API, local logs kept with the same protection as the documents; offline operation depends on configuration |
+| R12 | Doctrine or orders are restricted | low (the event's documents are public, rules art. 10.4) | high | local deployment (section 6.5): COA-Net calls 127.0.0.1 by default and refuses a remote endpoint unless `COA_LLM_ALLOW_REMOTE=1`, which the report states; servers listen on 127.0.0.1 only; local logs kept with the same protection as the documents; restricted documents would need a machine of the team's own instead of the organisers' H100 |
 | R13 | Solver availability or licences | low | medium | OR-Tools CP-SAT (Apache 2.0) only |
 | R14 | A spoofed, careless or repeated report closes an element | medium | high | confirmation before closure on low grades, source identity on reports (intended; section 3.6) |
 | R15 | Prompt injection through orders, doctrine, illustrations or reports | low | high | documents are passed as data, never as instructions; typed outputs and code checks (quotes, numbers, names) limit the effect; not tested with crafted documents |
-| R16 | The model server hangs (about 8 minutes per role before fallback) | medium | high | one wall-clock deadline per incident and a fast-fail health check (intended) |
+| R16 | The model server hangs or stops during a run | medium | high | the server is checked before the run (`--llm`, `llm-check`); connection timeout 5 s, call timeout 120 s; after the first failure every later role falls back at once, so a hang costs one timeout per run (2.68 s for a plan with a 2 s timeout, against a stand-in server, section 11.7); a wall-clock deadline per incident is still intended |
 | R17 | The organisers favour the image input (scans), with the shapefiles for sanity checks | known (preliminary description) | medium | S0 builds the network from the shapefiles, because models find routes on images poorly (section 1.2); the scans give town populations and cross-check every itinerary (`docs/real_data_validation.md`); each order's illustration is read by S2; the final report says why |
 | R18 | A parser error goes unnoticed (wrong count or deadline, wrong bridge) | medium | high | orders: every number checked against the document and uncovered constraints listed (implemented); incidents: a distance limit and an explicit "unlocated" escalation (intended) |
 | R19 | Convoy positions are estimated from the schedule, so a late column or late report gives a wrong turn-back | high | medium | a position-report input (intended; section 13) |
@@ -927,12 +974,15 @@ Before running F2 and F3 (by 5 November), commit to the repository the hypothese
 | R25 | The illustration is misread: a mark missed or merged, a colour other than blue, a wrong name | medium | high | marks found by code and shown numbered in the outputs; L9's answer checked, with position words as fallback; a named zone not found stops the run; non-blue colours not tested on the organisers' drawings |
 | R26 | An order states a constraint that no template expresses | medium | high | reported NOT ENFORCED in the readback, never dropped silently; the operator decides; a new template if time allows (the backlog of section 4.7) |
 | R27 | The incident format is unknown (free text, document, structured message; with or without grading and location) | high | medium | incidents accepted as text or as a document; pattern parser and L6; unlocated reports escalated (intended); question 4 of section 13 |
+| R28 | No machine can hold the model before the event, or the H100 is shared or slow at the event | medium | medium | the machines of section 6.5: a 4-bit build on a 24 GB GPU or a 32 GB Mac, Qwen3-8B to rehearse the text roles on 16 GB; `llm-check` measures the rate before a run; L1 at the event can be cut (section 12.2); without a model every role falls back (A12) |
+| R29 | The weights or the server software cannot be fetched at the event | medium | high | downloaded before the event and copied onto two disks; servers started from a local folder with `HF_HUB_OFFLINE=1`; an offline rehearsal (section 12.1) |
+| R30 | Serving stacks differ in chat template, schema support and image input (vLLM, llama.cpp, Ollama), or the 4-bit build is less accurate | medium | medium | one OpenAI-compatible interface; `llm-check` probes schema, image and rate on the server used; a refused schema falls back to a plain JSON prompt, counted, and the shape check still applies; every role's checks hold whatever the build; ablation A16 |
 
-**Limitations that remain.** The comparative results of section 11.3 come from one synthetic generator, on a 14 × 10 grid (140 nodes) with at most 6 convoys; the organisers' Scenario 1 network has been run since (`docs/real_data_validation.md`), without baselines. The doctrine set and the event's exercises are unknown until the event, so S1 and S2 have been tested on stand-ins and on exercise 1 only. The likelihood table and the belief thresholds need calibration that only the instructors can provide. Single-loss survivability does not protect against two simultaneous strikes; the worst-case variant covers chosen pairs only.
+**Limitations that remain.** The comparative results of section 11.3 come from one synthetic generator, on a 14 × 10 grid (140 nodes) with at most 6 convoys; the organisers' Scenario 1 network has been run since (`docs/real_data_validation.md`), without baselines. The doctrine set and the event's exercises are unknown until the event, so S1 and S2 have been tested on stand-ins and on exercise 1 only. No language model has been run: the local client has been tested against a stand-in server only (section 11.7). The likelihood table and the belief thresholds need calibration that only the instructors can provide. Single-loss survivability does not protect against two simultaneous strikes; the worst-case variant covers chosen pairs only.
 
 ## 11. Implementation and measured results
 
-COA-Net is implemented in this repository: `src/coa_net` (about 15,300 lines of Python), 95 tests, a command line (`coa-net`) and a Python session object (`COANet`). This section maps the stages to the code, gives what the code measures on 100 synthetic scenarios (the demo is section 7) and on the organisers' documents (section 11.6), and lists the known places where the code departs from sections 1 to 10 and the appendices. Where earlier sections say "estimate", the numbers below replace them for what they cover. No language model was run for these numbers: every model role used its deterministic fallback, so token budgets and model precision are still unmeasured.
+COA-Net is implemented in this repository: `src/coa_net` (about 15,600 lines of Python), 109 tests, a command line (`coa-net`), a Python session object (`COANet`) and the recipes that serve the model locally (`deploy/`). This section maps the stages to the code, gives what the code measures on 100 synthetic scenarios (the demo is section 7) and on the organisers' documents (section 11.6), and lists the known places where the code departs from sections 1 to 10 and the appendices. Where earlier sections say "estimate", the numbers below replace them for what they cover. No language model was run for these numbers: every model role used its deterministic fallback, so token budgets and model precision are still unmeasured.
 
 ### 11.1 Module map
 
@@ -950,6 +1000,7 @@ COA-Net is implemented in this repository: `src/coa_net` (about 15,300 lines of 
 | S9 COAs and briefing | `coa.py`, `explain.py` | L5 comparison and L8 explanations, numbers checked against the facts; fallback: templates |
 | S10 incident loop | `belief.py`, `incidents.py`, `orders.py`, `parsing.py`; reports given as documents: `documents.py` | L6 report parser, fallback patterns; L7 FRAGO phrasing, fallback template |
 | Evaluation | `baselines.py`, `bench.py` | none |
+| Model client, for every role | `llm.py` (OpenAI-compatible client: local-only endpoint, server check, fast failure, plain-JSON fallback, shape check, local log), `cli.py` (`llm-check`); serving recipes in `deploy/` | without a server, every role uses its fallback |
 | Outputs | `render.py`, `pipeline.py`, `cli.py` | none |
 
 CP-SAT (OR-Tools) solves both the network design (S5) and the movement credits (S7), on integer-scaled coefficients.
@@ -961,11 +1012,13 @@ All 28 templates of Appendix A are compiled and enforced, with two exceptions. S
 ```bash
 pip install -e ".[dev,real,docs]"
 coa-net demo                       # order LOG-01 on the demo theatre, three incidents -> outputs/demo/report.html
-pytest                             # 95 tests
+pytest                             # 109 tests
+deploy/serve_llamacpp.sh &         # the model on this machine (deploy/README.md; serve_vllm.sh on the H100)
+coa-net llm-check                  # the local server: models, schema-constrained JSON, image, rate
 coa-net compile-doctrine doctrine/ --out outputs/base        # at the event: base, corpus report, sign-off sheet
 coa-net signoff --base outputs/base/requirements.json --sheet outputs/base/signoff.csv --out outputs/base/approved.json --reviewer NAME
 coa-net read-order exercise.pdf --out outputs/ex/readback.md  # readback, and the command that solves the order
-coa-net exercise --data DATA --pdf exercise.pdf --requirements outputs/base/requirements.json --provisional --out outputs/ex
+coa-net exercise --data DATA --pdf exercise.pdf --requirements outputs/base/requirements.json --provisional --llm --out outputs/ex
 coa-net plan --order order.docx --requirements outputs/base/approved.json --out outputs/plan
 coa-net bench --seeds 100 --reps 50 --out outputs/bench.md
 python docs/figures/make_figures.py --bench outputs/bench.md      # the figures of this document
@@ -1016,11 +1069,11 @@ Items 1 to 5 record rule changes made during implementation; sections 4 and 5 an
 6. **Fallback times.** A group that loses all its designated routes falls back on the best remaining route plus 30 minutes for an unprepared reroute (`UNPREPARED_DELAY_MIN`), and a group with no route at all counts 600 minutes (`FAILURE_TIME_MIN`). Both values are assumptions to calibrate with the instructors.
 7. **Simulator.** Threat reports do not reroute columns in the simulator (the incident loop does that); exposure counts vehicle·minutes on roads with threat level 0.3 or more.
 8. **Benchmark scripts and baselines.** The benchmark uses the uniform script family (S-U) only, 50 replications against the 200 of section 9.6, and none of the tests of that section; the red-team-consistent and adversarial generators exist (`script_weighted`, `script_adversary` in `simulate.py`) but are not yet in the harness. Baselines B2, B3 and the oracle are not implemented. Of the ablations, only A5a (greedy design) and A7 (no playbooks) are in the benchmark, so H2 has no A5b result.
-9. **Language models.** The model paths of L1 to L9 are implemented with the checks of section 6.4 and tested with a scripted client; they have not been run against a real model yet. `llm.py:from_env` builds one client for one model, which is now the default of section 6.1; ablation A11 (a model per role) needs code changes.
+9. **Language models.** The model paths of L1 to L9 are implemented with the checks of section 6.4 and tested with a scripted client; they have not been run against a real model yet. The HTTP client is tested against a stand-in local server (`tests/test_local_llm.py`), not yet against vLLM, llama.cpp or Ollama. `llm.py:from_env` builds one client for one model, which is now the default of section 6.1; ablation A11 (a model per role) needs code changes.
 10. **Waivers.** `design.py` applies NET.SURVIVE waivers with no approval step and no price, and nothing outside that file reads them. Waived plans count as valid. A solver timeout is treated as infeasibility and can trigger a waiver. Other T1 infeasibility falls to the greedy design.
 11. **Verification gates nothing.** `incidents.py:handle_incident` writes the FRAGO whatever `verify` returns, and S10 step 6 has no Monte Carlo run. `bench.py` counts logged incidents as valid.
 12. **Prose check.** `llm.py:unsupported` tests only that each number and upper-case identifier appears somewhere in the facts. A text that swaps two units' routes passes, and mixed-case names such as Pont-Centre are not read. The intended fix is per-unit field binding, with the templated FRAGO as the authoritative order.
-13. **Operator steps and logs.** Nothing in the package pauses for confirmation. `llm.py` records only token counts and times, not prompts or outputs.
+13. **Operator steps and logs.** Nothing in the package pauses for confirmation. `llm.py` logs prompts and answers to a local file when `COA_LLM_LOG` is set; a retry's prompt shows the problems found, but the final verdict of each role (accepted, or fallback) is not logged.
 14. **Belief.** A single report at q = 0.5 closes an element. Reports have no source field, so a repeat raises the probability. Destruction reports decay. Decay takes effect only at the next incident, and a reopening triggers no replan.
 15. **Playbooks.** `build_playbooks` runs no verification. At run time the loop uses the next-corridor tree and re-solves S5 and S7, so times are the same with and without playbooks, and the pre-drafted schedule and FRAGO are not reused. Playbook refresh falls outside the reported incident time.
 16. **Red team.** Temperature is 0, so the two samples are nearly identical. Elements near reported threats are not added to the cards. An omitted element counts as low (0.02), which replaces the 0.10 table prior.
@@ -1039,7 +1092,7 @@ Items 1 to 5 record rule changes made during implementation; sections 4 and 5 an
 
 - Section 11.3 runs on synthetic theatres. The organisers' Scenario 1 data (BD TOPO, OSM, scans) and exercise 1 have been run since (`docs/real_data_validation.md`), and the document readers on the organisers' PDFs (section 11.6); other real extracts (F2), with planted unknown bridge classes, are still to run. Section 12 gives the dates.
 - The likelihood table, belief thresholds, fallback times and route-status rules are placeholders to calibrate with the instructors, and to pre-register before F2 and F3 (section 9.8).
-- Run L1 to L9 with Mistral Small 3.2 24B on the organisers' H100 server (first L1 on the stand-in set, L2 and L9 on exercise 1), and measure tokens, times, template precision (H6) and the red team's agreement with the instructors.
+- Run L1 to L9 with Mistral Small 3.2 24B on a local server: first the 4-bit build on a team machine (L1 on the stand-in set, L2 and L9 on exercise 1), then bf16 on the H100 at the event. Measure tokens, generation rates, template precision (H6), the red team's agreement with the instructors, and the gap between the two builds (A16).
 - Add the S-RT and S-ADV scripts and the playbook ablation to the simulator benchmark (H3), and the B2 and B3 baselines (H7).
 - Rotations, so that SCH.VARY can be checked.
 
@@ -1058,6 +1111,19 @@ No language model; development container. The stand-in doctrine set is the synth
 | Stand-in doctrine set: the sample, the description and the rules | `compile-doctrine`, patterns | 16 pages, 369 sentences, 39 normative; 23 draft instances, all from the sample, each citing document and paragraph; 0 conflicts; coverage 95 %, expressiveness 92 %; the 14 normative sentences of the organisers' two PDFs are labelled out of scope (13) or inexpressible (1), so no requirement is drawn from text that is not doctrine; 23 seed instances superseded, 14 kept; 1.7 s |
 | Order LOG-01 as a Word file | `plan --provisional` on that base | readback with the three convoys and the intent, each with its block; report marked PROVISIONAL, with the 23 draft instances listed; 2.4 s |
 
+### 11.7 Measured with a stand-in model server (3 Nov 2026)
+
+No real model: the development container cannot download model weights. A stand-in OpenAI-compatible server on 127.0.0.1 (`tests/test_local_llm.py`) answers like a model server, with faults that can be switched on, so these numbers measure the client and the fallbacks, not a model. Each plan is order LOG-01 on synthetic theatre 0, without simulation, explanations or reconnaissance, on a 4-core CPU, after a warm-up run.
+
+| Model server | Plan time | Requests | What the report says |
+| --- | --- | --- | --- |
+| none (no `--llm`) | 0.62 s | 0 | "Language model: none; every model role used its deterministic fallback." |
+| stand-in, answering at once with empty records | 0.87 s | 10 | the model, its endpoint (local), the calls and the tokens; the empty records fail the shape check or the role's own check, so every role falls back after one retry |
+| stand-in that answers after 30 s, call timeout 2 s | 2.68 s | 1 | the server stopped answering (read timeout), so the later model roles used their deterministic fallbacks |
+| server gone after the check (port closed) | 0.67 s | 0 | the same, after a connection error |
+
+The 14 tests also check that: local endpoints (loopback, private, link-local and shared 100.64/10 addresses, `.local` names) are accepted and others refused without `COA_LLM_ALLOW_REMOTE=1`; the model name is taken from the server; the role's schema is sent and the answer's usage recorded; a server that refuses the schema gets a plain JSON prompt; an empty or partial record fails the shape check and is retried; images reach the server and the local log leaves them out; `llm-check` passes on a server with images and passes for text on one without; `--llm` without a server stops with advice; and the report and `metrics.json` say where the model ran.
+
 ## 12. Remaining work to 12 November
 
 ### 12.1 Calendar
@@ -1066,13 +1132,13 @@ COA-Net exists (section 11), runs on the organisers' Scenario 1 data, and reads 
 
 | Dates | Work | Result |
 | --- | --- | --- |
-| Tue 3 Nov | Organisers' answer taken in: document intake, doctrine-set compiler with reconciliation, sign-off and provisional runs, order reader and readback, sketch reader (this revision) | done |
-| Wed 4 Nov | First real model run on the H100 server (Mistral Small 3.2 24B): L1 on the stand-in set, L2 and L9 on exercise 1, then L3 to L8; prompt and output logs; measured tokens; redo section 6.3 | first model evidence |
+| Tue 3 Nov | Organisers' answer taken in: document intake, doctrine-set compiler with reconciliation, sign-off and provisional runs, order reader and readback, sketch reader. Then the model deployment fixed to a local server: local-only client with fast failure, `coa-net llm-check`, serving recipes (this revision) | done |
+| Wed 4 Nov | First real model run on a team machine (Mistral Small 3.2 24B, 4-bit build on llama.cpp, or Qwen3-8B on a 16 GB laptop): `llm-check`, then L1 on the stand-in set, L2 and L9 on exercise 1, then L3 to L8; prompt and output logs; measured tokens and rates; redo section 6.3. The bf16 model on the H100 as soon as there is access (question 9) | first model evidence |
 | Thu 5 Nov | Rehearsal of the event's first day: public NATO texts on road movement as a stand-in doctrine set, and three exercises written like exercise 1 (another colour, points instead of zones, a convoy movement); pre-registration (section 9.8) | timeline tested; parameters frozen |
 | Fri 6 Nov | Safety code: hold waived plans for approval; mark failed FRAGOs "NOT VERIFIED" and escalate; closure rule and non-decaying destruction; degraded mode for unknown bridges; wall-clock deadline for incidents | the promises of sections 4 to 6 hold |
 | Sat 7 - Mon 9 Nov | Baselines B2 and B3; S-RT and S-ADV scripts; playbook ablation; ablations A14 and A15 | H1, H3 and H7 to H9 tested as far as the data allow |
 | Tue 10 Nov | Results tables, figures; the final report's required sections (rules, art. 9.4: models with their licences, data log, prompts and changes per exercise) | results |
-| Wed 11 Nov | Freeze, dry run of the demo, deterministic fallbacks checked; containers, LICENSE and documentation (art. 9.3) | ready |
+| Wed 11 Nov | Freeze, dry run of the demo, deterministic fallbacks checked; weights and server software copied onto two disks, then the server started and `llm-check` run without network; containers, LICENSE and documentation (art. 9.3) | ready |
 | Thu 12 Nov (event) | Launch at 09:00, then the first hours below | requirement base; first exercises |
 | Fri 13 Nov | Exercises and incidents with the pre-registered parameters | results |
 | Sat 14 Nov | Deliverables by 15:00; presentation of 10 minutes | |
@@ -1081,10 +1147,11 @@ COA-Net exists (section 11), runs on the organisers' Scenario 1 data, and reads 
 
 | From | Step | Command |
 | --- | --- | --- |
+| at the launch | Start the model server on the H100 from the copied weights, open the tunnel, check it (the doctrine steps below do not wait for it) | `deploy/serve_vllm.sh`, `coa-net llm-check` |
 | T | Copy the doctrine set, the maps and the first exercise; audit the data | `coa-net audit` |
 | T + 10 min | Compile the doctrine set with patterns (1.7 s for 16 pages, measured); read the corpus report: documents, warnings, conflicts, coverage | `coa-net compile-doctrine` |
 | T + 15 min | First exercise on the provisional base: readback, then the solver (exercise 1: under 3 min with the road graph cached, measured) | `coa-net read-order`, then `exercise` or `plan --provisional` |
-| T + 20 min | Compile again with L1, and compare with the pattern run | `coa-net compile-doctrine --llm` |
+| T + 20 min | Compile again with L1 on the local server, and compare with the pattern run | `coa-net compile-doctrine --llm` |
 | T + 1 h | Sign-off with the instructors, mandatory instances first (60 to 120 lines at about 15 s each) | `coa-net signoff` |
 | then | Re-run the exercises solved so far on the approved base, and report what changed | `exercise`, `plan` |
 
@@ -1093,7 +1160,7 @@ COA-Net exists (section 11), runs on the organisers' Scenario 1 data, and reads 
 1. Baseline B3, then B2 (R8 then rests on the published benchmarks, not on our own evidence).
 2. The S-RT and S-ADV scripts.
 3. Sensitivity runs beyond the two main assumptions.
-4. L1 at the event, if the server is slow: patterns and sign-off alone (the union only adds instances).
+4. L1 at the event, if the local server is slow or missing: patterns and sign-off alone (the union only adds instances).
 5. The scaling test (state the tested size instead).
 
 Never cut: the readback and the number checks on orders, the PROVISIONAL flag, the sign-off sheet, the safety code of 6 November, the first real model run, the rule checker, survivability, the order between convoys as a decision, the playbook for the highest-impact loss, and the deterministic fallbacks.
@@ -1110,7 +1177,7 @@ Answered so far: questions 1 and 3 by the organisers on 3 Nov 2026, 2 by the Sce
 6. What threat information will be available (enemy positions, threat areas), and is an assessment of likely targets welcome?
 7. Which movement-control conventions does the school use: route statuses, route names, control posts, halt rules, headways, vehicle intervals?
 8. May an operator stay in the loop during the exercises (confirming the readback and the priorities, signing off the doctrine, choosing a course of action)?
-9. **Hardware. Answered:** a server of H100 GPUs and 250 € of Mistral VIBE tokens per team; multimodal models recommended (preliminary description); models whose licences allow defence use and redistribution preferred (rules, art. 9.4). *How much GPU memory per team, and may a model server run for the whole event?*
+9. **Hardware. Answered:** a server of H100 GPUs and 250 € of Mistral VIBE tokens per team; multimodal models recommended (preliminary description); models whose licences allow defence use and redistribution preferred (rules, art. 9.4). *How much GPU memory per team (the bf16 model needs about 55 GB), may a model server run for the whole event, can it be reached by SSH from the team's laptops, and may the weights be brought on a disk, in case the server cannot reach Hugging Face? Is there access before the event, for a rehearsal?*
 10. **Judging. Answered by the rules (art. 13):** a jury of military officers, public-sector technical experts, AMIAD representatives and academics; the criteria are in section 8; their weights are given at the launch.
 11. Will convoy positions be reported during the exercise, or must they be estimated from the schedule (R19)?
 12. Which values does the school use for the assumptions of this document: report grades and closure thresholds, the detour guard, likelihoods of loss, and the delay penalties?
@@ -1294,10 +1361,13 @@ French terms are given where they are standard; check them with the instructors.
 | Detour guard | rule RTE.DETOUR: an alternate may take at most ρ times the group's best time |
 | ε-lexicographic optimisation | optimising objectives one at a time in priority order, each within a tolerance of the optima already reached |
 | FRAGO, fragmentary order | an order that modifies an existing order and gives only what changes |
+| GGUF, quantisation | the file format of llama.cpp; a 4-bit build (Q4_K_M, about 5 bits per weight on average) stores a 24B model in 14.3 GB instead of about 48 GB at 16 bits, at some cost in accuracy (ablation A16) |
 | Irreducible SPOF | a critical element whose loss leaves a group without any route within the detour guard; only engineering, reconnaissance or accepting the risk can address it |
+| Local deployment | the model runs on a machine the team controls (a laptop, a team GPU, the H100 at the event), not through a hosted API; COA-Net refuses other endpoints by default |
 | March unit | a column that moves as one under one commander |
 | March table (tableau de marche) | the timetable of a movement: start, control and release points with times |
 | MLC, military load class | the NATO classification of vehicles and bridges by load |
+| Model server | the program that loads the model and answers COA-Net through an OpenAI-compatible HTTP interface: vLLM, llama.cpp's `llama-server` or Ollama |
 | Movement credit (crédit de mouvement) | road space and time allocated to a unit on a controlled route |
 | MSR, main supply route | the designated main route of a convoy group |
 | Noisy-OR | fusion of independent reports: the probability that at least one is true |

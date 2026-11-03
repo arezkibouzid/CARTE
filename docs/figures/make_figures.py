@@ -71,7 +71,7 @@ class Canvas:
     def raw(self, s):
         self.parts.append(s)
 
-    def legend(self, y, items=(("llm", "Language-model step (small open model, checked by code)"), ("code", "Symbolic step (graph, CP-SAT, simulator)"), ("input", "Input"))):
+    def legend(self, y, items=(("llm", "Language-model step (open model served locally, checked by code)"), ("code", "Symbolic step (graph, CP-SAT, simulator)"), ("input", "Input"))):
         x = 40
         for kind, label in items:
             if kind == "llm":
@@ -90,7 +90,7 @@ class Canvas:
 
 def architecture() -> str:
     c = Canvas(1400, 1265, "The models read and write; code designs the network",
-               "Doctrine and orders arrive as documents. Every model role (L1-L9) is checked by code and has a deterministic fallback.")
+               "Doctrine and orders arrive as documents. Every model role (L1-L9) runs locally, is checked by code and has a deterministic fallback.")
     bw, bh, bh5 = 290, 96, 120
     A, B, C, D = 40, 340, 680, 1040
     r1, r2, r3, r4, r5, r6, r7 = 145, 285, 435, 585, 745, 915, 1065

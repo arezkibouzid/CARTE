@@ -51,9 +51,12 @@ Package exports (`__init__.py`): `COA`, `COANet`, `__version__`. Run it as `pyth
 | `read-order ORDER` | Reads an order document without the map: the task, the constraints, the desired outputs, the readback, and the command that solves it. Option: `--out` (readback file). |
 | `bench` | Runs the planning and incident benchmarks. Options: `--seeds`, `--convoys`, `--reps`, `--out`. |
 | `fetch-osm --place --out` | Downloads an OSM extract and caches it. |
+| `llm-check` | Checks the locally deployed model server named by the `COA_LLM_*` variables: where it is (local or not), the models it serves, a schema-constrained JSON answer, an image (L9), the generation rate, and one call through `call_validated`. Prints the variables to export, and exits with code 1 when the server does not answer or the JSON answer is wrong. Options: `--no-image`, `--out FILE` (the result as JSON). |
 | `templates` | Prints the requirement template catalogue. |
 
 Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the doctrine's draft instances before sign-off; the report says so), `--llm`, `--reps`, `--no-cpsat`, `--coa`.
+
+`--llm` (on `demo`, `plan`, `exercise` and `compile-doctrine`) builds the client with `llm.from_env`: it asks the server for its models first and stops with advice when the endpoint is refused or no server answers. [cli.py:_llm]
 
 ### Records (`schemas.py`)
 
@@ -212,7 +215,10 @@ Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the do
 - `llm.py`:
   - Client protocol: `LLMClient`.
   - Clients: `OpenAICompatibleClient`, and `ScriptedLLM` for tests. Both have `complete_json`, and `complete_json_images` for the sketch reader (L9).
-  - Setup and checks: `from_env`, `call_validated`, `unsupported`, `Usage`.
+  - `OpenAICompatibleClient(base_url, model, api_key=None, use_json_schema=True, timeout=120.0, connect_timeout=5.0, log_path=None)` also has `models()` (the models the server lists), `describe()` (endpoint, model, `local`, schema use, `schema_rejected`, `down`), and the attributes `down` (why the server was marked down, or None) and `schema_rejected` (calls answered only after the schema was dropped).
+  - Setup and checks: `from_env(check=True)`, `LOCAL_DEFAULT_URL` (`http://127.0.0.1:8000/v1`), `is_local_url(url, resolve=True)`, `call_validated`, `schema_problems`, `unsupported`, `Usage`.
+  - Errors: `LLMUnavailable` (the server does not answer, or was marked down), `LLMConfigError` (an endpoint outside this machine and its private network, without `COA_LLM_ALLOW_REMOTE=1`).
+- `pipeline.py:COANet.metrics()["llm_usage"]["server"]` and the report's data notes say which model ran where, with its calls and tokens, or that every role used its fallback. [pipeline.py:COANet._model_line]
 - `bench.py`:
   - Benchmarks: `run_planning_bench`, `run_incident_bench`.
   - Reporting: `to_markdown`, `incidents_markdown`, `bootstrap_ci`, `network_metrics`, `PIPELINES`.
@@ -222,7 +228,10 @@ Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the do
 
 ### Language-model boundary
 
-- **No model output goes in unchecked.** Every model call goes through `call_validated`, with one retry by default. When no model is configured, or the output fails validation, the caller uses its deterministic fallback. [llm.py:call_validated]
+- **No model output goes in unchecked.** Every model call goes through `call_validated`, with one retry by default. The answer's shape is checked against the role's schema first (type, required fields, field types), because a server that refuses the schema gets a plain JSON prompt; then the role's own check runs. When no model is configured, or the output fails validation, the caller uses its deterministic fallback. [llm.py:call_validated, llm.py:schema_problems]
+- **The model is deployed locally.** Without `COA_LLM_BASE_URL` the client calls `LOCAL_DEFAULT_URL`. An endpoint is accepted only if its host is this machine or a private address (not a global IP; `localhost`, `.localhost` and `.local` names; a name whose addresses all resolve to private ones), unless `COA_LLM_ALLOW_REMOTE=1`; the report then says the model was remote. [llm.py:from_env, llm.py:is_local_url]
+- **A dead server costs one timeout per run.** The connection times out after `connect_timeout` seconds and a call after `timeout`. The first connection error or timeout marks the client `down`, and every later call raises `LLMUnavailable` at once without a request, so every later role falls back immediately. Other HTTP errors drop the schema and retry once as plain JSON; `schema_rejected` counts the calls where that worked. [llm.py:OpenAICompatibleClient._post, llm.py:OpenAICompatibleClient._complete]
+- **The doctrine method does not depend on the deployment.** L1 gets the same template cards and passages whatever the server, with no worked examples in its prompt, and its instances go through the same checks and union with the patterns. [doctrine.py:L1_SYSTEM, doctrine.py:_l1_call]
 - **Generated text cannot introduce new facts.** Text from a model (FRAGO, briefing, explanation) is kept only if `unsupported(text, facts)` finds no number, time or identifier missing from the facts. Otherwise the template text is used, with `source='template'`. [llm.py:unsupported, orders.py:write_frago, coa.py:briefing, explain.py:phrase]
 - **Doctrine and intent quotes must be verbatim.** A compiled requirement needs a verbatim quote from the document it cites and a tier that matches its modal trigger. Compiled requirements are always `status='draft'`, and only `approved` ones are activated. The one exception is `--provisional`, which uses the drafts as approved before sign-off and lists their ids in the report. [requirements.py:validate_instance, doctrine.py:compile_items, requirements.py:activate, corpus.py:provisional, cli.py:_base]
 - **The intent mapper is constrained.** Its model output must be a permutation of `MENU`, with verbatim quotes and tolerances within [0, 0.5]. Otherwise the keyword mapper is used. [intent.py:map_intent]
@@ -307,10 +316,11 @@ Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the do
 ## Side Effects
 
 - **Network calls:**
-  - HTTP POST to `{COA_LLM_BASE_URL}/chat/completions` for each model role. [llm.py:OpenAICompatibleClient._post]
+  - HTTP GET `{COA_LLM_BASE_URL}/models` before a run with `--llm` and in `llm-check`. [llm.py:OpenAICompatibleClient.models, llm.py:from_env]
+  - HTTP POST to `{COA_LLM_BASE_URL}/chat/completions` for each model role, to a local endpoint unless `COA_LLM_ALLOW_REMOTE=1`. [llm.py:OpenAICompatibleClient._post]
   - The sketch reader (L9) also sends the numbered sketch, as a PNG data URL of at most 1024 pixels on its longest side. [figures.py:_l9, llm.py:OpenAICompatibleClient.complete_json_images]
   - OSM downloads through osmnx. [loaders.py:load_osm, loaders.py:save_graphml_osm, loaders.py:annotate_landuse_osm]
-- **Environment variables:** `COA_LLM_BASE_URL`, `COA_LLM_MODEL`, `COA_LLM_API_KEY`, `COA_LLM_JSON_SCHEMA`. [llm.py:from_env]
+- **Environment variables:** `COA_LLM_BASE_URL`, `COA_LLM_MODEL`, `COA_LLM_API_KEY`, `COA_LLM_JSON_SCHEMA`, `COA_LLM_ALLOW_REMOTE`, `COA_LLM_TIMEOUT`, `COA_LLM_CONNECT_TIMEOUT`, `COA_LLM_LOG`. [llm.py:from_env]
 - **Disk reads:**
   - Order, doctrine and places files. [cli.py]
   - Doctrine documents and folders, and order documents (PDF, Word, text, images). [documents.py:read_document, documents.py:read_documents]
@@ -323,6 +333,7 @@ Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the do
   - The requirements JSON. [requirements.py:save_requirements]
   - `compile-doctrine`: `requirements.json`, `requirements_doctrine.json`, `corpus_report.md`, `signoff.csv` and `documents.json`. `signoff`: the signed base. `read-order --out`: the readback. `plan`: `readback.md`. [cli.py:cmd_compile, corpus.py:write_signoff_sheet, cli.py:cmd_signoff, cli.py:cmd_read_order, cli.py:cmd_plan]
   - The bench markdown. [cli.py:cmd_bench]
+  - With `COA_LLM_LOG`, one JSON line per model call appended to that file (stage, model, seconds, messages with image data replaced by its length, answer or error, usage). `llm-check --out`: its result as JSON. [llm.py:OpenAICompatibleClient._log, cli.py:cmd_llm_check]
   - The GraphML cache. [loaders.py:save_graphml_osm]
   - The folium map. [render.py:render_folium]
   - Exercise outputs: `itineraries.geojson`, `difficult_areas.geojson`, `zones.geojson`, `towns_over_threshold.geojson`, `map_*.png`, `decision_process.txt`, `metrics.json`, `readback.md`, `sketch_marks.png`, `input/` (the sketch image, `exercise.txt` and `blocks.json`), and the OCR, built-up, zone, georeferencing and marks cache. [scenario.py:run_exercise, scenario.py:exercise_from_pdf, scanmap.py:ocr_labels, cli.py:cmd_exercise]
@@ -353,3 +364,4 @@ Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the do
 - Run: `coa-net demo --out outputs/demo`
 - Run (organisers' data, `pip install -e ".[real,docs]"`): `coa-net exercise --data DIR --pdf exercise_for_preparation.pdf --out outputs/exercise1`
 - Run (documents, `pip install -e ".[docs]"`): `coa-net read-order exercise_for_preparation.pdf --out outputs/readback.md` and `coa-net compile-doctrine DOCTRINE_FOLDER --out outputs/doctrine`
+- Run (local model, `deploy/README.md`): start a server, then `coa-net llm-check`; without a model, `pytest tests/test_local_llm.py` checks the client against a stand-in server on 127.0.0.1
