@@ -9,7 +9,9 @@ Figures used by `docs/COA-Net_methodology.md` and `README.md`, plus the script t
 - `make_figures.py:main(argv=None)` is the CLI entry point. It takes:
   - `--out`: the output folder, default `docs/figures`.
   - `--bench`: the markdown written by `coa-net bench --out`. When given, the script adds `benchmark`.
-- `make_figures.py:architecture()` and `make_figures.py:incident_loop(timings=None)` return the diagram SVGs.
+  - `--only`: comma-separated figure names to build, for example `coa-net-architecture`. When only the architecture or the benchmark is asked for, the demo is not run.
+  - `--html-only`: writes the HTML pages and does not render PNGs.
+- `make_figures.py:architecture()` and `make_figures.py:incident_loop(timings=None)` return the diagram SVGs. Since 3 Nov 2026 the architecture diagram shows documents as inputs: a shared document intake feeds S1 (the doctrine set, compiled once at the event) and S2 (order understanding and the sketch reader with L9), and the readback sends an itineraries task to the exercise solver and a movement task to movement planning (S3 to S9). `Canvas.box` takes up to three sub-lines (`sub`, `sub2`, `sub3`).
 - `make_figures.py:demo_figures()` builds the demo maps and the COA chart by running `COANet.from_graph(synthetic_theatre(0).G, sim_reps=50)`.
 - `make_figures.py:parse_bench(md)` reads the first table of the `coa-net bench` output. `make_figures.py:bench_chart(md)` draws it.
 - `make_figures.py:Canvas` is a small SVG builder. `page(svg, width)` and `captioned(title, svg)` wrap SVGs in HTML.
@@ -24,10 +26,11 @@ Figures used by `docs/COA-Net_methodology.md` and `README.md`, plus the script t
 
 ## Side Effects
 
-- Writes one HTML page per figure into `--out`. With `playwright` and Chromium installed, it also writes the matching PNG [make_figures.py:main].
+- Writes one HTML page per figure into `--out`. With `playwright` and Chromium installed, it renders the matching PNG at scale 1.5 and deletes the HTML page [make_figures.py:main]. Without the Python package, the `--html-only` page can be rendered by any headless browser at the same scale; the architecture PNG of 3 Nov 2026 was rendered that way, with Node Playwright (2100 × 1905 pixels).
 - Reads the `--bench` markdown file when given [make_figures.py:main].
 - Imports `coa_net` (`baselines`, `parsing`, `pipeline`, `refine`, `render`, `scenarios`) and runs a full plan and refinement in memory [make_figures.py:demo_figures].
 
 ## Verification
 
 - Run: `python docs/figures/make_figures.py --out docs/figures`
+- Run (architecture only, no demo): `python docs/figures/make_figures.py --only coa-net-architecture`

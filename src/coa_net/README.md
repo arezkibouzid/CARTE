@@ -7,8 +7,8 @@
 The package runs as a pipeline of stages, S0 to S10:
 
 - **S0 theatre:** builds the road graph and contracts it into corridors.
-- **S1 requirements:** compiles doctrine into typed requirements.
-- **S2 order and intent:** parses the order, groups convoys and maps the commander's intent.
+- **S1 requirements:** compiles the doctrine documents handed out at the event into one cited requirement base, reconciled across documents and signed off by the instructors.
+- **S2 order and intent:** reads the order document (statement, constraints, desired outputs and illustration), routes the task, reads the sketch, parses the order, groups convoys and maps the commander's intent. A readback records what was understood.
 - **S3 candidates:** generates candidate routes for each group.
 - **S4 criticality:** measures how much each element matters and how likely it is to be lost.
 - **S5 design:** chooses the network with CP-SAT.
@@ -18,7 +18,9 @@ The package runs as a pipeline of stages, S0 to S10:
 - **S9 COAs and briefing:** builds the COA comparison and explanations.
 - **S10 incident loop:** handles incident reports.
 
-Language models fill eight roles, L1 to L8. They only turn text into typed records (L1 doctrine, L2 order, L3 intent, L6 incident) or rephrase facts the code has already computed (L4 red team, L5 briefing, L7 FRAGO, L8 explanations). They never output a route or a coordinate. Every role has a deterministic fallback, so the whole package runs without a model.
+Language models fill nine roles, L1 to L9. They turn text into typed records (L1 doctrine, L2 order, L3 intent, L6 incident), name what the code found (L9 gives each mark that the code found on the order's illustration a role and the order's words for it), or rephrase facts the code has already computed (L4 red team, L5 briefing, L7 FRAGO, L8 explanations). They never output a route or a coordinate. Every role has a deterministic fallback, so the whole package runs without a model.
+
+Doctrine and orders arrive as documents. The organisers confirmed on 3 Nov 2026 that the doctrine is handed out at the event as a set of textual documents, and that orders are multimodal documents like the preparation exercise PDF (a statement, constraints, desired outputs and an illustration drawn on the map). One reader, `documents.py`, serves both. It keeps the document, page and paragraph of every piece of text, so each requirement and each order item can be cited.
 
 ## Interface
 
@@ -41,15 +43,17 @@ Package exports (`__init__.py`): `COA`, `COANet`, `__version__`. Run it as `pyth
 | Subcommand | What it does |
 | --- | --- |
 | `demo` | Runs the synthetic theatre with the sample order and the sample incidents. |
-| `plan --order FILE` | Plans from an order file. The graph source is one of `--place` (OSM), `--graphml`, `--bdtopo` (GeoPackage, or the organisers' v2 ROUTE `.shp`) or `--synthetic N`. Optional: `--places`, `--dem`, `--incident "HH:MM@text"` (repeatable), `--max-rank N` (corridor backbone), `--recce-max N`, `--out`. |
-| `exercise --data DIR --pdf FILE` | Solves an exercise on the organisers' Scenario files; the statement and the sketch are read from the exercise PDF (`--sketch IMG` and `--exercise TEXT` override them). Writes the itinerary and difficult-area layers, the GeoJSON with turns and radii, maps, the decision text and `metrics.json`. Options: `--out`, `--cache`, `--seeds`, `--no-turns`, `--no-compare`, `--no-osm`, explicit file paths. |
+| `plan --order FILE` | Plans from an order: a text file, or a document (PDF, Word, image) read by `orderdoc`. The graph source is one of `--place` (OSM), `--graphml`, `--bdtopo` (GeoPackage, or the organisers' v2 ROUTE `.shp`) or `--synthetic N`. Optional: `--places`, `--dem`, `--incident "HH:MM@text"` (repeatable), `--max-rank N` (corridor backbone), `--recce-max N`, `--out`. Also writes `readback.md`. |
+| `exercise --data DIR --pdf FILE` | Solves an exercise on the organisers' Scenario files. The statement and the illustration are read from the exercise document (PDF, Word or image; `--sketch IMG` and `--exercise FILE` override them). Writes the itinerary and difficult-area layers, the GeoJSON with turns and radii, maps, the decision text, `metrics.json`, `readback.md` and `sketch_marks.png`. Options: `--out`, `--cache`, `--seeds`, `--no-turns`, `--no-compare`, `--no-osm`, `--requirements`, `--provisional`, `--llm` (the sketch reader L9, which needs a vision-language model), explicit file paths. |
 | `audit --data DIR` | Audits a Scenario delivery: files, CRS, encodings, OSM/BD TOPO agreement, scan alignment. |
-| `compile-doctrine [FILE]` | Compiles doctrine into draft requirements. Option: `--out`. |
+| `compile-doctrine [PATH ...]` | Compiles a set of doctrine documents (files or folders of PDF, Word, text or images) into one requirement base: the doctrine's draft instances plus the seed instances they leave. Without a path, it compiles the bundled sample. Writes `requirements.json`, `requirements_doctrine.json`, `corpus_report.md`, `signoff.csv` and `documents.json`. Options: `--out`, `--precedence` (document ids or title words, strongest first), `--no-seed`, `--llm`. |
+| `signoff --base --sheet --out` | Applies a filled sign-off sheet (accept, edit or reject for each instance) to a compiled base. Option: `--reviewer`. |
+| `read-order ORDER` | Reads an order document without the map: the task, the constraints, the desired outputs, the readback, and the command that solves it. Option: `--out` (readback file). |
 | `bench` | Runs the planning and incident benchmarks. Options: `--seeds`, `--convoys`, `--reps`, `--out`. |
 | `fetch-osm --place --out` | Downloads an OSM extract and caches it. |
 | `templates` | Prints the requirement template catalogue. |
 
-Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cpsat`, `--coa`.
+Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the doctrine's draft instances before sign-off; the report says so), `--llm`, `--reps`, `--no-cpsat`, `--coa`.
 
 ### Records (`schemas.py`)
 
@@ -91,8 +95,19 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
   - `parse_exercise` compiles an exercise statement into an `ExerciseSpec` and requirement instances (NET.DISTINCT, SEG.TOWN).
   - `RoadArrays`, `Router` (junction graph), `TurnRouter` (line graph with turn costs), `solve_distinct` (k itineraries, pairwise separation, no intersection).
   - Geometry: `chord_radius`, `turns_on`, `itinerary_facts`, `difficult_areas`, `check`.
-- **`scenario.py`**: `run_exercise` (the `exercise` command), `ScenarioPaths`, `ScenarioRun`, `EXERCISE_1`, `decision_text`.
+- **`scenario.py`**: `run_exercise` (the `exercise` command), `exercise_from_pdf` (statement and illustration of an exercise document), `ScenarioPaths`, `ScenarioRun`, `EXERCISE_1`, `decision_text`.
 - **`audit.py`**: `audit`, `coverage`, `raster_alignment`, `road_ink`, `scan_agreement`.
+
+### Documents (`documents.py`, shared by S1 and S2)
+
+- `read_document(path)` returns a `Document`, made of:
+  - `Block`s: heading, paragraph, list item, table row or caption, each with its page, paragraph number, section, list level and parent block;
+  - `Figure`s: embedded images with their page position, caption, the vector drawings over them, rotation and pixels;
+  - `warnings`: pages read by OCR, pages without text, dropped header and footer lines.
+- `read_documents(paths)` reads every supported file in the given files and folders (recursively, sorted), gives each a unique id, and returns the files it skipped.
+- Formats (`SUPPORTED`): PDF with a text layer (pdfplumber, or pypdf without positions), Word `.docx`, text and Markdown, and images. A page or an image without text is read by OCR when RapidOCR is installed. A file without an extension is recognised by its first bytes.
+- Text helpers: `clean` (ligatures, quotes, dashes, spaces), `match_key` (finds a quote again in its source), `guess_language`, `split_text_sentences`, and `numbers_in` (every number of a text, with thousands written 10k, 10 000, 10,000 or 10.000, and hh:mm as minutes).
+- `render_region` renders a region of a PDF page with the vector drawings over it (needs pypdfium2).
 
 ### S1: requirements and doctrine
 
@@ -104,12 +119,26 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
   - Checks: `validate_instance`, `merge_conflicts`.
   - Tier triggers: `tier_from_trigger`, `find_trigger`, `tier_consistent`.
   - Display: `catalogue_markdown`.
-- **`doctrine.py`**
-  - `compile_doctrine` (role L1) returns `(draft requirements, CompileReport)`.
-  - Helpers: `split_sentences`, `pattern_sentence`.
+- **`doctrine.py`** (one document)
+  - `compile_doctrine(text)` returns `(draft requirements, CompileReport)`.
+  - `compile_items` compiles one document's `(paragraph, sentence, page)` items with role L1 and the pattern compiler. It returns the instances, a `SentenceResult` for each sentence, and a log.
+  - Helpers: `split_sentences`, `pattern_sentence`, `is_normative`, `number_supported`.
+- **`corpus.py`** (the set of documents handed out at the event)
+  - `compile_paths(paths)` and `compile_corpus(docs)` return `(base, CorpusReport)`. The base holds the doctrine's draft instances plus the seed instances they leave.
+  - Steps: `doc_items`, `doc_kind` (standard, doctrine or other), `reconcile` (instances grouped by `rule_key`), `merge_seed`.
+  - Report: `CorpusReport` (with `markdown` and `totals`), `DocStats`, `Conflict`, `cite_source`, and `document_log` (data log entries, rules art. 9.4).
+  - Sign-off: `write_signoff_sheet`, `apply_signoff`, `provisional`.
 
 ### S2: order, intent and mission
 
+- `orderdoc.py` (the order document):
+  - `read_order(path)` returns an `OrderReading`. It holds the document; the task (`TASK_ITINERARIES`, `TASK_MOVEMENT` or `TASK_UNKNOWN`) and the words that decided it; the `OrderItem`s, labelled goal, constraint, output, task, intent or context; the desired outputs as `Deliverable`s matched against `DELIVERABLES`; the illustration; and notes. `reading_from_text` does the same for plain text.
+  - Checks: `check_numbers` (every number the parser kept must be in the document) and `uncovered` (constraint items that no parser recognised).
+  - Readbacks: `readback_markdown`, `exercise_readback`, `movement_readback`, `cite`.
+- `figures.py` (sketch reader):
+  - `read_sketch` returns the marks of the illustration as named map polygons (`EPSG:4326`), with the method that named them.
+  - Steps: `colour_mask` and `overlay_marks` find the marks; `draw_marks` numbers them on a copy (set-of-marks); `name_marks` names them (L9, or `name_by_position`); `georef_marks` maps them through the affine of `scanmap.georeference_sketch`.
+  - Helpers: `names_in`, `roles_in`, `short_label`. Constants: `COLOURS`, `DIRECTIONS`, `ROLES`. Record: `Mark`.
 - `parsing.py`:
   - `parse_order` (L2) and `parse_incident` (L6).
   - `parse_time` and `grading_from_text`.
@@ -182,7 +211,7 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
   - Interactive map: `render_folium`, which needs folium and has no caller in the package.
 - `llm.py`:
   - Client protocol: `LLMClient`.
-  - Clients: `OpenAICompatibleClient`, and `ScriptedLLM` for tests.
+  - Clients: `OpenAICompatibleClient`, and `ScriptedLLM` for tests. Both have `complete_json`, and `complete_json_images` for the sketch reader (L9).
   - Setup and checks: `from_env`, `call_validated`, `unsupported`, `Usage`.
 - `bench.py`:
   - Benchmarks: `run_planning_bench`, `run_incident_bench`.
@@ -195,9 +224,12 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
 
 - **No model output goes in unchecked.** Every model call goes through `call_validated`, with one retry by default. When no model is configured, or the output fails validation, the caller uses its deterministic fallback. [llm.py:call_validated]
 - **Generated text cannot introduce new facts.** Text from a model (FRAGO, briefing, explanation) is kept only if `unsupported(text, facts)` finds no number, time or identifier missing from the facts. Otherwise the template text is used, with `source='template'`. [llm.py:unsupported, orders.py:write_frago, coa.py:briefing, explain.py:phrase]
-- **Doctrine and intent quotes must be verbatim.** A compiled requirement needs a verbatim quote from the doctrine and a tier that matches its modal trigger. Compiled requirements are always `status='draft'`, and only `approved` ones are ever activated. [requirements.py:validate_instance, doctrine.py:compile_doctrine, requirements.py:activate]
+- **Doctrine and intent quotes must be verbatim.** A compiled requirement needs a verbatim quote from the document it cites and a tier that matches its modal trigger. Compiled requirements are always `status='draft'`, and only `approved` ones are activated. The one exception is `--provisional`, which uses the drafts as approved before sign-off and lists their ids in the report. [requirements.py:validate_instance, doctrine.py:compile_items, requirements.py:activate, corpus.py:provisional, cli.py:_base]
 - **The intent mapper is constrained.** Its model output must be a permutation of `MENU`, with verbatim quotes and tolerances within [0, 0.5]. Otherwise the keyword mapper is used. [intent.py:map_intent]
-- **Doctrine compilation does not mix paths.** When a model is configured, `compile_doctrine` uses only model instances. The pattern compiler does not run, even for sentences the model left empty. [doctrine.py:_llm_instances]
+- **Doctrine compilation unites the two paths, and checks the model.** With a model, a pattern instance is added for every template the model did not fill on a sentence, so a model miss does not look like a catalogue gap. A model instance is kept only if its quote is one of the passages sent and every number it gives is stated by that quote. `number_supported` accepts the quote's numbers scaled by 60, 1000 or 100, and percentages as 1 ± n/100. A dropped instance is logged. [doctrine.py:compile_items, doctrine.py:_l1_call, doctrine.py:number_supported]
+- **L1 calls are bounded.** For each template, L1 reads the retrieved passages in batches of 8, at most 4 batches, so 112 calls at most for the 28 templates. Lower-ranked passages go to the pattern compiler only, and the log says how many. [doctrine.py:_llm_instances]
+- **Documents are data, not instructions.** The L1, L2, L6 and L9 prompts put the document text between markers and say that it is data. [doctrine.py:_l1_call, parsing.py:parse_order, parsing.py:parse_incident, figures.py:_l9]
+- **The sketch reader only names.** Code finds the marks and maps them. L9 returns, for each mark number, a role from `ROLES` and the order's words for it. Its answer is rejected if a mark number does not exist, a role is not in the list, a name or its evidence is not in the order, or a name is given to two marks; position words then name the marks. The image sent is at most 1024 pixels on its longest side. [figures.py:name_marks, figures.py:_l9, figures.py:_image_url]
 - **Parsed order fields are checked against the code's data.**
   - The intent text must be a verbatim copy of the order.
   - Vehicle types must exist in the catalogue.
@@ -221,7 +253,18 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
 - **Implausible slopes are unknown.** A section steeper than `MAX_PLAUSIBLE_SLOPE_PCT` (35 %) gets no slope and `slope_suspect=True`. [realdata.build_graph]
 - **Convoy terminals sit on roads the column can use.** If a group's origin cannot reach the largest strongly connected set of its usable corridor arcs (or its destination cannot be reached from it), `build_context` moves it to the nearest junction of that set, at most `TERMINAL_MAX_MOVE_M` (5 km) away, names the junction if unnamed, and adds a note. [mission._usable_terminals]
 - **Systemic unknowns.** When an attribute is missing on at least 90 % of the roads a requirement looks at (bridge load class in BD TOPO and OSM), `forbid` would close every such road, so the policy becomes `risk` and the change is reported. [realdata.py:systemic_unknowns]
+- **Sketch geometry comes from code.** A mark's polygon is the convex hull of its pixels, mapped through the RANSAC affine fitted on place names read on both the sketch and the scans. If a zone named in the order is not among the marks, `run_exercise` stops with `ValueError` and points to `sketch_marks.png`. [figures.py:georef_marks, scanmap.py:georeference_sketch, scenario.py:run_exercise]
 - **Exercise itineraries are checked from the geometry.** Separation, intersection, zone membership, towns and blocked roads are recomputed on the output lines, not taken from the solver. [exercise.py:check]
+
+### Documents, doctrine set and orders
+
+- **Provenance is kept.** Every block keeps its document, page, paragraph number and section. Every compiled instance cites its document, page and paragraph (`Source.page`), and its quote is checked against the document it cites. [documents.py:Block, doctrine.py:compile_items, corpus.py:cite_source]
+- **One unreadable file does not stop the set.** `read_documents` skips it and lists it, as it does for formats it does not read. [documents.py:read_documents]
+- **Reconciliation across documents.** Instances with the same `rule_key` (template, constraint or objective, scope and discriminators) state the same rule. Equal values corroborate each other. Between documents of different precedence, the stronger document wins. At the same precedence, the stricter tier is kept and each parameter takes the stricter value. A rule stated as a constraint in one document and as an objective in another keeps both, and the constraint applies. Every case is listed in the corpus report. Precedence is the `--precedence` list first, then standards (STANAG, AMovP, ATP and similar), then general doctrine (AJP), then other documents. [corpus.py:reconcile, corpus.py:compile_corpus, corpus.py:doc_kind]
+- **The seed base only fills gaps.** A seed parameter that the doctrine states for the same template and check (in any scope) is dropped from the seed instance, and a seed instance with no parameter left is dropped. The report lists what was replaced and what was kept. [corpus.py:merge_seed]
+- **Sign-off.** `accept` approves, `reject` rejects, and `edit` approves the edited parameters and tier after validation; an invalid edit leaves the draft. Any other decision leaves the draft and is reported. [corpus.py:apply_signoff]
+- **Task routing.** A document that asks for itineraries and has no convoy line, departure time or march table is an `itineraries` task. Any of those makes it a `movement` task, even when it also asks for itineraries. Neither gives `unknown`, which is left to the operator. [orderdoc.py:read_order]
+- **What the order reader cannot enforce is said.** The readback lists as NOT ENFORCED every constraint item that no parser recognised, as NOT PRODUCED every desired output that no writer produces, and every number the parser kept that is not in the document. [orderdoc.py:uncovered, orderdoc.py:check_numbers, orderdoc.py:readback_markdown]
 
 ### Design and schedule
 
@@ -257,15 +300,20 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
 - `plan` raises `ValueError` when the order has no convoys. [pipeline.py:COANet.plan]
 - `report` requires `plan` to have run first. [pipeline.py:COANet.report]
 - The template catalogue must have exactly 28 entries, checked by an assert at import time. [requirements.py:TEMPLATES]
+- `exercise` raises `ValueError` when the exercise document has no image (give `--sketch`), or when a zone named in the order is not among the marks read on the sketch. [scenario.py:exercise_from_pdf, scenario.py:run_exercise]
+- The constraints compiled from an exercise statement (NET.DISTINCT, SEG.TOWN) are appended to the requirement base without a conflict check against the doctrine's instances. [scenario.py:run_exercise]
+- Two-column page layouts are not handled. A PDF page without a text layer gives no text when RapidOCR is not installed; the document's warnings say so. A `.docx` needs python-docx. [documents.py:_read_pdf, documents.py:_read_docx]
 
 ## Side Effects
 
 - **Network calls:**
   - HTTP POST to `{COA_LLM_BASE_URL}/chat/completions` for each model role. [llm.py:OpenAICompatibleClient._post]
+  - The sketch reader (L9) also sends the numbered sketch, as a PNG data URL of at most 1024 pixels on its longest side. [figures.py:_l9, llm.py:OpenAICompatibleClient.complete_json_images]
   - OSM downloads through osmnx. [loaders.py:load_osm, loaders.py:save_graphml_osm, loaders.py:annotate_landuse_osm]
 - **Environment variables:** `COA_LLM_BASE_URL`, `COA_LLM_MODEL`, `COA_LLM_API_KEY`, `COA_LLM_JSON_SCHEMA`. [llm.py:from_env]
 - **Disk reads:**
   - Order, doctrine and places files. [cli.py]
+  - Doctrine documents and folders, and order documents (PDF, Word, text, images). [documents.py:read_document, documents.py:read_documents]
   - GraphML, BD TOPO and DEM files. [loaders.py]
   - Scenario shapefiles, scans and the exercise sketch. [realdata.py, scanmap.py, scenario.py]
   - Packaged `data/`. [requirements.py:load_requirements, scenarios.py:sample_text]
@@ -273,18 +321,21 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
 - **Disk writes:**
   - `report.html`, `panel_NN.svg`, `network.geojson`, `facts.md`, `fragos.txt`, `metrics.json`. [pipeline.py:COANet.report, render.py:write_html]
   - The requirements JSON. [requirements.py:save_requirements]
+  - `compile-doctrine`: `requirements.json`, `requirements_doctrine.json`, `corpus_report.md`, `signoff.csv` and `documents.json`. `signoff`: the signed base. `read-order --out`: the readback. `plan`: `readback.md`. [cli.py:cmd_compile, corpus.py:write_signoff_sheet, cli.py:cmd_signoff, cli.py:cmd_read_order, cli.py:cmd_plan]
   - The bench markdown. [cli.py:cmd_bench]
   - The GraphML cache. [loaders.py:save_graphml_osm]
   - The folium map. [render.py:render_folium]
-  - Exercise outputs: `itineraries.geojson`, `difficult_areas.geojson`, `zones.geojson`, `towns_over_threshold.geojson`, `map_*.png`, `decision_process.txt`, `metrics.json`, and the OCR, built-up and zone cache. [scenario.py:run_exercise, scanmap.py:ocr_labels]
+  - Exercise outputs: `itineraries.geojson`, `difficult_areas.geojson`, `zones.geojson`, `towns_over_threshold.geojson`, `map_*.png`, `decision_process.txt`, `metrics.json`, `readback.md`, `sketch_marks.png`, `input/` (the sketch image, `exercise.txt` and `blocks.json`), and the OCR, built-up, zone, georeferencing and marks cache. [scenario.py:run_exercise, scenario.py:exercise_from_pdf, scanmap.py:ocr_labels, cli.py:cmd_exercise]
 - **Graph and state mutation:**
   - `finalize_graph` and `normalize_edge` rewrite edge attributes.
   - `BeliefState.apply` writes `closed`, `closed_p`, `threat` and `weather` into `G`.
   - `RECCE_RESULT` writes the reported attributes onto edges.
   - `add_articulation` adds elements to the shared `H`.
   - `PlanState` is mutated in place by every incident.
+  - `apply_signoff` sets the status of the instances it is given in place (accept, reject); an edit makes a new instance.
+  - `name_marks` writes names and roles onto the `Mark`s.
 
-  [graph.py:finalize_graph, belief.py:BeliefState.apply, incidents.py:handle_incident, corridors.py:CorridorGraph.add_articulation]
+  [graph.py:finalize_graph, belief.py:BeliefState.apply, incidents.py:handle_incident, corridors.py:CorridorGraph.add_articulation, corpus.py:apply_signoff, figures.py:name_marks]
 - **Global state:** the osmnx `settings.useful_tags_*` lists are extended. [loaders.py:load_osm] The road-name part of the gazetteer is cached per graph (weak reference, rebuilt when the graph's size changes). [graph.py:gazetteer]
 - **Compute:**
   - Each CP-SAT `Solve` uses up to `time_limit_s`, and one design runs several solves, one per objective level.
@@ -300,4 +351,5 @@ Flags shared by `demo` and `plan`: `--requirements`, `--llm`, `--reps`, `--no-cp
 
 - Run: `pytest` (configured in `pyproject.toml`, `testpaths = ["tests"]`)
 - Run: `coa-net demo --out outputs/demo`
-- Run (organisers' data, `pip install -e ".[real]"`): `coa-net exercise --data DIR --sketch IMG --out outputs/exercise1`
+- Run (organisers' data, `pip install -e ".[real,docs]"`): `coa-net exercise --data DIR --pdf exercise_for_preparation.pdf --out outputs/exercise1`
+- Run (documents, `pip install -e ".[docs]"`): `coa-net read-order exercise_for_preparation.pdf --out outputs/readback.md` and `coa-net compile-doctrine DOCTRINE_FOLDER --out outputs/doctrine`

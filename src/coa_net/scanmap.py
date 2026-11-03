@@ -305,29 +305,11 @@ def georeference_sketch(path: str, labels: list[Label], scale: float = 2.0, seed
 
 
 def sketch_zones(path: str, geo: SketchGeoref, n: int = 2, min_px: int = 2000):
-    """The translucent blue areas drawn on the sketch, as polygons (EPSG:4326), largest first, named by position."""
-    import geopandas as gpd
-    from scipy import ndimage
-    from shapely.geometry import MultiPoint
+    """The translucent blue areas drawn on the sketch, as polygons (EPSG:4326), largest first, named by position
+    (North, South). ``figures.read_sketch`` does the same with the order's own names and the sketch reader."""
+    from .figures import read_sketch
 
-    a = _sketch_image(path, geo.rotation, geo.scale).astype(int)
-    r, g, b = a[..., 0], a[..., 1], a[..., 2]
-    m = (b - r > 60) & (b - g > 30) & (b > 150)
-    m = ndimage.binary_closing(m, iterations=int(4 * geo.scale))
-    lab, k = ndimage.label(m)
-    sizes = ndimage.sum(m, lab, range(1, k + 1))
-    order = [i + 1 for i in np.argsort(-sizes)[:n] if sizes[i] >= min_px]
-    polys = []
-    for i in order:
-        ys, xs = np.nonzero(lab == i)
-        X, Y = geo.to_l93(xs.astype(float), ys.astype(float))
-        hull = MultiPoint(np.column_stack([X, Y])[:: max(1, len(X) // 20000)]).convex_hull
-        polys.append(hull)
-    gdf = gpd.GeoDataFrame({"px": [int(sizes[i - 1]) for i in order]}, geometry=polys, crs="EPSG:2154")
-    gdf["area_km2"] = gdf.area / 1e6
-    cy = gdf.centroid.y
-    gdf["zone"] = ["North" if y == cy.max() else "South" if y == cy.min() else f"Zone {j}" for j, y in enumerate(cy)]
-    return gdf.to_crs("EPSG:4326")
+    return read_sketch(path, geo, "the North zone and the South zone", n=n, min_px=min_px)[0]
 
 
 def reread_populations(tif: str, labels: list[Label], towns: list[Town], min_height_px: float = 30.0,

@@ -295,6 +295,7 @@ class Source(BaseModel):
     document: str = "seed base"
     paragraph: str = ""
     quote: str = ""
+    page: int = 0  # page of the quote in the source document (0: no pages, or not recorded)
 
 
 class Requirement(BaseModel):

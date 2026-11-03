@@ -2,16 +2,18 @@
 
 Prototype for the AMIAD hackathon (Rennes, 12-14 Nov 2026): design the maneuver road network for military logistic convoys from a map, doctrine, a logistic order and live incident reports, with language models of at most a few tens of billions of parameters.
 
-**Core idea.** COA-Net plans the way a movement-control cell does. It first designates one shared network (main and alternate supply routes, route statuses, traffic control posts, halt areas) that keeps every convoy moving after the loss of any single bridge, tunnel or other critical element, wherever the road network allows it. It then gives every march unit a time slot on that network (movement credits), and presents the result as two to four courses of action (COAs) with their trade-offs. Small language models never draw a route: they turn doctrine into typed requirements, the commander's intent into an order of priorities, and computed facts into a COA comparison and fragmentary orders (FRAGOs). CP-SAT models design the network and the schedule, a rule checker verifies every requirement, a simulator measures resilience, and contingency playbooks are briefed before departure. The full design, its rationale and the experimental plan are in [docs/COA-Net_methodology.md](docs/COA-Net_methodology.md); section 11 there describes this implementation and its measured results.
+**Core idea.** COA-Net plans the way a movement-control cell does. It first designates one shared network (main and alternate supply routes, route statuses, traffic control posts, halt areas) that keeps every convoy moving after the loss of any single bridge, tunnel or other critical element, wherever the road network allows it. It then gives every march unit a time slot on that network (movement credits), and presents the result as two to four courses of action (COAs) with their trade-offs. Small language models never draw a route: they turn the doctrine documents handed out at the event into typed, cited requirements, read each order document (text and illustration) into a task the operator confirms, turn the commander's intent into an order of priorities, and turn computed facts into a COA comparison and fragmentary orders (FRAGOs). CP-SAT models design the network and the schedule, a rule checker verifies every requirement, a simulator measures resilience, and contingency playbooks are briefed before departure. The full design, its rationale and the experimental plan are in [docs/COA-Net_methodology.md](docs/COA-Net_methodology.md); section 11 there describes this implementation and its measured results.
 
 ![COA-Net architecture](docs/figures/coa-net-architecture.png)
+
+**Organisers' answer (3 Nov 2026).** The NATO doctrine is handed out during the hackathon as a set of textual documents, and orders are multimodal documents like the example exercise (text, an illustration with the zones drawn on a map crop, and the desired outputs). COA-Net therefore compiles the doctrine set at the event, with a citation (document, page, paragraph) on every requirement, a provisional base usable at once and a sign-off sheet for the instructors; it reads each order as a document, routes it to the right solver, and writes a readback of what it understood, what it cannot enforce and what it cannot produce. On the illustration, code finds the drawn zones and a vision-language model only names them. Methodology section 2.4 lists the changes; section 11.6 gives the measured results.
 
 ## Quick start
 
 ```bash
 pip install -e ".[dev]"          # networkx, pydantic, requests, ortools, pytest
 coa-net demo                     # synthetic theatre, order LOG-01, three incidents
-pytest                           # 82 tests, about 20 s
+pytest                           # 95 tests, about 30 s (document tests skip without the `docs` extra)
 coa-net bench --seeds 20         # baselines B0-B1 against COA-Net, incident loop with and without playbooks
 ```
 
@@ -63,8 +65,8 @@ Reading it: COA-Net removes every avoidable single point of failure (95 % of gro
 | Stage (methodology section 5) | Module | Status |
 | --- | --- | --- |
 | S0 theatre preparation | `graph.py`, `corridors.py`, `loaders.py`, `scenarios.py` | Road graph contracted into corridors between decision points (shortest paths stay exact); critical elements: bridges, tunnels, level crossings, fords, ferries, defiles, and per-group articulation points; OSM and BD TOPO loaders; synthetic theatre with planted constraints and halt areas. Missing attributes stay *unknown*. |
-| S1 requirement base (L1) | `requirements.py`, `doctrine.py` | 28 requirement templates (26 doctrinal, plus SEG.TOWN and NET.DISTINCT added for the organisers' exercise format) at five levels (road, route, network, schedule, protection) and four tiers; compiler with a model path (schema, verbatim quote, tier and range checks) and a pattern fallback; coverage report (95.7 % of the sample doctrine). |
-| S2 order and intent (L2, L3) | `parsing.py`, `mission.py`, `intent.py` | Order parser (model or regex fallback, unknown vehicle types flagged), convoy groups and march units, intent mapped to a priority order with quotes and imperatives to confirm. |
+| S1 requirement base (L1) | `documents.py`, `doctrine.py`, `corpus.py`, `requirements.py` | 28 requirement templates (26 doctrinal, plus SEG.TOWN and NET.DISTINCT added for the organisers' exercise format) at five levels (road, route, network, schedule, protection) and four tiers. A set of doctrine documents (PDF, Word, text, scans) is read with page, paragraph and section, compiled in one pass (model instances checked for quote and numbers, united with the pattern compiler), reconciled across documents (precedence, then the stricter value; conflicts listed), and completed by the seed base; outputs a base usable at once with `--provisional`, a sign-off sheet and a corpus report with coverage per document. |
+| S2 order understanding and intent (L2, L3, L9) | `documents.py`, `orderdoc.py`, `figures.py`, `parsing.py`, `mission.py`, `intent.py` | Order documents (PDF, Word, text, image): block roles, task routing (itineraries or movement), desired outputs mapped to writers, every number checked against the document, a readback with NOT ENFORCED and NOT PRODUCED items. Sketch reader: marks found by colour, georeferenced on the place names, named by the model (L9) or by the order's position words. Convoy groups and march units, intent mapped to a priority order with quotes and imperatives to confirm. |
 | S3 candidate routes | `candidates.py` | Pareto routes, label-setting search for halts, crossings and range, turn-expanded search for long vehicles, replacement routes, cheapest element-disjoint pairs, articulation points. |
 | S4 criticality (L4) | `criticality.py` | Exact structural impact of every loss, irreducible SPOFs, likelihood from the red-team model or a table by element type, fused with reported threats; loss scenarios. |
 | S5 network design | `design.py` | Path-based model on CP-SAT: survivability, detour guard, objectives optimised one at a time in the priority order with tolerances (lateness first); COA archetypes; greedy fallback. |
@@ -91,11 +93,25 @@ export COA_LLM_MODEL=mistralai/Mistral-Small-3.2-24B-Instruct-2506
 export COA_LLM_JSON_SCHEMA=1                          # 0 if the server lacks structured output
 # COA_LLM_API_KEY if the server needs one
 
-coa-net compile-doctrine path/to/doctrine.txt --llm --out rules/requirements.json   # draft instances, to review
-coa-net demo --llm --requirements rules/requirements.json
+coa-net compile-doctrine path/to/doctrine/ --llm --out rules/     # drafts with citations, corpus report, sign-off sheet
+coa-net demo --llm --requirements rules/requirements.json --provisional
+coa-net exercise --data DATA --pdf exercise.pdf --llm --out outputs/ex1           # the sketch reader (L9) sends the numbered illustration
 ```
 
-Every model output is checked by code (schema, verbatim quotes, numbers and identifiers that must appear in the computed facts) and replaced by the deterministic fallback after one failed retry. Token usage per stage goes to `metrics.json`.
+Every model output is checked by code (schema, verbatim quotes, numbers stated by their quote or found in the order, identifiers that must appear in the computed facts, mark names taken from the order) and replaced by the deterministic fallback after one failed retry. The sketch reader needs a vision-language model behind the same endpoint (Mistral Small 3.2 takes images). Token usage per stage goes to `metrics.json`.
+
+## Doctrine and orders as documents
+
+```bash
+pip install -e ".[docs]"         # pdfplumber, python-docx, pypdfium2, pypdf, pillow, rapidocr, scipy
+coa-net compile-doctrine DOCTRINE_DIR --out outputs/base       # requirements.json (drafts + seed), corpus_report.md, signoff.csv, documents.json
+coa-net signoff --base outputs/base/requirements.json --sheet outputs/base/signoff.csv --out outputs/base/approved.json --reviewer NAME
+coa-net read-order exercise.pdf --out outputs/ex1/readback.md  # what was understood, not enforced, not produced; the command that solves it
+coa-net exercise --data DATA --pdf exercise.pdf --requirements outputs/base/requirements.json --provisional --out outputs/ex1
+coa-net plan --order order.docx --requirements outputs/base/approved.json --out outputs/plan
+```
+
+`--precedence` sets which documents win a conflict (default: the order, then movement standards such as STANAG or AMovP, then general doctrine such as AJP, then other documents), and `--no-seed` compiles the documents alone. A run with `--provisional` uses the drafts before sign-off and says PROVISIONAL in every output. Measured on the organisers' PDFs (methodology section 11.6): exercise 1 read and routed in under 0.5 s with nothing left unenforced or unproduced; a 12-page French PDF read in 1.3 s with its running heads dropped; a stand-in doctrine set of 16 pages compiled in 1.7 s.
 
 ## Real maps
 
@@ -143,7 +159,11 @@ src/coa_net/
   scenarios.py     synthetic theatre, random missions and incidents
   vehicles.py      vehicle catalogue (illustrative values), binding profiles, march columns
   requirements.py  28 templates, tiers, seed requirement base
-  doctrine.py      S1 doctrine compiler and coverage (L1)
+  documents.py     document intake: PDF, Word, text, images (OCR); blocks with page, paragraph, section; figures and captions
+  doctrine.py      S1 doctrine compiler for one document (L1, united with the patterns)
+  corpus.py        S1 doctrine set: reconciliation, seed fill-in, sign-off sheet, provisional base, corpus report
+  orderdoc.py      S2 order documents: block roles, task routing, desired outputs, number checks, readback
+  figures.py       S2 sketch reader: marks by colour, set-of-marks image, naming (L9 or position words), georeferencing
   parsing.py       order parser (L2), incident parser (L6)
   intent.py        S2 intent to priority order (L3)
   mission.py       S2 groups, march units, active requirements
@@ -190,7 +210,7 @@ Each code folder has a README that lists its public interface, the rules develop
 - **Plan validity.** A plan is valid when no T0/T1 requirement is violated. Missing map data is reported as `unknown` and priced as risk, never counted as a violation. [`verify.py:VerificationReport.ok`]
 - **Requirements must be approved before they apply.**
   - Only `approved` requirements are activated.
-  - Requirements compiled from doctrine are `draft` until a person approves them.
+  - Requirements compiled from doctrine are `draft` until a person approves them (`coa-net signoff`). A run with `--provisional` uses them before sign-off and marks every output PROVISIONAL, with the drafts it used.
   - The bundled `data/seed_requirements.json` file is pre-approved, but its sources are not doctrine. 24 records are stand-in rules of common movement-control practice and 13 are template default values; all are to be confirmed with the instructors. 13 records are marked `assumption: true`.
 
   So "valid" in the demo means valid against this seed base. [`requirements.py:activate`, `doctrine.py:compile_doctrine`]
@@ -200,9 +220,10 @@ Each code folder has a README that lists its public interface, the rules develop
 ### Side effects
 
 - **Outputs:** written under `outputs/`, which git ignores, unless `--out` is given:
-  - `report.html`, `panel_*.svg`, `network.geojson`, `facts.md`, `fragos.txt`, `metrics.json`
+  - `report.html`, `panel_*.svg`, `network.geojson`, `facts.md`, `fragos.txt`, `metrics.json`, `readback.md`
   - `bench.md`
-  - `compiled_requirements.json`
+  - `compile-doctrine`: `requirements.json`, `requirements_doctrine.json`, `corpus_report.md`, `signoff.csv`, `documents.json`
+  - `exercise --pdf`: `exercise.txt`, `blocks.json`, `sketch_marks.png`, `readback.md`, with the layers and texts listed above
 - **Model server:** an optional OpenAI-compatible model server, configured with `COA_LLM_BASE_URL`, `COA_LLM_MODEL`, `COA_LLM_API_KEY` and `COA_LLM_JSON_SCHEMA`.
 - **Map data:**
   - Optional OSM downloads through osmnx, cached as GraphML; `cache/` and `*.graphml` are git-ignored.
@@ -212,7 +233,8 @@ Each code folder has a README that lists its public interface, the rules develop
 ## Next steps before the event
 
 1. Ask the ETLO for the PFM characteristics (weight, MLC, width, height, length) and any bridge classification, and calibrate the turn costs and difficult-turn thresholds with them (see [docs/real_data_validation.md](docs/real_data_validation.md), section 9).
-2. Give `parse_exercise` a model path (same schema, verbatim quotes checked, patterns as the fallback) and run the language-model roles with Mistral Small 3.2 24B and Qwen3-32B; measure tokens and the precision of the compiled requirements and exercise specs.
-3. Cross-check the OCR town populations with the INSEE populations joined on the BD TOPO commune codes.
-4. Baselines B2 and B3 (whole map card or rendered map given to the model), to answer the brief's hypothesis on equal terms.
-5. Pre-register parameters (detour guard, tolerances, likelihood table, belief thresholds, turn costs) before the event.
+2. Run the language-model roles with Mistral Small 3.2 24B on the organisers' H100 server, L1, L2 and L9 first; measure tokens, times and the precision of the compiled requirements and readbacks. Give `parse_exercise` a model path (same schema, verbatim quotes checked, patterns as the fallback).
+3. Rehearse the first hours of the event (methodology section 12): a stand-in doctrine set of public NATO texts, and exercises written like exercise 1 with other colours, points instead of zones and a convoy movement.
+4. Cross-check the OCR town populations with the INSEE populations joined on the BD TOPO commune codes.
+5. Baselines B2 and B3 (whole map card or rendered map given to the model), to answer the brief's hypothesis on equal terms.
+6. Pre-register parameters (detour guard, tolerances, likelihood table, belief thresholds, turn costs) before the event.

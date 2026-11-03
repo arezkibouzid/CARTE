@@ -1,18 +1,22 @@
 # COA-Net: network-first, threat-aware design of logistic convoy road networks
 
-AMIAD hackathon (Rennes, 12-14 Nov 2026) · methodology · 2 Nov 2026
+AMIAD hackathon (Rennes, 12-14 Nov 2026) · methodology · 3 Nov 2026
 
-> **Implementation status (2 Nov 2026).** COA-Net is implemented in this repository (`src/coa_net`, 48 tests). Section 7 gives the worked example as computed by the code; section 11 maps every stage to its module, gives the measured results on 100 synthetic scenarios, and lists the known deviations from this specification. Several safety controls are specified here but not yet built; section 11.4 lists them. Where other sections say "estimate", section 11 has a measured value only for what it covers: tokens, real-data loading and model quality are still unmeasured.
+> **Implementation status (3 Nov 2026).** COA-Net is implemented in this repository (`src/coa_net`, 95 tests). Section 7 gives the worked example as computed by the code; section 11 maps every stage to its module, gives the measured results on 100 synthetic scenarios and on the organisers' documents, and lists the known deviations from this specification. `docs/real_data_validation.md` reports the run on the organisers' Scenario 1 data and exercise 1. Several safety controls are specified here but not yet built; section 11.4 lists them. Where other sections say "estimate", section 11 has a measured value only for what it covers: tokens and model quality are still unmeasured, because no language model has been run yet.
+
+> **Inputs clarified by the organisers (3 Nov 2026).** The NATO doctrine will be handed out during the hackathon as a set of textual documents (the rules, art. 10.4, describe them as STANAG and other NATO documents released to the public). Orders will be multimodal documents like the example `exercise_for_preparation.pdf`: a goal and constraints in text, the desired outputs, and an illustration of the situation with the geographical objectives drawn on a map crop. The format of incidents is not confirmed. This revision therefore compiles the doctrine at the event, reads each order as a document with its illustration, and adds a vision-language role (L9) that names the marks code finds on the illustration. Section 2.4 lists every change.
 
 ## At a glance
 
-**COA-Net designs the maneuver road network the way a movement-control cell does: it first designates one shared network (main and alternate routes, critical points, traffic control posts, halt areas, route status) that keeps working when any single bridge or tunnel is lost (defiles are specified but not detected yet), then gives every convoy a time slot on it (movement credits), and presents the result as two to four courses of action (COAs) with their trade-offs.** Small language models (8 to 32 billion parameters, written 8-32B) never draw routes. They turn doctrine into typed requirements at five levels (road, route, network, schedule, protection), turn the commander's intent into an order of priorities, rank the points an adversary is most likely to strike, write the COA comparison and the fragmentary orders (FRAGOs), and parse incident reports. CP-SAT models design the network and the schedule, a rule checker verifies every requirement, and a discrete-event simulator measures resilience.
+**COA-Net designs the maneuver road network the way a movement-control cell does: it first designates one shared network (main and alternate routes, critical points, traffic control posts, halt areas, route status) that keeps working when any single bridge or tunnel is lost (defiles are specified but not detected yet), then gives every convoy a time slot on it (movement credits), and presents the result as two to four courses of action (COAs) with their trade-offs.** Small language models (8 to 32 billion parameters, written 8-32B) never draw routes. They turn the doctrine documents handed out at the event into typed requirements at five levels (road, route, network, schedule, protection), each citing its document, page and paragraph; read the order document, text and illustration, into a task specification that the operator confirms; turn the commander's intent into an order of priorities; rank the points an adversary is most likely to strike; write the COA comparison and the fragmentary orders (FRAGOs); and parse incident reports. On an illustration, code finds the drawn zones and a vision-language model only says which is which. CP-SAT models design the network and the schedule, a rule checker verifies every requirement, and a discrete-event simulator measures resilience.
 
-**Results so far** (implementation, synthetic data, every language-model role on its deterministic fallback):
+**Results so far** (implementation, every language-model role on its deterministic fallback):
 
 - **Demo** (section 7): three convoys, four bridges and a tunnel on a synthetic theatre. Every convoy that can keep a designated route after the loss of any single bridge or tunnel gets one. The convoy that cannot (C2, tank transporters, whose only crossing within the detour guard is Pont-Est) is reported as an irreducible single point of failure, with a reconnaissance task whose answer could remove it. 325 rule checks pass, four contingency playbooks are briefed before departure, and planning takes about 4 s on a 4-core CPU.
 - **100 random theatres and missions** (section 11.3): the share of convoy groups left with an avoidable single point of failure falls from 95 % with vehicle-aware fastest routes to 0 %, for 4.5 % more travel time and 59 % more designated network (29.0 to 46.1 km). By the plan's own model, with assumed probabilities and penalties, the expected delay over loss scenarios falls from 175 to 72 vehicle·minutes. In the simulator, the weighted delay falls about 10 %, from 43.0 to 38.5, and the confidence intervals overlap.
 - **Incident loop** (section 11.3): a playbook or a repair, FRAGO included, in about 0.5 s on average and about 3 s at most, without language models. 85 % of the plans handled this way pass verification afterwards; the others keep schedule or halt violations, and the order is still written (section 11.4).
+- **Organisers' exercise 1, read from its PDF** (sections 5 and 11.6): the order is read in 0.3 s and routed as an itineraries task. The readback lists the six items understood, each with its quote and page, the two zones read on the illustration, and the four desired outputs, all produced; no constraint is left unenforced and every number kept is found in the document. The three itineraries (60.8, 55.0 and 65.6 km, at least 6.4 km apart) pass the 19 checks, as in `docs/real_data_validation.md`.
+- **Doctrine compiled at the event**, rehearsed on stand-ins because the real set arrives on 12 Nov (section 11.6): three documents (16 pages, 369 sentences) compile without a model in 1.7 s into 23 draft instances, each citing its document and paragraph, with no conflict; the seed base keeps 14 of its 37 instances for the gaps. The organisers' rules and description, which are not doctrine, give no instance.
 
 ## Contents
 
@@ -40,14 +44,17 @@ The brief asks for a solution that determines a *réseau routier de manœuvre* f
 
 The brief's hypothesis is that multimodal models with very large context windows (several hundred thousand tokens) could take doctrine, vehicle composition, timing and incidents into account on top of the map. It also allows the other option, extracting constraints with language processing and giving them to a path-finding algorithm. COA-Net takes that second option and tests the first through baselines B2 and B3 (hypothesis H7).
 
+**What the organisers clarified (3 Nov 2026).** Two questions of section 13 now have answers. The doctrine will be provided during the hackathon as a set of textual documents, STANAG and other NATO documents released to the public (rules, art. 10.4), so it cannot be compiled and signed off before the event. Orders will be multimodal documents like the example exercise, which follows the format the preliminary description announces: an illustration of the situation with geographical objectives (deployment zones, start and finish points), a set of constraints with a description of the goal, and the desired outputs. The rules add that the same incidents are submitted to every team at predefined times (art. 9.1); their format is still unknown. Among the jury's criteria (art. 13.3) are the number of exercises solved in the time allowed and the number of context elements taken into account (section 8), so reading each new order quickly and completely matters as much as planning it.
+
 ### 1.2 Principles
 
 The reference benchmarks show that vision-language models are unreliable at route-finding on maps: on CartoMapQA the best model connects origin and destination in only 37.8 % of cases, and on FRIEDA the best model reaches 38.2 % against 84.9 % for humans. COA-Net therefore follows five principles:
 
-- The language model never outputs coordinates or routes. Every model output is a typed record that code validates.
+- The language model never outputs coordinates or routes. Every model output is a typed record that code validates. On an order's illustration, code finds and georeferences the drawn marks; the model only names them.
 - Missing map attributes are unknown, not optimistic (three-valued logic).
 - A rule checker re-checks every requirement on the final plan, and every road choice can be traced to a requirement.
-- Doctrine is compiled once into requirements, so the context stays small.
+- Doctrine is compiled once into requirements, so the context stays small. The documents arrive at the event, so the compilation runs there, in minutes, and every requirement cites the document, page and paragraph it comes from.
+- Nothing in an order is dropped silently: what was understood, what no template can enforce and what no writer can produce are read back to the operator before planning.
 - Incidents trigger a local and stable repair, not a new plan from scratch.
 
 ### 1.3 What a movement-control planner needs
@@ -85,7 +92,7 @@ The reference benchmarks show that vision-language models are unreliable at rout
 - Replacing the operator: COA-Net proposes and explains, and a person decides.
 - Protecting against two simultaneous strikes: survivability covers single losses, and chosen pairs only in the worst-case variant.
 - Tracking vehicles live: positions are estimated from the schedule until position reports exist.
-- Reading maps supplied only as images: S0 needs vector data (risk R17).
+- Building the road network from images: S0 needs vector data (risk R17). Images are read for what vector data lacks: the zones and points drawn on an order's illustration (S2), and town names and populations on the scans (`docs/real_data_validation.md`).
 - Tactical manoeuvre, combat routing or anything beyond logistic road movement.
 
 ### 1.6 Alternatives considered
@@ -99,7 +106,9 @@ These are design reasons, not measurements, except where a section is cited.
 | Weighted sum of penalties | Nothing in doctrine sets the weights (section 4.4) |
 | Network design on arcs instead of whole routes | Route-level rules such as halts and crossing limits are harder to state on arcs; whole routes make them easy to check |
 | A mixed-integer solver for design and CP-SAT for scheduling | One solver for both keeps the stack smaller, and OR-Tools carries a free licence (R13) |
-| Retrieve doctrine at planning time (RAG) | Compiling once into typed rules keeps the context small and makes every rule checkable |
+| Retrieve doctrine at planning time (RAG) | Compiling once into typed rules keeps the context small and makes every rule checkable. Retrieval is still used inside the compiler, to send each template only the passages that may state it (S1) |
+| Put the whole doctrine set in a long context at planning time | Its size is unknown until the event, every plan would pay its tokens, and nothing would check that a rule was applied or show where it came from |
+| A vision-language model reads the illustration and returns the zones | Models locate things on maps poorly (section 1.2). Code finds the marks by colour and georeferences them on the place names it reads; the model only names numbered marks, and code checks its answer (S2) |
 | Several model agents negotiating a plan | More tokens and harder checks; typed roles with validators keep each output testable |
 
 ## 2. COA-Net in one page
@@ -111,18 +120,29 @@ Movement control does not route convoys one by one. It designates a small networ
 Three abstractions make this tractable with small models and modest hardware:
 
 1. **A corridor graph.** The road graph is contracted between decision points (junctions of the main network, bridges, tunnels, town entries, origins and destinations, halt areas). Each corridor carries a route classification (width, route type, lowest load class, obstructions), its critical elements and its halt opportunities. A theatre of 50 × 50 km becomes on the order of a thousand corridors, and the 100 to 200 relevant to a mission fit in a text "map card" of roughly 4k to 12k tokens (section 3.2).
-2. **Typed requirements with priorities.** Doctrine becomes requirement instances from a closed catalogue of 26 templates, each with a tier (physical safety, "shall", "should", efficiency). Ties between "should" objectives are broken by an ordered list that the commander's intent sets, not by weights.
+2. **Typed requirements with priorities.** Doctrine becomes requirement instances from a closed catalogue of 28 templates, each with a tier (physical safety, "shall", "should", efficiency) and a citation (document, page, paragraph); the order's own constraints become instances of the same templates. Ties between "should" objectives are broken by an ordered list that the commander's intent sets, not by weights.
 3. **Paths as building blocks.** For each convoy group the planner generates a rich set of candidate routes (Pareto-optimal, halt-feasible, and replacement routes around each critical element). Network design then chooses among whole routes, so any route-level rule is easy to check.
 
 ### 2.2 Pipeline
 
 ```
-OFFLINE (once per theatre and doctrine corpus)
-  BD TOPO / OSM, DEM, places ----> S0  road graph -> corridor graph, critical elements, halt and control-post candidates
-  NATO / national doctrine  -----> S1  requirement base (LLM fills templates; evidence quotes; human sign-off)
+BEFORE THE EVENT
+  seed requirement base (stand-ins and method defaults, section 4.8), vehicle catalogue, tests
 
-ONLINE (per logistic order)
-  logistic order ----------------> S2  mission spec + priority order from intent (LLM; operator confirms one line)
+AT THE EVENT, ONCE
+  BD TOPO / OSM, scans, DEM -----> S0  road graph -> corridor graph, critical elements, halt and control-post candidates
+  doctrine documents ------------> S1  intake: blocks with page, paragraph, section (OCR for scanned pages)
+  (STANAG, public NATO texts)          -> compile each document (L1 on retrieved passages, united with the patterns)
+                                       -> reconcile across documents (precedence, then stricter value) -> seed fills gaps
+                                       -> provisional base at once; sign-off sheet -> approved base
+
+PER EXERCISE OR ORDER (a document: text, illustration, desired outputs)
+  order document ----------------> S2  intake -> block roles (goal, task, intent, constraint, output, context)
+                                       -> sketch reader: marks found by code, named by L9, georeferenced
+                                       -> task specification (L2 or patterns), numbers checked against the document
+                                       -> readback (understood / NOT ENFORCED / NOT PRODUCED) -> operator confirms
+                                       -> itineraries task: exercise solver (NET.DISTINCT, SEG.TOWN, turn radii, checker)
+                                       -> movement task: mission spec + priority order from intent (L3) -> S3
                                    S3  candidate routes per convoy group (Pareto, halt-feasible, replacement routes)
   threat reports ----------------> S4  criticality: structural impact x likelihood (LLM red team) -> loss scenarios
                                    S5  robust network design (CP-SAT), solved once per priority order -> 2-4 COAs
@@ -130,9 +150,10 @@ ONLINE (per logistic order)
                                    S7  movement credits (CP-SAT): departures, waits, halts, headways -> march tables
                                    S8  verification: rule checker + simulator; recce tasks; contingency playbooks
                                    S9  COA briefing (LLM critic, checked) -> operator choice or automatic default
+                                   -> the outputs the order lists, each written to its file
 
-ONLINE (per incident)
-  incident report ---------------> S10 parse (LLM) -> belief update -> playbook match?
+PER INCIDENT (submitted at predefined times; format to confirm)
+  incident (text or document) ---> S10 intake -> parse (LLM) -> belief update -> playbook match?
                                          yes: apply pre-briefed response
                                          no : network repair (CP-SAT with stability)
                                        -> reschedule (minimal change) -> verify -> restore redundancy -> FRAGO (LLM)
@@ -140,17 +161,30 @@ ONLINE (per incident)
 
 ![COA-Net architecture](figures/coa-net-architecture.png)
 
-*Figure 2. The stages as implemented. Blue boxes are language-model roles (L1-L8), each checked by code and backed by a deterministic fallback; grey boxes are symbolic steps; dashed boxes are inputs.*
+*Figure 2. The stages as implemented. One document intake serves the doctrine set and the orders. Blue boxes are language-model roles (L1-L9), each checked by code and backed by a deterministic fallback; grey boxes are symbolic steps; dashed boxes are inputs. Figure 3 details the incident loop.*
 
 ### 2.3 Who does what
 
 | Actor | Does | Never does |
 | --- | --- | --- |
-| Language models (8-32B) | Fill requirement templates from doctrine, parse orders and incidents, map intent to a priority order, rank likely targets from a given list, write the COA comparison and FRAGOs from computed facts | Output a route, a coordinate, a number not present in the input, or a final decision |
+| Language models (8-32B) | Fill requirement templates from doctrine passages, parse orders and incidents, name the marks code found on an illustration, map intent to a priority order, rank likely targets from a given list, write the COA comparison and FRAGOs from computed facts | Output a route, a coordinate, a number not present in the input, a requirement without a verbatim quote, or a final decision |
+| Document code | Reads PDF, Word, text and images into blocks with page, paragraph number, section and position; drops running heads; joins paragraphs across pages; finds figures and captions; runs OCR where there is no text layer; finds and georeferences the marks of an illustration | Name what it finds: names come from the order, through L9 or position words |
 | Graph algorithms | Build corridors, generate candidate routes, compute impact of each loss, contingency trees | Interpret prose |
 | CP-SAT solvers | Choose the network, select alternates, schedule movement credits, repair after incidents | Relax a physical or "shall" requirement without an approved waiver (intended; waivers are applied automatically today, section 11.4) |
 | Simulator | Replay plans with column lengths, headways, halts, incidents and communication delays; estimate on-time probability | Change the plan |
-| Operator | Confirms the priority line and any T1 candidate from the intent, picks a COA (or accepts the default), approves waivers, recce tasks and FRAGOs with model-written text (these steps are intended; section 11.4) | Has to edit weights |
+| Instructors | Sign off the requirements compiled at the event: accept, edit or reject each line of the sheet, shown with its quote and citation | Write requirements from scratch |
+| Operator | Confirms the readback of each order (what was understood, not enforced, not produced), the priority line and any T1 candidate from the intent, picks a COA (or accepts the default), approves waivers, recce tasks and FRAGOs with model-written text (the readback is written; the confirmation steps are intended, section 11.4) | Has to edit weights |
+
+### 2.4 What changed with the organisers' answer
+
+| Input | Before (2 Nov) | Now (3 Nov) | Where |
+| --- | --- | --- | --- |
+| Doctrine | one corpus, compiled and signed off offline before the event | a set of documents handed out at the event: read with page and paragraph, compiled in one pass (model and patterns united), reconciled across documents, gaps filled by the seed; plans run at once on the provisional base, flagged, while the instructors sign off | S1; sections 4.2, 4.7, 4.8 |
+| Orders | order text parsed into a mission specification | a multimodal document: blocks with roles, routing by task, desired outputs mapped to writers, illustration read by code and named by L9, numbers checked against the document, readback confirmed by the operator | S2; section 3.5 |
+| Incidents | free text | free text, or a document read like an order; the format is still unknown, so the pattern parser stays the fallback | S10; R27 |
+| Models | text-only roles L1-L8; images only in baseline B3 | one vision-language model for every role; images only for L9; L1 runs at the event, in batches | section 6 |
+| Outputs | report, overlay, march tables, FRAGOs | also the outputs each order lists, each mapped to its file, or reported NOT PRODUCED | S2 |
+| Evaluation | F3 = the school's order when available | F3 = the event's exercises and doctrine set; hypotheses H8 (order understanding) and H9 (doctrine at the event); ablations A14 and A15 | section 9 |
 
 ## 3. Data model
 
@@ -219,9 +253,18 @@ $$L_k=\sum_{i=1}^{n_k}\mathrm{len}_i+(n_k-1)\,d_k,\qquad \mathrm{pass}_k(s)=\fra
 
 where d_k is the vehicle interval set by requirement SCH.MARCH (for example by day, by night, in a threat area) and pass_k(s) the time the column needs to pass a point at speed s. A convoy longer than a configured number of vehicles is split into march units separated by a gap, each scheduled as its own column.
 
-### 3.5 Mission specification
+### 3.5 Task specification
 
-The mission specification holds the convoys, vehicles, origin, destination, earliest departure, latest arrival, priority, cargo and phase, plus: rotations and return legs; the commander's intent, copied verbatim from the order; control measures imposed by the order (start and release points, imposed or prohibited routes and areas, assembly areas); and movement windows (for example night only).
+Orders arrive as documents, so S2 first produces a task specification in which every field keeps where it came from (document, page, block, quote):
+
+- **task kind**: itineraries between zones (exercise 1), a convoy movement, or unknown (reported; nothing is planned on a guess);
+- **mission**: the convoys, vehicles, origin, destination (named places, or zones and points drawn on the illustration), earliest departure, latest arrival, priority, cargo and phase, plus rotations and return legs;
+- **intent or goal**, copied verbatim from the order;
+- **constraints imposed by the order**: control measures (start and release points, imposed or prohibited routes and areas, assembly areas), movement windows (for example night only), and the constraints the order states in its own words (towns above a population, a minimum distance between itineraries), compiled into requirement instances at the order's precedence, above every doctrine document;
+- **desired outputs**, each mapped to a writer and its files;
+- **zones and points read on the illustration**, as polygons or points, each with the mark it comes from and how it was named.
+
+A value the parser kept that cannot be traced to the document is an error, not an assumption. Assumptions, such as the column of the motorised floating bridge (PFM) that exercise 1 does not describe, are listed apart in the readback.
 
 ### 3.6 Dynamic state and belief
 
@@ -257,7 +300,7 @@ Today a single report with q = 0.5 closes an element at tier 0, including any re
 
 ### 4.1 From edge rules to requirements at five levels
 
-A requirement is an *instance* of a template from a closed catalogue of 26 templates (Appendix A). Each template belongs to one of five levels, which decides where it is enforced:
+A requirement is an *instance* of a template from a closed catalogue of 28 templates (Appendix A). Each template belongs to one of five levels, which decides where it is enforced:
 
 | Level | Checked on | Examples | Enforced in |
 | --- | --- | --- | --- |
@@ -279,12 +322,12 @@ Every instance is a typed record. Nothing in it is free text except the quote an
 | parameters | typed values with units | maximum driving 120 min; halt 15 min; halt only at a halt area |
 | scope | convoys, cargo, vehicle classes, phases, areas, time windows it applies to | all convoys, day and night |
 | unknown policy | forbid, risk or recce (section 4.5) | risk |
-| source | document, paragraph, verbatim quote | corpus document, paragraph number, quoted sentence |
+| source | document, page, paragraph (or section), verbatim quote | the document's identifier, page 12, paragraph 0302, the quoted sentence |
 | trigger words | the phrase that sets the tier | "shall" |
 | explanation | one line reused in briefings | "A halt is needed at least every two hours of driving." |
-| status | draft, approved or rejected; approver; date | approved |
+| status | draft, approved or rejected; approver; date. Drafts are used only in runs marked provisional | approved |
 
-Two checks gate every instance compiled from the corpus, whatever the model's confidence: the quote must appear verbatim in the corpus (a string match), and the tier must agree with the trigger words (section 4.3). Instances that fail are never used.
+Three checks gate every instance compiled from the documents, whatever the model's confidence: the quote must appear verbatim in the document it cites (a string match, after the intake has normalised typography, hyphenation and spacing); every number the model put in a parameter must be stated by the quote, as written or converted (hours and minutes, kilometres and metres, a percentage as a fraction, "reduced by 30 %" as a factor of 0.7); and the tier must agree with the trigger words (section 4.3). Instances that fail are never used, and the compilation report logs why.
 
 ### 4.3 Tiers
 
@@ -378,9 +421,9 @@ Because the comparison uses the same ordered vector as the optimiser, the explan
 
 COA-Net measures how much of the doctrine it actually uses:
 
-- N is the number of normative statements in the corpus: sentences with a modal of obligation or recommendation, detected by a pattern list (English and French) and by the language model as a second detector, union of both, with a human check on a sample. The union is not implemented yet: with a model configured, the patterns do not run on the sentences it returned.
+- N is the number of normative statements in the document set: sentences with a modal of obligation or recommendation, detected by a pattern list (English and French), with a human check on a sample (planned). With a model configured, its instances and the pattern compiler's are united: a pattern instance is added for every template the model did not fill on a sentence, so that a model miss does not read as a catalogue gap.
 - Each statement is labelled *mapped* (to at least one approved instance), *out of scope* (with a reason: communications, administration, medical, and so on), *inexpressible* (relevant to routes or timing, but no template fits) or *not reviewed*.
-- Coverage = (mapped + out of scope) / N. Expressiveness = mapped / (mapped + inexpressible).
+- Coverage = (mapped + out of scope) / N. Expressiveness = mapped / (mapped + inexpressible). Both are reported per document and for the whole set (`corpus_report.md`).
 
 Inexpressible statements are the backlog for new templates (hypothesis H5, section 9).
 
@@ -392,6 +435,8 @@ Until the organisers' doctrine is compiled and signed off, COA-Net runs on a see
 - 13 default values for the templates no stand-in rule covers (RTE.TURN, RTE.CROSSINGS_MAX, RTE.ACCESS, RTE.RANGE, NET.SEPARATE, NET.LATERAL, NET.CONTROL, NET.SIZE, NET.STATUS, SCH.WINDOW, SCH.VARY, PRO.CRITPOINT) and one SCH.MARCH parameter, each flagged `assumption: true`.
 
 None of them quotes a NATO publication; all of them are to be confirmed with the instructors. "Valid" in sections 7 and 11 means valid against this seed base.
+
+At the event the seed only fills the gaps the documents leave. When a document states a parameter, in any scope, the seed's value for that parameter is dropped, so a stand-in value never overrides or duplicates a cited one; seed instances the documents do not touch stay, flagged in the corpus report as not coming from the event's doctrine. On the stand-in set of section 11.6, 23 seed instances were superseded in whole or in part and 14 kept. `--no-seed` compiles the documents alone, to see what they cover.
 
 ## 5. The pipeline, stage by stage
 
@@ -413,34 +458,56 @@ Each stage below gives its method, output, expected cost and fallback. Costs are
 
 **Fallback.** The corridor graph is an accelerator, not a requirement: every later stage could run on the full road graph with the same logic, only slower. This path is not implemented yet.
 
-### S1. Requirement base (offline, once per doctrine corpus)
+### S1. Requirement base (at the event, once per doctrine set)
+
+The doctrine is handed out at the start of the hackathon as a set of documents, so S1 runs there, in the first hour, on the organisers' GPU server or on a laptop.
 
 **Method.**
 
-1. Split the corpus into passages and index them with bge-m3 (the code uses a lexical stand-in for now).
-2. For each template, retrieve the best passages using the template's description and seed phrases in English and French.
-3. The language model fills zero or more instances per passage (parameters, scope, tier, trigger words, unknown policy, verbatim quote), with schema-constrained output.
-4. Validators: schema and units; quote found verbatim; tier consistent with trigger words; parameters in plausible ranges (for example a headway between 1 and 60 min); duplicates merged; conflicts (same template and scope, different values) flagged, keeping the stricter value for T1 and showing both.
-5. Human sign-off: a reviewer accepts or edits each instance in a list that shows the quote next to the parsed parameters. Expect 60 to 120 instances at about 15 s each (estimate).
-6. Coverage report (section 4.7).
+1. *Intake.* Read every document (PDF, Word, text; pages with no text layer go through OCR) into blocks that keep page, paragraph number, section, list level and parent, so that each sentence can be cited by document, page and paragraph. Running heads and page numbers are dropped (lines in the top or bottom 9 % of the page that repeat on at least half of the pages), a paragraph split by a page break is joined, end-of-line hyphenation is undone, and the text is normalised (NFKC) so that quotes match. Each document gets a kind from its identifiers: movement standard (STANAG, AMovP, ATP and other allied publication codes), general doctrine (AJP) or other.
+2. *Retrieve.* For each template, rank the sentences of the whole set against the template's seed phrases and description, in English and French (a lexical stand-in for bge-m3).
+3. *Fill.* The language model (L1) receives the template card and eight passages per call, at most four calls per template (28 × 4 = 112 calls at most), and fills zero or more instances per passage. Passages ranked lower go to the pattern compiler only, and the log says how many. Passages are framed as data, not instructions.
+4. *Check* (section 4.2): schema and units; the quote is one of the passages sent and is found in the document it cites; every number is stated by the quote; the tier agrees with the trigger words; parameters lie in plausible ranges (for example a headway between 1 and 60 min). Failures are dropped and logged. On each sentence, the pattern compiler's instance stands for every template the model did not fill (section 4.7).
+5. *Reconcile across documents.* Instances that state the same rule (same template, same mode, constraint or objective, same scope and same kind of check) corroborate each other when their values agree. When they differ, the document with the higher precedence wins: by default the order, then movement standards, then general doctrine, then other documents, the more specific text first; `--precedence` sets another order. At equal precedence the stricter value wins. Every conflict is listed with both quotes. A constraint and an objective of the same template are different rules, and both stay.
+6. *Fill the gaps with the seed* (section 4.8).
+7. *Provisional base at once.* The reconciled drafts and the seed form a base that plans can use immediately with `--provisional`; every output of such a run says PROVISIONAL and lists the draft instances it used.
+8. *Sign-off.* A sheet (CSV) lists the doctrine instances, mandatory ones first, with quote, citation and parsed parameters; the instructors accept, edit or reject each line, and `coa-net signoff` keeps only what they approved. Expect 60 to 120 instances at about 15 s each (estimate).
+9. *Report* (`corpus_report.md`): per document and for the set, pages, normative sentences, mapped, inexpressible and out of scope, instances, conflicts, coverage and expressiveness (section 4.7), seed instances superseded and kept, the intake's warnings and the log. A document log (identifier, format, pages, checksum, language) feeds the data log that the final report must contain (rules, art. 9.4).
 
-**Output.** A versioned, approved requirement base.
+**Output.** A versioned requirement base with citations, provisional until signed off; corpus report; sign-off sheet; document log.
 
-**Fallback.** The pattern compiler, then the seed base (section 4.8).
+**Cost.** Measured without a model: 1.7 s for 3 documents, 16 pages and 369 sentences (section 11.6). With L1: at most 112 calls, about 170k input and 22k output tokens (estimate, section 6.3), a few minutes on one GPU if the calls run in parallel; to measure on the first real run.
 
-### S2. Mission and priorities (online, per order)
+**Fallback.** The pattern compiler, then the seed base. If the sign-off is not finished, plans run on the provisional base and say so.
+
+### S2. Order understanding, mission and priorities (per exercise or order)
+
+An order arrives as a document like the example exercise: a goal, constraints and desired outputs in text, and an illustration with the geographical objectives drawn on a map crop.
 
 **Method.**
 
-1. Parse the order into the mission specification of section 3.5.
-2. Resolve places on the graph, check reachability per profile, and split long convoys into march units (section 3.4).
-3. Group convoys that share origin and destination areas, profile class and compatible windows into groups g of n_g vehicles. Groups keep S3 to S5 small; S7 still schedules every march unit.
-4. Activate requirement instances by scope (cargo, vehicle class, phase, area, time).
-5. Map the intent to a priority order (section 4.4) and have the operator confirm it.
+1. *Intake* (as in S1): text blocks with page and position, figures with their captions and nearby text, labelled lines ("Intent: ...") as blocks of their own. Images (PNG, JPEG, TIFF) and pages with no text layer go through OCR.
+2. *Block roles.* Each block gets one role, from its wording and its heading ("Desired output", "with the following constraints"): goal, task, intent, constraint, desired output or context.
+3. *Task routing.* The roles and the wording decide the task. *Itineraries* ("Determine 3 itineraries that link the two delimited zones") go to the exercise solver of `docs/real_data_validation.md` (NET.DISTINCT, SEG.TOWN, turn radii, independent checker). A *movement* (convoys with times, origins and destinations) goes on to step 7 and to S3-S9. Anything else is *unknown*: it is reported, and nothing is planned on a guess.
+4. *Sketch reader* (below): the zones and points of the illustration, named and georeferenced.
+5. *Task specification* (section 3.5), from the parser of the task: L2 or patterns for a movement, patterns for itineraries. Constraints the order states become requirement instances added to the base (exercise 1: X-01 NET.DISTINCT and X-02 SEG.TOWN); the order outranks every doctrine document (S1, step 5).
+6. *Checks and readback.* Every number the parser kept must be in the document (10k, 10 000 and 10,000 count as the same number, and hh:mm as minutes). A constraint block that no recognised value covers is listed NOT ENFORCED; a desired output with no writer is listed NOT PRODUCED. `readback.md` gives what was understood, each item with its quote and page; what was read on the illustration and how; the outputs that will be written; what is not enforced or not produced; the numbers checked; and the assumptions that are not in the order. The operator confirms it, or corrects the order and runs again.
+7. *Movement task.* Resolve places on the graph, check reachability per profile, and split long convoys into march units (section 3.4). Group convoys that share origin and destination areas, profile class and compatible windows into groups g of n_g vehicles (groups keep S3 to S5 small; S7 still schedules every march unit). Activate requirement instances by scope (cargo, vehicle class, phase, area, time). Map the intent to a priority order (section 4.4) and have the operator confirm it.
 
-**Output.** Mission specification, groups, active requirements, confirmed priority order.
+**Sketch reader.** The illustration of exercise 1 is a map crop, turned by 90° in the page, with two zones drawn in blue. Models locate things on maps poorly (section 1.2), so geometry stays with code:
 
-**Fallback.** Without a model, a pattern parser and the default order.
+1. *Find the marks.* Colour masks find the drawn marks (the blue of exercise 1 by a fixed rule, other colours by hue), a morphological closing joins the strokes, and connected regions above a minimum size become marks, at most two per colour by default.
+2. *Georeference.* OCR reads the place names on the crop; matched with the map's labels, they fit an affine transform by RANSAC, over the four orientations, since an illustration can be turned in the page.
+3. *Number the marks* on a copy of the image (set-of-marks). The copy sent to the model is at most 1,024 pixels on its longest side.
+4. *Name them (L9).* The vision-language model receives the numbered copy and the order's text, and says which number is which zone or point named in the order, with its role (origin, destination, waypoint, area to avoid, threat area, unit position, other) and the words of the order that support it. Code checks that the numbers exist, the roles are in the list, the names and quoted words are in the order, and no name is used twice; one retry, then the fallback.
+5. *Fallback: position words.* The order's own words decide: "the North zone" is the mark furthest north.
+6. A zone the order names that the reader cannot find stops the run with an error, never a guess. The numbered copy is written with the outputs, so that the operator can check it.
+
+**Output.** Task specification with provenance, zones as polygons, `readback.md`; for a movement task, the groups, active requirements and confirmed priority order.
+
+**Cost.** Measured on exercise 1: 0.3 s to read the PDF, 0.06 s to route and check it, 15.9 s to georeference the sketch and read the zones (section 11.6). L9 adds one call with one image (section 6.3).
+
+**Fallback.** Without a model: the pattern parser, position words for the marks and the default priority order.
 
 ### S3. Candidate routes per group
 
@@ -551,7 +618,7 @@ $$\mathrm{VOI}(u)=\sum_{o}q_o\,\big(J(x_0^{*}\mid o)-J(x_o^{*}\mid o)\big)$$
 
 **Method**, for each incident report:
 
-1. *Parse* the report into a typed incident with its source grading.
+1. *Intake and parse.* A report given as a file (text, PDF, Word or image) is read like an order (S2, step 1); its text is parsed into a typed incident with its source grading. The format of the event's incidents is not confirmed (section 13, Q4).
 2. *Update beliefs* (section 3.6): closure probabilities, threat levels, statuses.
 3. *Match a playbook.* If the change corresponds to a pre-computed scenario, apply its response (routes and turn-back points); S5 and S7 still re-solve, and the response is verified at step 6, not when it is built. The value of a playbook is that it is briefed in advance, not that it is faster to compute.
 4. *Otherwise repair the network*: the S5 model restricted to the affected groups, with their positions as estimated from the schedule as origins, the current designations as starting point, and stability appended to the priority order (or placed first if the operator prefers stable orders). If the model misses its time limit, the best design found so far is kept; if none is feasible, the greedy design of S5 is used, which does not enforce T1 network or threat rules.
@@ -570,26 +637,29 @@ $$\mathrm{VOI}(u)=\sum_{o}q_o\,\big(J(x_0^{*}\mid o)-J(x_o^{*}\mid o)\big)$$
 
 ### 6.1 Roles
 
-Models: Mistral Small 3.2 24B by default, Qwen3-32B to compare, Qwen3-8B for fast steps, bge-m3 for retrieval, all open-weight and served locally through an OpenAI-compatible server with schema-constrained decoding.
+Models: one vision-language model for every role, Mistral Small 3.2 24B by default. It takes images (L9 needs them, and the organisers recommend multimodal models); its Apache 2.0 licence restricts neither defence use nor redistribution, which the rules ask teams to prefer (art. 9.4); and one model means one server and one set of prompts to validate. It is served on the organisers' H100 server or locally, through an OpenAI-compatible server with schema-constrained decoding. Qwen3-32B (text) and Qwen2.5-VL-32B (images) are the comparisons, and Qwen3-8B the small model of ablation A11; their licences are to be checked in the same way. bge-m3 is the retrieval model to compare with the lexical stand-in, and RapidOCR reads the text on images.
 
-| # | Role | Stage | Input | Typed output | Default model | Checks | Fallback |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| L1 | Doctrine compiler | S1 | template card and 5-8 retrieved passages | requirement instances (section 4.2) | Qwen3-32B (offline, quality first) | schema, verbatim quote, tier against trigger words, ranges, human sign-off | pattern compiler, then seed base |
-| L2 | Order parser | S2 | order text and gazetteer names | mission specification | Mistral Small 3.2 24B | schema, names resolve on the graph, times consistent | pattern parser |
-| L3 | Intent mapper | S2 | intent text and objective menu | priority order, tolerances, quotes, T1 candidates | Qwen3-8B | is a permutation, quotes found in the intent | default order |
-| L4 | Red team | S4 | critical-element cards and threat summary | likelihood class and reason per element | Mistral Small 3.2 24B or Qwen3-32B | identifiers exist, reasons cite card fields (a word match) | table by element type |
-| L5 | COA writer and critic | S9 | facts table | comparison of at most 250 words, list of concerns | Mistral Small 3.2 24B | every number and identifier matches the facts | templated comparison |
-| L6 | Incident parser | S10 | report text | incident record with source grading | Qwen3-8B | schema, location resolves, grading valid | pattern parser |
-| L7 | FRAGO writer | S10 | structured plan difference | FRAGO in five paragraphs | Qwen3-8B | every number, time and upper-case identifier appears in the difference; values are not tied to units, and place names are not read | templated FRAGO |
-| L8 | Explanation phrasing | S5-S9 | contrastive record (decision, alternative, deciding objective, values) | one sentence | Qwen3-8B | numbers match | template sentence |
+| # | Role | Stage | Input | Typed output | Checks | Fallback |
+| --- | --- | --- | --- | --- | --- | --- |
+| L1 | Doctrine compiler | S1, at the event | template card and up to 8 retrieved passages per call, at most 4 calls per template | requirement instances (section 4.2) | schema; quote among the passages sent and found in the cited document; every number stated by the quote; tier against trigger words; ranges; human sign-off | pattern compiler (united with the model's instances), then seed base |
+| L2 | Order parser | S2 | text of the order document and gazetteer names | task specification (section 3.5) | schema; names resolve on the graph; times consistent; every number found in the document; constraints not covered listed NOT ENFORCED | pattern parser |
+| L3 | Intent mapper | S2 | intent text and objective menu | priority order, tolerances, quotes, T1 candidates | is a permutation, quotes found in the intent | default order |
+| L4 | Red team | S4 | critical-element cards and threat summary | likelihood class and reason per element | identifiers exist, reasons cite card fields (a word match) | table by element type |
+| L5 | COA writer and critic | S9 | facts table | comparison of at most 250 words, list of concerns | every number and identifier matches the facts | templated comparison |
+| L6 | Incident parser | S10 | report text, or the text of a report document | incident record with source grading | schema, location resolves, grading valid | pattern parser |
+| L7 | FRAGO writer | S10 | structured plan difference | FRAGO in five paragraphs | every number, time and upper-case identifier appears in the difference; values are not tied to units, and place names are not read | templated FRAGO |
+| L8 | Explanation phrasing | S5-S9 | contrastive record (decision, alternative, deciding objective, values) | one sentence | numbers match | template sentence |
+| L9 | Sketch reader | S2 | the order's text and the illustration with numbered marks (one image) | for each mark: a name from the order or "unnamed", a role, and the order's words that support it | marks exist; roles in the list; names and quoted words found in the order; no name used twice; never a coordinate | position words of the order |
 
-Mistral Small 3.2 accepts images, but no stage of the main pipeline needs them; image input is used only by baseline B3 (section 9).
+Images reach a model in one role only, L9, and only as a numbered copy of the illustration: the model names marks that code has found, and never locates anything. Baseline B3 (section 9) is the one place where a model chooses routes on an image, to test the brief's hypothesis.
 
 The models do what the reference papers show small models do well (reading text, mapping words to closed sets, writing from given facts) and nothing that needs geometric reasoning on a map. The red team is the most judgemental role. Its output is therefore only a ranking over a list it is given, it is combined with the exact structural impact, and the evaluation uses incident scripts that do not come from it (section 9), so that a poor red team shows up in the results instead of hiding in them. One gap remains: an element the model leaves out counts as low likelihood (0.02), below the table prior, and can lose its scenario and playbook (section 11.4).
 
 ### 6.2 Prompt outlines
 
-**L1, doctrine compiler.** Role: extract requirements for military road movement from doctrine by filling one template; never invent values. Input: the template card (identifier, level, parameters with units and allowed ranges, definition, three seed phrases) and passages with identifiers. Rules: one instance per distinct requirement; copy the quote verbatim; set the tier from the modal verb using the table of section 4.3; leave a parameter empty when the text does not state it; take the scope only from the text. Output: a list of instance records, possibly empty.
+**L1, doctrine compiler.** Role: extract requirements for military road movement from doctrine by filling one template; never invent values. Input: the template card (identifier, level, parameters with units and allowed ranges, definition, three seed phrases) and passages with identifiers. Rules: one instance per distinct requirement; copy the quote verbatim; set the tier from the modal verb using the table of section 4.3; leave a parameter empty when the text does not state it; take the scope only from the text. Output: a list of instance records, possibly empty. At the event, up to eight passages per call, framed as data, not instructions; code then rejects any number the quote does not state.
+
+**L2, order parser.** Input: the text of the order document, framed as data, and the known place names. Rules: copy the commander's intent verbatim; use only known place names; give times in minutes from 00:00; put anything unclear in a list of ambiguities instead of guessing. Output: the task specification; code then checks every number against the document and lists the constraints it did not cover.
 
 **L3, intent mapper.** Input: the intent paragraph, the objective menu with one-line definitions, the allowed tolerances. Rules: return every objective exactly once, in order; justify the top three with exact quotes; turn imperatives into T1 candidates; keep the default relative order for objectives the intent does not mention. Output: order, tolerances, quotes, T1 candidates.
 
@@ -599,22 +669,26 @@ The models do what the reference papers show small models do well (reading text,
 
 **L7, FRAGO writer.** Input: the structured difference (units affected, old and new routes by name and key points, new times at start, control and release points, new statuses and control posts, the triggering incident with its grading). Rules: five-paragraph structure (situation, mission, execution, sustainment, command and signal); only the items that changed; copy names and times; add no instruction that is not in the difference (a prompt rule, which no code checks). Output: FRAGO text.
 
+**L9, sketch reader.** Input: the illustration with numbered marks, the order's text framed as data, the place names found in the order, and the list of roles. Rules: for each mark number, give its role and the exact words of the order that name it, or "unnamed"; quote the words of the order or of the legend that support the answer; never give coordinates, distances or new places. Output: a list of (mark, role, name, quoted words).
+
 ### 6.3 Token budget (estimates)
 
 | Call | Input tokens | Output tokens | Calls | Total |
 | --- | --- | --- | --- | --- |
 | L2 order | 2,000 | 500 | 1 | 2,500 |
+| L9 sketch | 1,000 to 3,000 for the image (1,024 pixels; depends on the model's image encoder), plus 600 of text | 300 | 1 | 2k to 4k |
 | L3 intent | 900 | 300 | 1 | 1,200 |
 | L4 red team | 3,500 (about 40 cards of 60 tokens, plus instructions) | 800 | 1 or 2 | 4,300 or 8,600 |
 | L5 COA briefing | 3,000 | 600 | 1 | 3,600 |
 | L8 explanations, for every COA | 150 | 50 | about 10 | 2,000 |
-| **Per plan** | | | | **about 12k to 18k** |
+| **Per plan** (movement order with an illustration) | | | | **about 16k to 22k** |
+| **Per exercise like exercise 1** | | | | **2k to 4k** (L9 only: the itineraries parser has no model path) |
 | L6 incident | 600 | 300 | 1 | 900 |
 | L7 FRAGO | 1,200 | 600 | 1 | 1,800 |
 | **Per incident** | | | | **about 3k** (plus 4k if the threat picture changes enough to re-run the red team on the affected elements) |
-| L1 doctrine, offline | about 3,000 per template | 500 | 26 | about 90k once per corpus |
+| L1 doctrine, at the event | about 1,500 per call (card and 8 passages) | about 200 | at most 112 (28 templates × 4 batches) | at most about 170k input and 22k output, once per doctrine set |
 
-No single call exceeds about 4.5k tokens, so an 8k context window is enough. The two red-team samples share their prompt, so with prefix caching the second costs little more than its output. Generation is the slow part: about 3k output tokens per plan, which at 20 to 40 tokens per second for a 24B model on one GPU (estimate) means one to two and a half minutes of model time per plan. Incident handling uses the 8B model, so its model time stays around ten to fifteen seconds (estimate, with an 8B output rate we have not measured).
+No single call exceeds about 4.5k tokens, the L9 call included if its image stays near 3k tokens, so an 8k context window is enough. The two red-team samples share their prompt, so with prefix caching the second costs little more than its output. Generation is the slow part: about 3k output tokens per plan, which at 20 to 40 tokens per second for a 24B model on one GPU (estimate) means one to two and a half minutes of model time per plan. With the one 24B model, incident handling generates about 900 tokens, 20 to 45 seconds at those rates (estimate); the 8B model of ablation A11 would cut that. At the event, L1 is the largest cost: up to 22k output tokens, about 10 minutes at 40 tokens per second if the calls run one after the other, less in parallel (estimate).
 
 Retries are not in the table. A retry of the red team and the briefing adds up to about 12k tokens, so the worst case is about 30k per plan, above the 20k target. The table should be redone from measured tokens at the first real model run.
 
@@ -622,11 +696,12 @@ Retries are not in the table. A retry of the red team and the briefing adds up t
 
 - No model ever outputs a route, a coordinate, or an identifier that is not in its input.
 - Every output is schema-constrained, then validated by code; a failed validation triggers one retry, then the deterministic fallback.
-- Parser checks cover schema, catalogue, places and times. They do not compare numbers with the source text, so a changed deadline or vehicle count passes L2. L6 takes the nearest bridge with no distance limit, and a report with no location ends as `logged` (R18).
+- Parser checks cover schema, catalogue, places and times. For orders, every number the parser kept must also appear in the document, so a changed deadline or vehicle count no longer passes L2; constraint blocks that no recognised value covers are listed NOT ENFORCED, and desired outputs with no writer NOT PRODUCED. L1's numbers must be stated by their quote. L6 still takes the nearest bridge with no distance limit, and a report with no location ends as `logged` (R18).
+- Documents are data. Doctrine passages and the texts of orders and reports reach the model marked as data, never as instructions (L1, L2, L6, L9), and their effect is bounded by the typed outputs and the checks above; this has not been tested with crafted documents (R15).
 - Every number, time and upper-case identifier in generated prose must appear in the facts it was given (normalised string match); every quote must appear in its source. This does not catch swapped values or wrong place names.
 - The solvers decide. The operator is meant to confirm the priority order, the COA, every waiver, every reconnaissance task and every FRAGO containing model-written text. These steps are not built yet: nothing in the code pauses for confirmation (section 11.4).
 - Prompts, outputs and validation results are to be logged for after-action review. Today only token counts and times are recorded.
-- Everything is meant to run offline, so that doctrine and orders never leave the machine. This depends on configuration: `COA_LLM_BASE_URL` accepts any host.
+- Everything is meant to run offline, so that doctrine and orders never leave the machine. This depends on configuration: `COA_LLM_BASE_URL` accepts any host. The event's documents are public (rules, art. 10.4), so serving the model on the organisers' server is acceptable there; restricted documents would need a local server.
 
 Every role has a deterministic fallback, so the whole pipeline also runs without any model. This is ablation A12 in section 9, and the safety net during the event.
 
@@ -696,21 +771,33 @@ After I-1, C3's new main route (EAGLE) shares the N7 with C1's: C3 holds 14 min 
 
 ## 8. What matters most: criteria, metrics, trade-offs
 
-The brief names no scoring grid. The criteria below follow its text (a maneuver road network that matches the operational objectives, built automatically, adapted to incidents, using as much NATO doctrine as possible, without overloading the context, with models of a few tens of billions of parameters at most, to assist the operators' decision), ordered by what we think matters most to instructors of a logistics school.
+The rules (art. 13.3) give the jury's criteria, whose weights are announced at the launch: the number of exercises solved in the time allowed; the number of context elements taken into account; mastery of the model (error detection, clarity of the route-choice criteria, type of model); the size of the model; the solution's autonomy (local deployment or hosted APIs, open or proprietary model, retraining, licences); the time to answer a problem; and the quality of the final report (reproducibility, clarity, novelty). The criteria below follow the brief's text (a maneuver road network that matches the operational objectives, built automatically, adapted to incidents, using as much NATO doctrine as possible, without overloading the context, with models of a few tens of billions of parameters at most, to assist the operators' decision), ordered by what we think matters most to instructors of a logistics school; the second table maps the jury's criteria onto them.
 
 | # | Criterion | Metric | Proposed target | How measured |
 | --- | --- | --- | --- | --- |
 | 1 | Validity | T0 and T1 violations in final plans | 0 (or waived) | rule checker on every plan of the benchmark |
+| 1 | | an order's constraints and desired outputs: enforced and produced, or reported NOT ENFORCED or NOT PRODUCED | none dropped silently | readback, checked by hand against the order |
 | 2 | Resilience | share of (group, critical element) pairs whose loss leaves the group without a designated route | no more than the irreducible share | exact, by enumeration |
 | 2 | | probability of completing the mission, on-time probability, expected delay under incident scripts | better than the baselines on every script family | Monte Carlo, paired by common random numbers |
 | 3 | Adaptation | time from report to a verified new plan (computation) | under 5 s with a playbook, under 60 s otherwise | timers |
 | 3 | | time from incident to the column acting on it, transmission delays included; columns that reach a lost element before learning of it | lower than the baselines | simulation |
 | 3 | | stability: share of units whose orders do not change | reported | plan difference |
 | 4 | Doctrine fit | coverage and expressiveness (section 4.7) | each at least 80 % | labelled corpus |
+| 4 | | requirements compiled at the event, each cited, then signed off | every instance cited; a signed-off base before the end of the first exercise | corpus report, sign-off sheet |
 | 4 | | instructors' blind pairwise preference between COA-Net plans and plans drawn by hand or by baseline B1 | COA-Net preferred in at least 60 % of pairs | panel, section 9 |
 | 5 | Frugality | tokens per plan and per incident; largest context; model size; GPU memory | under 20k and 7k; under 8k; at most 32B; one 24-48 GB GPU (all unmeasured) | logs |
 | 6 | Decision support | COAs that differ meaningfully; explanations whose numbers check; FRAGO correctness | 100 % of numbers checked; FRAGOs judged usable by instructors | checks and panel |
 | 7 | Efficiency | vehicle·minutes, designated kilometres, control posts | reported, compared at equal resilience | plan metrics |
+
+| Jury criterion (art. 13.3) | What answers it in COA-Net | Measured so far |
+| --- | --- | --- |
+| Exercises solved in the time allowed | orders read as documents and routed to a solver in seconds; a provisional base from the first hour; deterministic fallbacks for every model role | exercise 1: every desired output produced, 19 of 19 checks |
+| Context elements taken into account | the doctrine compiled at the event into cited instances; every constraint of an order enforced or reported | stand-in set: 23 instances; exercise 1: every constraint enforced |
+| Mastery of the model: error detection, clarity of the choice criteria, type of model | typed outputs checked by code (quotes, numbers, names); readback; rule checker; contrastive explanations in priority order | checks tested with a scripted model; no real model run yet |
+| Model size | one 24B model for every role | not run yet |
+| Autonomy | open weights under Apache 2.0, served locally or on the organisers' server, no hosted API needed; every role has a fallback | the whole pipeline runs without a model |
+| Time to answer | seconds per plan on synthetic theatres; minutes on the real network | exercise 1: under 3 min once the road graph is cached; a full plan with three convoys and four incidents: 27 min 24 s (`docs/real_data_validation.md`) |
+| Final report | measured results only, pre-registered parameters, commands to reproduce | this document, section 11 |
 
 **Trade-offs the operator should see** (and that COAs make visible):
 
@@ -731,9 +818,11 @@ The brief names no scoring grid. The criteria below follow its text (a maneuver 
 | H2 | Joint scheduling (time gaps, order as a decision, halt areas) reduces weighted delay without increasing lateness | weighted delay, lateness |
 | H3 | Pre-briefed playbooks reduce the delay caused by incidents when reports and orders take time to travel | delay after the incident; columns that reach a lost element before learning of it |
 | H4 | Priority orders give plans that are more stable under input perturbations than a weighted sum (ablation A4), and closer to the stated intent according to instructors | share of MSRs that change under perturbation; instructor rating |
-| H5 | The 26-template catalogue expresses at least 80 % of the in-scope doctrine statements | expressiveness on a labelled corpus (section 4.7) |
+| H5 | The 28-template catalogue expresses at least 80 % of the in-scope doctrine statements | expressiveness on a labelled corpus (section 4.7) |
 | H6 | Models of 8-32B fill templates with at least 90 % precision after validation, and at a recall reported per template, and the red team's ranking agrees with the instructors' (Kendall τ ≥ 0.5) | precision, recall of normative sentences; τ |
 | H7 | The brief's hypothesis, tested on equal terms: a long-context model given the whole map card (B2) or the map image (B3) produces valid and resilient networks less often than COA-Net with the same models | validity rate, resilience, tokens |
+| H8 | Order understanding: on the event's exercises, the readback captures every constraint and desired output (each enforced and produced, or reported), and every value it keeps is found in the document | share of constraints and outputs handled or reported; values traced; operator corrections needed |
+| H9 | Doctrine at the event: the document set compiles into a provisional base within the first hour and a signed-off base within the first half-day, with model instances at least as precise as the patterns' | time to each base; precision and recall per template against the instructors' sign-off |
 
 For H4 the comparison must be fair: the priority order is perturbed through its tolerances (for example 10 % becoming 5 % or 15 %) and through the inputs (travel times ±10 %), exactly as the weights are perturbed for the weighted-sum variant.
 
@@ -741,7 +830,7 @@ For H4 the comparison must be fair: the priority order is perturbed through its 
 
 - **F1, synthetic.** A synthetic theatre generator (random bridge positions and classes, missions of 1 to 6 convoys, random incidents), 100 seeds, with halt-area candidates; level crossings and defiles are not generated yet. Cheap, many seeds, known ground truth.
 - **F2, real extracts.** Three areas of about 30 × 30 km from BD TOPO or OSM (one near the event, one with a major river and few bridges, one hilly), three to five hand-written orders each, and planted unknowns (bridges whose class is removed). Tests the corridor graph and the handling of missing data.
-- **F3, the organisers' scenario.** The school's order and the exercise incidents, as soon as they are available. It is the final test, with no tuning on it.
+- **F3, the organisers' scenario.** Scenario 1 and exercise 1 are available and solved (`docs/real_data_validation.md`). The exercises of the event, given as documents like exercise 1, the doctrine set handed out there and the incidents submitted during the exercise phase are the final test, with no tuning on them.
 
 ### 9.3 Incident scripts
 
@@ -783,12 +872,14 @@ B2, B3 and COA-Net use the same models (Mistral Small 3.2 24B; Qwen3-32B for the
 | A11 | model size per role: 8B, 24B, 32B | the smallest adequate model for each role |
 | A12 | no language model at all (deterministic fallbacks) | what the models add |
 | A13 | one plan instead of COAs | value of COAs for decision support (panel only) |
+| A14 | no L9: marks named by position words only | what the vision-language model adds on illustrations |
+| A15 | seed base only, no doctrine compiled at the event | what the event's doctrine changes in the plans: instances, routes, schedules |
 
 ### 9.6 Statistics
 
 - Paired design: every pipeline runs on the same scenarios, incident scripts and random numbers.
 - Binary outcomes (mission completed, convoy isolated) are compared with McNemar's test, continuous ones (delay, exposure) with the Wilcoxon signed-rank test, with 95 % bootstrap confidence intervals on the differences and effect sizes, not only p-values.
-- Holm correction across H1 to H7.
+- Holm correction across H1 to H9.
 - Sizes: F1 with 100 seeds × 3 script families × 200 Monte Carlo replications per plan; F2 with 3 areas × 3 to 5 orders × 3 script families.
 - Every metric is reported for every baseline, including those where COA-Net loses (computation time, tokens).
 
@@ -820,29 +911,36 @@ Before running F2 and F3 (by 5 November), commit to the repository the hypothese
 | R9 | Self-fulfilling evaluation | medium | high | independent incident scripts (section 9.3) and pre-registration |
 | R10 | Tight joint schedules are brittle | medium | medium | Monte Carlo verification, minimum slack, robust headway |
 | R11 | Wrong or invented content in briefings or FRAGOs | unmeasured | high | number and identifier checks, templated fallback; the templated FRAGO stays the authoritative order and the model only rephrases it (intended; section 11.4) |
-| R12 | Doctrine documents are restricted | medium | high | local models, no external API, local logs kept with the same protection as the documents; offline operation depends on configuration |
+| R12 | Doctrine or orders are restricted | low (the event's documents are public, rules art. 10.4) | high | local models, no external API, local logs kept with the same protection as the documents; offline operation depends on configuration |
 | R13 | Solver availability or licences | low | medium | OR-Tools CP-SAT (Apache 2.0) only |
 | R14 | A spoofed, careless or repeated report closes an element | medium | high | confirmation before closure on low grades, source identity on reports (intended; section 3.6) |
-| R15 | Prompt injection through orders, doctrine or reports | low | high | typed outputs and code checks limit the effect; not tested yet |
+| R15 | Prompt injection through orders, doctrine, illustrations or reports | low | high | documents are passed as data, never as instructions; typed outputs and code checks (quotes, numbers, names) limit the effect; not tested with crafted documents |
 | R16 | The model server hangs (about 8 minutes per role before fallback) | medium | high | one wall-clock deadline per incident and a fast-fail health check (intended) |
-| R17 | The organisers supply the map only as an image | low | high | ask early (section 13); S0 has no route from an image |
-| R18 | A parser error goes unnoticed (wrong count or deadline, wrong bridge) | medium | high | numeric checks against the source text, a distance limit, an explicit "unlocated" escalation (intended) |
+| R17 | The organisers favour the image input (scans), with the shapefiles for sanity checks | known (preliminary description) | medium | S0 builds the network from the shapefiles, because models find routes on images poorly (section 1.2); the scans give town populations and cross-check every itinerary (`docs/real_data_validation.md`); each order's illustration is read by S2; the final report says why |
+| R18 | A parser error goes unnoticed (wrong count or deadline, wrong bridge) | medium | high | orders: every number checked against the document and uncovered constraints listed (implemented); incidents: a distance limit and an explicit "unlocated" escalation (intended) |
 | R19 | Convoy positions are estimated from the schedule, so a late column or late report gives a wrong turn-back | high | medium | a position-report input (intended; section 13) |
-| R20 | Fallback parsers are tuned to the sample phrasing and fail on the organisers' real documents | medium | high | test on the real order as soon as it arrives; keep the operator's check |
+| R20 | Fallback parsers are tuned to the sample phrasing and fail on the event's documents | medium | high | tested on the organisers' exercise, rules and description PDFs and on Word and text orders; the readback shows what was not understood; L2 and L9 when a model is available; the operator's check stays |
+| R21 | Compiling the doctrine at the event takes too long, or the sign-off is not finished before the first exercise | medium | high | patterns compile in seconds (1.7 s for 16 pages); L1 is capped at 112 calls; plans run at once on the provisional base, flagged; the sheet lists mandatory instances first; the seed covers the gaps |
+| R22 | Extraction loses or corrupts text (two-column pages, tables, scans, broken hyphenation) | medium | medium | blocks keep page and position; quotes must be found in the cited document; per-document warnings and coverage in the corpus report; two-column and scanned documents not tested yet (section 11.4) |
+| R23 | Terminology and units differ across documents and from the templates (English and French, MLC or tonnes, km/h or minutes) | high | medium | seed phrases in both languages; unit conversions in the number check; values outside a template's range rejected; sign-off |
+| R24 | Documents contradict each other, or the default precedence is wrong for them | medium | medium | every conflict listed with both quotes; precedence set per run (`--precedence`); stricter value at equal precedence; the instructors decide at sign-off |
+| R25 | The illustration is misread: a mark missed or merged, a colour other than blue, a wrong name | medium | high | marks found by code and shown numbered in the outputs; L9's answer checked, with position words as fallback; a named zone not found stops the run; non-blue colours not tested on the organisers' drawings |
+| R26 | An order states a constraint that no template expresses | medium | high | reported NOT ENFORCED in the readback, never dropped silently; the operator decides; a new template if time allows (the backlog of section 4.7) |
+| R27 | The incident format is unknown (free text, document, structured message; with or without grading and location) | high | medium | incidents accepted as text or as a document; pattern parser and L6; unlocated reports escalated (intended); question 4 of section 13 |
 
-**Limitations that remain.** All results so far come from one synthetic generator, on a 14 × 10 grid (140 nodes) with at most 6 convoys, not the thousand corridors of a real theatre. The likelihood table and the belief thresholds need calibration that only the instructors can provide. Single-loss survivability does not protect against two simultaneous strikes; the worst-case variant covers chosen pairs only.
+**Limitations that remain.** The comparative results of section 11.3 come from one synthetic generator, on a 14 × 10 grid (140 nodes) with at most 6 convoys; the organisers' Scenario 1 network has been run since (`docs/real_data_validation.md`), without baselines. The doctrine set and the event's exercises are unknown until the event, so S1 and S2 have been tested on stand-ins and on exercise 1 only. The likelihood table and the belief thresholds need calibration that only the instructors can provide. Single-loss survivability does not protect against two simultaneous strikes; the worst-case variant covers chosen pairs only.
 
 ## 11. Implementation and measured results
 
-COA-Net is implemented in this repository: `src/coa_net` (about 10,400 lines of Python), 48 tests, a command line (`coa-net`) and a Python session object (`COANet`). This section maps the stages to the code, gives what the code measures on 100 synthetic scenarios (the demo is section 7), and lists the known places where the code departs from sections 1 to 10 and the appendices. Where earlier sections say "estimate", the numbers below replace them for what they cover. No language model was run for these numbers: every model role used its deterministic fallback, so token budgets and model precision are still unmeasured.
+COA-Net is implemented in this repository: `src/coa_net` (about 15,300 lines of Python), 95 tests, a command line (`coa-net`) and a Python session object (`COANet`). This section maps the stages to the code, gives what the code measures on 100 synthetic scenarios (the demo is section 7) and on the organisers' documents (section 11.6), and lists the known places where the code departs from sections 1 to 10 and the appendices. Where earlier sections say "estimate", the numbers below replace them for what they cover. No language model was run for these numbers: every model role used its deterministic fallback, so token budgets and model precision are still unmeasured.
 
 ### 11.1 Module map
 
 | Stage | Module | Model role, and what replaces it without a model |
 | --- | --- | --- |
-| S0 theatre preparation | `graph.py`, `corridors.py`, `loaders.py`, `scenarios.py` | none |
-| S1 requirement base | `requirements.py` (26 templates, seed base), `doctrine.py` | L1 fills templates (schema, verbatim quote, tier and range checks); fallback: pattern compiler, then seed base |
-| S2 order and intent | `parsing.py`, `mission.py`, `intent.py` | L2 order parser, fallback regex; L3 intent mapper, fallback keyword mapper |
+| S0 theatre preparation | `graph.py`, `corridors.py`, `loaders.py`, `scenarios.py`; organisers' data: `realdata.py`, `scanmap.py`, `audit.py` | none |
+| S1 requirement base | `documents.py` (intake), `doctrine.py` (one document), `corpus.py` (the set: reconciliation, seed fill-in, sign-off sheet, provisional base, report), `requirements.py` (28 templates, seed base) | L1 fills templates (schema, quote, numbers, tier and range checks), united with the pattern compiler; fallback: pattern compiler, then seed base |
+| S2 order understanding and intent | `documents.py`, `orderdoc.py` (roles, routing, outputs, checks, readback), `figures.py` (sketch reader), `parsing.py`, `mission.py`, `intent.py`; itineraries: `exercise.py`, `scenario.py` | L2 order parser, fallback regex; L3 intent mapper, fallback keyword mapper; L9 names the marks, fallback position words |
 | S3 candidate routes | `candidates.py` | none |
 | S4 criticality | `criticality.py` | L4 red team ranks elements; fallback: likelihood table by element type |
 | S5 network design | `design.py` | none (CP-SAT; greedy fallback without OR-Tools) |
@@ -850,20 +948,25 @@ COA-Net is implemented in this repository: `src/coa_net` (about 10,400 lines of 
 | S7 movement credits | `schedule.py` | none (CP-SAT; greedy fallback) |
 | S8 verification and anticipation | `verify.py`, `anticipation.py`, `simulate.py` | none |
 | S9 COAs and briefing | `coa.py`, `explain.py` | L5 comparison and L8 explanations, numbers checked against the facts; fallback: templates |
-| S10 incident loop | `belief.py`, `incidents.py`, `orders.py`, `parsing.py` | L6 report parser, fallback patterns; L7 FRAGO phrasing, fallback template |
+| S10 incident loop | `belief.py`, `incidents.py`, `orders.py`, `parsing.py`; reports given as documents: `documents.py` | L6 report parser, fallback patterns; L7 FRAGO phrasing, fallback template |
 | Evaluation | `baselines.py`, `bench.py` | none |
 | Outputs | `render.py`, `pipeline.py`, `cli.py` | none |
 
 CP-SAT (OR-Tools) solves both the network design (S5) and the movement credits (S7), on integer-scaled coefficients.
 
-All 26 templates of Appendix A are compiled and enforced, with two exceptions. SCH.VARY is compiled but not checked (it needs several rotations, which the mission model does not have yet). NET.LATERAL is reported as a shortfall by the checker but not enforced by the design.
+All 28 templates of Appendix A are compiled and enforced, with two exceptions. SCH.VARY is compiled but not checked (it needs several rotations, which the mission model does not have yet). NET.LATERAL is reported as a shortfall by the checker but not enforced by the design. SEG.TOWN and NET.DISTINCT, added for exercise 1, are enforced by the exercise solver and its checker.
 
 ### 11.2 Running it
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev,real,docs]"
 coa-net demo                       # order LOG-01 on the demo theatre, three incidents -> outputs/demo/report.html
-pytest                             # 48 tests
+pytest                             # 95 tests
+coa-net compile-doctrine doctrine/ --out outputs/base        # at the event: base, corpus report, sign-off sheet
+coa-net signoff --base outputs/base/requirements.json --sheet outputs/base/signoff.csv --out outputs/base/approved.json --reviewer NAME
+coa-net read-order exercise.pdf --out outputs/ex/readback.md  # readback, and the command that solves the order
+coa-net exercise --data DATA --pdf exercise.pdf --requirements outputs/base/requirements.json --provisional --out outputs/ex
+coa-net plan --order order.docx --requirements outputs/base/approved.json --out outputs/plan
 coa-net bench --seeds 100 --reps 50 --out outputs/bench.md
 python docs/figures/make_figures.py --bench outputs/bench.md      # the figures of this document
 ```
@@ -913,7 +1016,7 @@ Items 1 to 5 record rule changes made during implementation; sections 4 and 5 an
 6. **Fallback times.** A group that loses all its designated routes falls back on the best remaining route plus 30 minutes for an unprepared reroute (`UNPREPARED_DELAY_MIN`), and a group with no route at all counts 600 minutes (`FAILURE_TIME_MIN`). Both values are assumptions to calibrate with the instructors.
 7. **Simulator.** Threat reports do not reroute columns in the simulator (the incident loop does that); exposure counts vehicle·minutes on roads with threat level 0.3 or more.
 8. **Benchmark scripts and baselines.** The benchmark uses the uniform script family (S-U) only, 50 replications against the 200 of section 9.6, and none of the tests of that section; the red-team-consistent and adversarial generators exist (`script_weighted`, `script_adversary` in `simulate.py`) but are not yet in the harness. Baselines B2, B3 and the oracle are not implemented. Of the ablations, only A5a (greedy design) and A7 (no playbooks) are in the benchmark, so H2 has no A5b result.
-9. **Language models.** The model paths of L1 to L8 are implemented with the checks of section 6.4 and tested with a scripted client; they have not been run against a real model in this environment. `llm.py:from_env` builds one client for one model, so the per-role table of section 6.1 and ablation A11 need code changes.
+9. **Language models.** The model paths of L1 to L9 are implemented with the checks of section 6.4 and tested with a scripted client; they have not been run against a real model yet. `llm.py:from_env` builds one client for one model, which is now the default of section 6.1; ablation A11 (a model per role) needs code changes.
 10. **Waivers.** `design.py` applies NET.SURVIVE waivers with no approval step and no price, and nothing outside that file reads them. Waived plans count as valid. A solver timeout is treated as infeasibility and can trigger a waiver. Other T1 infeasibility falls to the greedy design.
 11. **Verification gates nothing.** `incidents.py:handle_incident` writes the FRAGO whatever `verify` returns, and S10 step 6 has no Monte Carlo run. `bench.py` counts logged incidents as valid.
 12. **Prose check.** `llm.py:unsupported` tests only that each number and upper-case identifier appears somewhere in the facts. A text that swaps two units' routes passes, and mixed-case names such as Pont-Centre are not read. The intended fix is per-unit field binding, with the templated FRAGO as the authoritative order.
@@ -921,62 +1024,94 @@ Items 1 to 5 record rule changes made during implementation; sections 4 and 5 an
 14. **Belief.** A single report at q = 0.5 closes an element. Reports have no source field, so a repeat raises the probability. Destruction reports decay. Decay takes effect only at the next incident, and a reopening triggers no replan.
 15. **Playbooks.** `build_playbooks` runs no verification. At run time the loop uses the next-corridor tree and re-solves S5 and S7, so times are the same with and without playbooks, and the pre-drafted schedule and FRAGO are not reused. Playbook refresh falls outside the reported incident time.
 16. **Red team.** Temperature is 0, so the two samples are nearly identical. Elements near reported threats are not added to the cards. An omitted element counts as low (0.02), which replaces the 0.10 table prior.
-17. **Doctrine compiler.** Retrieval is a lexical stand-in for bge-m3. With a model configured, a missed sentence is labelled `inexpressible`, so a model failure looks like a catalogue gap, and partial rejections are dropped silently. `CompileReport.coverage` computes the expressiveness formula of section 4.7.
+17. **Doctrine compiler.** Retrieval is a lexical stand-in for bge-m3. The union of model and pattern instances, coverage per document and the logging of every rejected model instance are implemented (3 Nov). `CompileReport.coverage` of the single-document compiler still computes the expressiveness formula of section 4.7; the corpus report computes both. Normative sentences are detected by patterns only.
 18. **Road data.** Defile detection, level crossings on the synthetic theatres, the full-graph fallback, lazy scenarios and the solver gap are not implemented.
 19. **Rule checker.** `verify.py` still tests RTE.DETOUR against the main route's time, not T*_g. `_check_network` trusts the planner's own lists of irreducible and waived pairs, so the checker is not fully independent yet.
 20. **Restoration.** S10 step 7 only reports; `_restore` designates nothing, and new alternates come from the repair step.
 21. **Positions.** `incidents.py:positions` derives positions from the schedule at the report's own timestamp. There is no position input.
 22. **Tokens.** L8 runs for every COA during planning, not on demand, and the budget of section 6.3 is unmeasured.
+23. **Order understanding.** L2 receives the order's text with its blocks joined, so its fields cite the document but not a block; block roles come from patterns; the itineraries parser has no model path. The order's instances are appended to the base without a conflict check against the doctrine's. One itineraries exercise (exercise 1) and synthetic movement orders have been read so far.
+24. **Sketch reader.** Only the blue of exercise 1 has been tested on a drawing by the organisers; other colours use hue ranges tested on synthetic images. The georeferencing residual on exercise 1 (median 1,234 m over 20 names) suits zones of hundreds of square kilometres, not a start point or a single junction.
+25. **Documents.** Two-column layouts, complex tables and scanned documents have not been tested on real NATO publications; OCR (RapidOCR) runs only on pages with no text layer.
+26. **Operator steps for documents.** The readback and the sign-off sheet are written, but nothing pauses for the operator's confirmation, and a provisional run is flagged in every output, not blocked (item 13).
 
 ### 11.5 Limitations and next steps
 
-- Everything above runs on synthetic theatres. The OSM and BD TOPO loaders are unit-tested on parsing but were not run on live data here; real extracts (F2) are the next test, with planted unknown bridge classes. Section 12 gives the dates.
+- Section 11.3 runs on synthetic theatres. The organisers' Scenario 1 data (BD TOPO, OSM, scans) and exercise 1 have been run since (`docs/real_data_validation.md`), and the document readers on the organisers' PDFs (section 11.6); other real extracts (F2), with planted unknown bridge classes, are still to run. Section 12 gives the dates.
 - The likelihood table, belief thresholds, fallback times and route-status rules are placeholders to calibrate with the instructors, and to pre-register before F2 and F3 (section 9.8).
-- Run L1 to L8 with Mistral Small 3.2 24B and Qwen3-32B, and measure tokens, template precision (H6) and the red team's agreement with the instructors.
+- Run L1 to L9 with Mistral Small 3.2 24B on the organisers' H100 server (first L1 on the stand-in set, L2 and L9 on exercise 1), and measure tokens, times, template precision (H6) and the red team's agreement with the instructors.
 - Add the S-RT and S-ADV scripts and the playbook ablation to the simulator benchmark (H3), and the B2 and B3 baselines (H7).
 - Rotations, so that SCH.VARY can be checked.
+
+### 11.6 Measured on the organisers' documents (3 Nov 2026)
+
+No language model; development container. The stand-in doctrine set is the synthetic sample (`src/coa_net/data/sample_doctrine.txt`, which quotes no NATO publication) plus the organisers' preliminary description and rules, used for their real layouts.
+
+| Input | Step | Result |
+| --- | --- | --- |
+| Exercise 1 PDF, 1 page | intake | 0.34 s; 8 text blocks, 2 figures, the illustration flagged as turned by 90° |
+| | order understanding (`read-order`) | routed as an itineraries task ("3 itineraries"); 1 goal, 2 constraint blocks, 4 desired outputs; 6 items understood, each with its quote and page (one, the PFM column, flagged as an assumption); nothing NOT ENFORCED or NOT PRODUCED; every number found in the document; 0.06 s |
+| | sketch reader, position words | 2 blue marks of 1,242.3 and 601.2 km², named South zone (origin) and North zone (destination); georeferenced on 20 place names, median residual 1,234 m; 15.9 s |
+| | end to end (`coa-net exercise --pdf`) | the same zones and itineraries as the run of 2 Nov: IT-1 60.8 km, 72.9 min; IT-2 55.0 km, 66.0 min; IT-3 65.6 km, 79.4 min; 19 of 19 checks; 2 min 40 s with the road graph cached and the zones recomputed |
+| Preliminary description PDF, 4 pages | intake | 0.27 s; 11 headings, 17 paragraphs, 17 list items; the caption "Figure 1: Illustration of the exercise format" linked to its figure |
+| Rules PDF, 12 pages, French | intake | 1.29 s; 82 headings, 104 paragraphs, 59 list items; 12 running-head and page-number lines dropped |
+| Stand-in doctrine set: the sample, the description and the rules | `compile-doctrine`, patterns | 16 pages, 369 sentences, 39 normative; 23 draft instances, all from the sample, each citing document and paragraph; 0 conflicts; coverage 95 %, expressiveness 92 %; the 14 normative sentences of the organisers' two PDFs are labelled out of scope (13) or inexpressible (1), so no requirement is drawn from text that is not doctrine; 23 seed instances superseded, 14 kept; 1.7 s |
+| Order LOG-01 as a Word file | `plan --provisional` on that base | readback with the three convoys and the intent, each with its block; report marked PROVISIONAL, with the 23 draft instances listed; 2.4 s |
 
 ## 12. Remaining work to 12 November
 
 ### 12.1 Calendar
 
-COA-Net exists (section 11). What remains is the safety code behind section 11.4, the first real model run and the evaluation. The organisers' data have not arrived, so the work below is built to hold whichever data they supply.
+COA-Net exists (section 11), runs on the organisers' Scenario 1 data, and reads doctrine sets and orders as documents (section 11.6). What remains is the first real model run, the safety code behind section 11.4, the evaluation, and a rehearsal of the first day of the event, since the doctrine and the exercises arrive only there.
 
 | Dates | Work | Result |
 | --- | --- | --- |
-| Mon 2 - Tue 3 Nov | Hold waived plans for approval; mark failed FRAGOs "NOT VERIFIED" and escalate; closure rule and non-decaying destruction; degraded mode for unknown bridges; fix the repair's schedule gaps and halts; report validity over handled incidents | the promises of sections 4 to 6 hold |
-| Wed 4 Nov | First real model run (Mistral Small 3.2 24B, Qwen3-32B): prompt and output logs, measured tokens, redo section 6.3; per-unit binding in the prose check | first model evidence; the biggest schedule risk closed |
-| Thu 5 Nov | Pre-registration (section 9.8); wall-clock deadline for incidents and fast-fail on the model server | parameters frozen |
-| Thu 5 - Fri 6 Nov | Public OSM and BD TOPO extracts (F2); 0 %, 50 % and 100 % of bridges unknown; scaling test at the upper size of S5 | loaders proven on real data; a stated size ceiling |
-| Sat 7 - Mon 9 Nov | Baselines B2 and B3; S-RT and S-ADV scripts; playbook ablation with equal delays; sensitivity on the assumed probabilities and penalties | H1, H3 and H7 tested |
-| Tue 10 Nov | Results tables, figures, report | results |
-| Wed 11 Nov | Freeze, dry run of the demo, deterministic fallbacks checked | ready |
-| Thu 12 Nov (event) | Load the organisers' map, doctrine and order; S0 and S1 on them; sign-off of requirements with instructors; start the panel of section 9.7 if they agree | requirement base for F3 |
-| Fri 13 Nov | Run the order and the incidents; F3 results with the pre-registered parameters | results |
-| Sat 14 Nov | Demo and presentation | |
+| Tue 3 Nov | Organisers' answer taken in: document intake, doctrine-set compiler with reconciliation, sign-off and provisional runs, order reader and readback, sketch reader (this revision) | done |
+| Wed 4 Nov | First real model run on the H100 server (Mistral Small 3.2 24B): L1 on the stand-in set, L2 and L9 on exercise 1, then L3 to L8; prompt and output logs; measured tokens; redo section 6.3 | first model evidence |
+| Thu 5 Nov | Rehearsal of the event's first day: public NATO texts on road movement as a stand-in doctrine set, and three exercises written like exercise 1 (another colour, points instead of zones, a convoy movement); pre-registration (section 9.8) | timeline tested; parameters frozen |
+| Fri 6 Nov | Safety code: hold waived plans for approval; mark failed FRAGOs "NOT VERIFIED" and escalate; closure rule and non-decaying destruction; degraded mode for unknown bridges; wall-clock deadline for incidents | the promises of sections 4 to 6 hold |
+| Sat 7 - Mon 9 Nov | Baselines B2 and B3; S-RT and S-ADV scripts; playbook ablation; ablations A14 and A15 | H1, H3 and H7 to H9 tested as far as the data allow |
+| Tue 10 Nov | Results tables, figures; the final report's required sections (rules, art. 9.4: models with their licences, data log, prompts and changes per exercise) | results |
+| Wed 11 Nov | Freeze, dry run of the demo, deterministic fallbacks checked; containers, LICENSE and documentation (art. 9.3) | ready |
+| Thu 12 Nov (event) | Launch at 09:00, then the first hours below | requirement base; first exercises |
+| Fri 13 Nov | Exercises and incidents with the pre-registered parameters | results |
+| Sat 14 Nov | Deliverables by 15:00; presentation of 10 minutes | |
+
+**First hours of the event.** T is when the doctrine set is handed out; the times are targets, measured only where marked.
+
+| From | Step | Command |
+| --- | --- | --- |
+| T | Copy the doctrine set, the maps and the first exercise; audit the data | `coa-net audit` |
+| T + 10 min | Compile the doctrine set with patterns (1.7 s for 16 pages, measured); read the corpus report: documents, warnings, conflicts, coverage | `coa-net compile-doctrine` |
+| T + 15 min | First exercise on the provisional base: readback, then the solver (exercise 1: under 3 min with the road graph cached, measured) | `coa-net read-order`, then `exercise` or `plan --provisional` |
+| T + 20 min | Compile again with L1, and compare with the pattern run | `coa-net compile-doctrine --llm` |
+| T + 1 h | Sign-off with the instructors, mandatory instances first (60 to 120 lines at about 15 s each) | `coa-net signoff` |
+| then | Re-run the exercises solved so far on the approved base, and report what changed | `exercise`, `plan` |
 
 ### 12.2 What to cut, in this order
 
 1. Baseline B3, then B2 (R8 then rests on the published benchmarks, not on our own evidence).
 2. The S-RT and S-ADV scripts.
 3. Sensitivity runs beyond the two main assumptions.
-4. The per-role model map (one model for all roles).
+4. L1 at the event, if the server is slow: patterns and sign-off alone (the union only adds instances).
 5. The scaling test (state the tested size instead).
 
-Never cut: the safety code of 2-3 November, the first real model run, the rule checker, survivability, the order between convoys as a decision, the playbook for the highest-impact loss, and the deterministic fallbacks.
+Never cut: the readback and the number checks on orders, the PROVISIONAL flag, the sign-off sheet, the safety code of 6 November, the first real model run, the rule checker, survivability, the order between convoys as a decision, the playbook for the highest-impact loss, and the deterministic fallbacks.
 
 ## 13. Questions for the organisers
 
-1. Which doctrine documents will be provided (NATO publications, national texts, school material), in which language, and may they be processed by local models only?
-2. Which map extent and format: BD TOPO version and layers, an OSM extract, or a vector image? Will bridge load classes, tunnel clearances or route reconnaissance results be provided? Without load classes the default rule blocks every bridge (section 10, R5). Could the map come only as an image (R17)?
-3. What does a logistic order look like (a sample would help), and how many convoys, rotations and hours does it cover?
-4. How will incidents arrive (free text, structured messages, timing, source grading), and is response time evaluated?
-5. Which outputs are expected: a map overlay, march tables, FRAGOs, one plan or several courses of action?
+Answered so far: questions 1 and 3 by the organisers on 3 Nov 2026, 2 by the Scenario 1 data, 9 and 10 by the preliminary description and the rules. Follow-up questions are in italics.
+
+1. **Doctrine. Answered (3 Nov):** a set of textual documents handed out during the hackathon, STANAG and other NATO documents released to the public (rules, art. 10.4). *In which formats (PDF with a text layer, Word, scans) and languages? Could the list of titles be given before the event, so that the intake is tested on the same publications? Is there an order of precedence between them, or should the more specific movement standard win (our default)?*
+2. **Map. Answered by the Scenario 1 data:** 1:100,000 and 1:250,000 TIFF scans, OSM and BD TOPO shapefiles; no bridge load class, so the default rule would block every bridge (section 10, R5). *Will the event's maps cover the same area, in the same formats?*
+3. **Orders. Answered (3 Nov):** multimodal documents like exercise 1: an illustration with the geographical objectives, constraints and a goal, and the desired outputs. *Is the illustration always a crop of the maps provided? Is there a colour code or legend for zones, points, routes and threats? Will some exercises describe convoys (vehicles, times, priorities), and in what form? Which formats are expected for the outputs (coordinate system of the GeoJSON, image or vector layers)?*
+4. **Incidents. Open.** The rules say the same incidents are submitted to every team at predefined times (art. 9.1). In what form (free text, a document like the orders, structured messages), with a source grading and a location? Is response time evaluated?
+5. **Outputs. Partly answered:** each exercise lists its desired outputs (exercise 1: two map layers, a GeoJSON file, a text file). *Are march tables, FRAGOs and several courses of action welcome beyond them?*
 6. What threat information will be available (enemy positions, threat areas), and is an assessment of likely targets welcome?
 7. Which movement-control conventions does the school use: route statuses, route names, control posts, halt rules, headways, vehicle intervals?
-8. May an operator stay in the loop during the exercise (confirming priorities, choosing a course of action)?
-9. What hardware will be available on site (GPU model and memory, internet access), and are there restrictions on models or licences?
-10. How will solutions be judged, and by whom?
+8. May an operator stay in the loop during the exercises (confirming the readback and the priorities, signing off the doctrine, choosing a course of action)?
+9. **Hardware. Answered:** a server of H100 GPUs and 250 € of Mistral VIBE tokens per team; multimodal models recommended (preliminary description); models whose licences allow defence use and redistribution preferred (rules, art. 9.4). *How much GPU memory per team, and may a model server run for the whole event?*
+10. **Judging. Answered by the rules (art. 13):** a jury of military officers, public-sector technical experts, AMIAD representatives and academics; the criteria are in section 8; their weights are given at the launch.
 11. Will convoy positions be reported during the exercise, or must they be estimated from the schedule (R19)?
 12. Which values does the school use for the assumptions of this document: report grades and closure thresholds, the detour guard, likelihoods of loss, and the delay penalties?
 
@@ -991,6 +1126,7 @@ Never cut: the safety code of 2-3 November, the first real model run, the rule c
 | SEG.STATUS | SEG | T0 | closure threshold (0.5), suspect threshold (0.2), half-life | mask from the belief model | not applicable |
 | SEG.CARGO | SEG | T1 (tunnels), T2 (built-up) | cargo classes; element classes forbidden or avoided | mask; objective hazmat_builtup | forbid in tunnels |
 | SEG.AVOID | SEG | T1 to T3 | attribute or area to avoid or prefer (built-up, forest, open ground, road class, lighting), by phase | mask (T1); objectives | risk |
+| SEG.TOWN | SEG | T1 (mask), T2 (objective) | minimum population of the towns to avoid; town areas and populations read from the map | mask; objective | risk (town population unread) |
 | RTE.GAP_MAX | RTE | T1 | maximum driving time between halts; kind of halt place | path resource (S3) | risk (unknown capacity) |
 | RTE.TURN | RTE | T0 or T1 | minimum turning radius or maximum turn angle per profile; roundabouts allowed or not | turn-expanded nodes (S3) | risk |
 | RTE.CROSSINGS_MAX | RTE | T1 or T2 | maximum number of crossings of an element class (towns, level crossings) per route, by cargo | path resource (S3) | risk |
@@ -999,6 +1135,7 @@ Never cut: the safety code of 2-3 November, the first real model run, the rule c
 | RTE.RANGE | RTE | T1 | maximum distance between fuel or maintenance points | path resource (S3) | risk |
 | NET.SURVIVE | NET | T1 (or T2) | k (default 1), element classes counted, detour guard | design model (S5) | elements of unknown status count as critical |
 | NET.SEPARATE | NET | T2 | separate opposite flows on narrow roads; outbound and return circuits; incompatible cargoes | design model (S5) | not applicable |
+| NET.DISTINCT | NET | T1 (or T2) | k itineraries between the same areas, pairwise at least d km apart and never intersecting | exercise solver (seeded sequential exclusion); checker | not applicable |
 | NET.LATERAL | NET | T2 | a lateral link at least every D km between parallel MSRs | design model (S5) | not applicable |
 | NET.CONTROL | NET | T2 | control post at critical elements, at splits and merges, maximum spacing | placement (S6) | not applicable |
 | NET.SIZE | NET | T3, or T1 as a cap | maximum designated length or number of routes | objective or constraint (S5) | not applicable |
@@ -1164,13 +1301,20 @@ French terms are given where they are standard; check them with the instructors.
 | Movement credit (crédit de mouvement) | road space and time allocated to a unit on a controlled route |
 | MSR, main supply route | the designated main route of a convoy group |
 | Noisy-OR | fusion of independent reports: the probability that at least one is true |
+| NOT ENFORCED, NOT PRODUCED | readback labels for a constraint of the order that no template expresses, and for a desired output that no writer produces |
 | Playbook | a pre-computed and pre-briefed response to a likely loss |
+| Precedence | the order in which documents win a conflict between requirements; by default the order, then movement standards, then general doctrine, then other documents |
+| Provisional base | a requirement base whose doctrine instances are not signed off yet; every output of a run on it says so |
 | RCSP | resource-constrained shortest path |
+| Readback | the order restated item by item, each with its source, before acting on it (`readback.md`) |
 | Réseau routier de manœuvre | the brief's term: the maneuver road network |
 | Road movement graph (graphique de marche) | time-distance diagram of all columns |
 | Route classification | width / route type (X, Y, Z) / load class / obstructions |
 | Route status | open, supervised, dispatch, reserved or prohibited |
+| Set-of-marks | an image with a number drawn on each mark, so that a model refers to marks by number instead of by position |
+| Sign-off | the instructors' review of each compiled requirement (accept, edit or reject) before it is used without the provisional flag |
 | SP, RP | start point, release point of a movement |
 | SPOF | single point of failure |
+| STANAG | NATO standardisation agreement |
 | TCP | traffic control post |
 | VOI | value of information |

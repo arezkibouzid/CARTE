@@ -72,30 +72,25 @@ class ScenarioRun:
         return t
 
 
-def exercise_from_pdf(pdf: str | Path, out_dir: str | Path) -> tuple[str, str]:
-    """Statement and sketch from an exercise PDF in the organisers' format: the text of every page, and the
-    largest embedded image (the map illustration with the zones), written to ``out_dir`` (needs pypdf)."""
-    from pypdf import PdfReader
+def exercise_from_pdf(pdf: str | Path, out_dir: str | Path, with_reading: bool = False):
+    """Statement and illustration of an exercise document in the organisers' format (``orderdoc.read_order``): the text in
+    reading order, and the largest figure (the map illustration with the zones), written to ``out_dir`` with the text
+    and the document's blocks. Returns (text, sketch path), plus the reading with ``with_reading``."""
+    from .orderdoc import read_order
 
-    reader = PdfReader(str(pdf))
-    text = "\n".join(page.extract_text() or "" for page in reader.pages)
-    best = None
-    for page in reader.pages:
-        for im in page.images:
-            try:
-                w, h = im.image.size
-            except Exception:  # undecodable image: skip it
-                continue
-            if best is None or w * h > best[0]:
-                best = (w * h, im)
-    if best is None:
+    reading = read_order(pdf)
+    fig = reading.illustration
+    if fig is None or fig.data is None:
         raise ValueError(f"{pdf}: no image found; the exercise sketch is needed for the zones (give it with --sketch)")
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    path = out / ("sketch" + (Path(best[1].name).suffix or ".png"))
-    path.write_bytes(best[1].data)
+    path = out / ("sketch" + (fig.ext or ".png"))
+    path.write_bytes(fig.data)
+    text = reading.text
     (out / "exercise.txt").write_text(text, encoding="utf-8")
-    return text, str(path)
+    (out / "blocks.json").write_text(json.dumps([{"id": i.block, "role": i.role, "page": i.page, "text": i.text} for i in reading.items],
+                                                ensure_ascii=False, indent=1), encoding="utf-8")
+    return (text, str(path), reading) if with_reading else (text, str(path))
 
 
 GRAPH_CACHE_VERSION = 5  # bump when realdata.py changes the graph it builds
@@ -159,7 +154,9 @@ def annotate_areas(G, lines: np.ndarray, edges: list, builtup, towns_big) -> dic
 
 def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXERCISE_1, cache: str | Path | None = None,
                  n_seeds: int = 20, max_rank: int = 4, turn_aware: bool = True, compare: bool = True,
-                 osm_check: bool = True) -> ScenarioRun:
+                 osm_check: bool = True, llm=None, requirements: list | None = None) -> ScenarioRun:
+    """Solve an itineraries exercise. ``llm``: model for the sketch reader (L9, needs images); ``requirements``: the
+    requirement base (default: the seed base; give the base compiled from the event's doctrine)."""
     import geopandas as gpd
     import shapely
 
@@ -168,8 +165,8 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
     from .mission import build_context
     from .parsing import parse_order
     from .requirements import load_requirements
-    from .scanmap import (builtup_polygons, georeference_sketch, ocr_labels, reread_populations, sketch_zones, town_areas,
-                          towns_from_labels)
+    from .figures import names_in, read_sketch
+    from .scanmap import builtup_polygons, georeference_sketch, ocr_labels, reread_populations, town_areas, towns_from_labels
     from .vehicles import load_catalogue
 
     out = Path(out)
@@ -225,23 +222,39 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
     # 4. zones from the sketch
     if not paths.sketch:
         raise ValueError("exercise mode needs the exercise sketch image (zones)")
-    sketch_key = file_key(paths.sketch, content=True)
+    import hashlib
+    import shutil
+
+    sketch_key = file_key(paths.sketch, content=True) + "_" + hashlib.sha1("|".join(names_in(exercise_text)).encode()).hexdigest()[:6]
     zpath = cache / f"zones_{sketch_key}.geojson"
     gpath = cache / f"georef_{sketch_key}.json"
-    if zpath.exists() and gpath.exists():
+    mpath = cache / f"marks_{sketch_key}.png"
+    if zpath.exists() and gpath.exists() and llm is None:
         zones_gdf = gpd.read_file(zpath)
         geo_facts = json.loads(gpath.read_text())
     else:
         geo = georeference_sketch(paths.sketch, labels)
-        zones_gdf = sketch_zones(paths.sketch, geo)
+        # marks found by code and georeferenced; named by the sketch reader (L9) when a model is given, else by position words
+        zones_gdf, marks, mark_notes, named_by = read_sketch(paths.sketch, geo, exercise_text, llm=llm, out_png=str(mpath))
         zones_gdf.to_file(zpath, driver="GeoJSON")
+        areas_km2 = dict(zip(zones_gdf["mark"], zones_gdf.to_crs(L93).area / 1e6))
         geo_facts = {"rotation": geo.rotation, "inliers": geo.inliers, "median_residual_m": round(geo.median_residual_m),
-                     "matches": [(m[0], m[1]) for m in geo.matches]}
+                     "matches": [(m[0], m[1]) for m in geo.matches], "named_by": named_by, "mark_notes": mark_notes,
+                     "marks": [{"id": m.id, "colour": m.colour, "px": m.px, "area_km2": round(float(areas_km2[m.id]), 1), "name": m.name,
+                                "label": m.label, "role": m.role, "named_by": m.named_by} for m in marks]}
         gpath.write_text(json.dumps(geo_facts, ensure_ascii=False, indent=1))
+    if mpath.exists():
+        shutil.copyfile(mpath, out / "sketch_marks.png")
+    missing = [z for z in (spec.origin_zone, spec.destination_zone) if z not in set(zones_gdf["zone"])]
+    if missing:
+        raise ValueError(f"zone(s) {missing} named in the order not found among the marks read on the sketch "
+                         f"({list(zones_gdf['zone'])}); see {out / 'sketch_marks.png'} and the georeferencing facts")
     data_box = shapely.box(*rep_bd.bounds)
     zones_gdf["geometry"] = zones_gdf.geometry.intersection(data_box)
     zones = {z: g for z, g in zip(zones_gdf["zone"], zones_gdf.to_crs(L93).geometry)}
-    run.facts["georef"] = geo_facts
+    run.facts["georef"] = {k: v for k, v in geo_facts.items() if k not in ("marks", "mark_notes")}
+    run.facts["marks"] = geo_facts.get("marks", [])
+    run.facts["mark_notes"] = geo_facts.get("mark_notes", [])
     run.facts["zones"] = {z: round(float(a), 1) for z, a in zip(zones_gdf["zone"], zones_gdf.to_crs(L93).area / 1e6)}
     t = run.tick("georeference sketch and read zones", t)
 
@@ -260,7 +273,7 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
              f"Convoy PFM: {spec.n_vehicles} x {spec.vehicle} from {spec.origin_zone} zone to {spec.destination_zone} zone, depart 06:00, priority 1.\n")
     from .realdata import systemic_unknowns
 
-    reqs, relax_notes = systemic_unknowns(G, load_requirements() + ex_reqs)
+    reqs, relax_notes = systemic_unknowns(G, (requirements if requirements is not None else load_requirements()) + ex_reqs)
     run.facts["systemic_unknowns"] = relax_notes
     H = CorridorGraph(G, max_rank=max_rank)
     mission = parse_order(order, G, catalogue)

@@ -38,7 +38,7 @@ class Canvas:
         if subtitle:
             self.parts.append(f'<text x="40" y="86" font-size="19" fill="{MUTED}">{_e(subtitle)}</text>')
 
-    def box(self, x, y, w, h, title, sub="", kind="code", sub2=""):
+    def box(self, x, y, w, h, title, sub="", kind="code", sub2="", sub3=""):
         if kind == "llm":
             style = f'fill="{BLUE_FILL}" stroke="{BLUE}" stroke-width="2.6"'
         elif kind == "input":
@@ -49,7 +49,7 @@ class Canvas:
             style = f'fill="#ffffff" stroke="{GREY}" stroke-width="2"'
         self.parts.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="12" {style}/>')
         cx = x + w / 2
-        lines = [s for s in (sub, sub2) if s]
+        lines = [s for s in (sub, sub2, sub3) if s]
         ty = y + h / 2 + (7 if not lines else -10 - 11 * (len(lines) - 1))
         weight = "400" if kind == "input" else "700"
         self.parts.append(f'<text x="{cx}" y="{ty}" text-anchor="middle" font-size="21" font-weight="{weight}" fill="{INK}">{_e(title)}</text>')
@@ -89,42 +89,64 @@ class Canvas:
 
 
 def architecture() -> str:
-    c = Canvas(1400, 1120, "The models read and write; code designs the network",
-               "COA-Net stages S0-S10. Every model role (L1-L8) is checked by code and has a deterministic fallback.")
-    bw, bh = 290, 96
-    X0, X1, X2, X3 = 40, 340, 680, 1060
-    w3, c3 = 310, 1060 + 155
-    rows = {"map": 140, "doc": 300, "order": 500, "inc": 940}
-    mid = lambda r: r + bh / 2  # noqa: E731
-    for key, label in (("map", "BD TOPO / OSM + DEM"), ("doc", "Doctrine corpus"), ("order", "Logistic order, intent"), ("inc", "Incident reports")):
-        c.box(X0, rows[key] + 13, 245, 70, label, kind="input")
-        c.arrow([(X0 + 245, mid(rows[key])), (X1 - 4, mid(rows[key]))])
-    c.box(X1, rows["map"], bw, bh, "S0 Theatre preparation", "corridor graph,", sub2="critical elements, halt areas")
-    c.box(X1, rows["doc"], bw, bh, "S1 Requirement compiler", "L1: 26 templates, 4 tiers", kind="llm")
-    c.box(X1, rows["order"], bw, bh, "S2 Order and intent", "L2 order, L3 priority order", kind="llm")
-    c.box(X1, rows["inc"], bw, bh, "S10 Report parser", "L6: typed, graded report", kind="llm")
-    c.box(X2, rows["order"], bw, bh, "S3-S4 Routes, criticality", "candidates, SPOFs,", sub2="L4 red team (likelihood)")
-    c.box(X2, rows["inc"], bw, bh, "S10 Belief and repair", "playbook, or S5 from", sub2="the current positions")
-    c.box(X3, rows["order"], w3, bh, "S5 Network design", "CP-SAT: survivability,", sub2="priorities, detour guard")
-    c.box(X3, 650, w3, bh, "S6-S8 Credits and checks", "schedule, checker, playbooks,", sub2="recce value, Monte Carlo")
-    c.box(X3, 795, w3, bh, "S9 COAs and briefing", "facts table, L5 comparison,", sub2="L8 explanations")
-    c.box(X3, rows["inc"], w3, bh, "Plan and orders", "overlay, march tables,", sub2="road movement graph, annex", kind="out")
-    c.arrow([(X1 + bw, mid(rows["map"])), (c3, mid(rows["map"])), (c3, rows["order"] - 4)], "corridor graph, critical elements",
-            at=(X2 + 150, mid(rows["map"]) - 12))
-    c.arrow([(X1 + bw, mid(rows["doc"])), (X2 + bw / 2, mid(rows["doc"])), (X2 + bw / 2, rows["order"] - 4)], "approved requirements",
-            at=(X1 + bw + 175, mid(rows["doc"]) - 12))
-    c.arrow([(X1 + bw, mid(rows["order"])), (X2 - 4, mid(rows["order"]))])
-    c.arrow([(X2 + bw, mid(rows["order"])), (X3 - 4, mid(rows["order"]))])
-    c.arrow([(c3, rows["order"] + bh), (c3, 650 - 4)])
-    c.arrow([(c3, 650 + bh), (c3, 795 - 4)])
-    c.arrow([(c3, 795 + bh), (c3, rows["inc"] - 4)], "operator's choice", at=(c3 + 12, 795 + bh + 30), anchor="start")
-    c.arrow([(X1 + bw, mid(rows["inc"])), (X2 - 4, mid(rows["inc"]))])
-    c.arrow([(X2 + bw, mid(rows["inc"])), (X3 - 4, mid(rows["inc"]))])
-    c.text((X2 + bw + X3) / 2, mid(rows["inc"]) - 34, "FRAGO", anchor="middle")
-    c.text((X2 + bw + X3) / 2, mid(rows["inc"]) - 12, "(L7)", anchor="middle")
-    c.arrow([(X2 + 95, rows["inc"]), (X2 + 95, 698), (X3 - 4, 698)], "repair, re-time", at=(X2 + 107, 686), anchor="start")
-    c.arrow([(X3 - 4, 843), (X2 + 200, 843), (X2 + 200, rows["inc"] - 4)], "playbooks", at=(X2 + 212, 875), anchor="start", dashed=True)
-    c.legend(1088)
+    c = Canvas(1400, 1265, "The models read and write; code designs the network",
+               "Doctrine and orders arrive as documents. Every model role (L1-L9) is checked by code and has a deterministic fallback.")
+    bw, bh, bh5 = 290, 96, 120
+    A, B, C, D = 40, 340, 680, 1040
+    r1, r2, r3, r4, r5, r6, r7 = 145, 285, 435, 585, 745, 915, 1065
+    mid = lambda r, h=bh: r + h / 2  # noqa: E731
+    rm = 1368  # right margin lane
+
+    for y, label in ((125, "AT THE EVENT, ONCE"), (r3 - 14, "PER EXERCISE OR ORDER"), (r7 - 14, "PER INCIDENT")):
+        c.text(A, y, label, 16, INK, "start", "700")
+    for r, title, sub in ((r1, "BD TOPO / OSM", "scans, DEM"), (r2, "Doctrine documents", "STANAG, NATO texts"),
+                          (r3, "Order document", "text + illustration"), (r7, "Incident reports", "text or document")):
+        c.box(A, r + 6, 245, 84, title, sub, kind="input")
+        c.arrow([(A + 245, mid(r)), (B - 4, mid(r))])
+
+    # at the event, once
+    c.box(B, r1, bw, bh, "S0 Theatre preparation", "road graph, corridors,", sub2="critical elements, halt areas")
+    c.box(B, r2, bw, r3 + bh - r2, "Document intake", "pages, paragraphs, sections,", sub2="figures, captions; OCR")
+    c.box(C, r2, bw, bh, "S1 Doctrine compiler", "L1 + patterns, 28 templates,", sub2="every instance cited", kind="llm")
+    c.box(D, r2, bw, bh, "Requirement base", "reconciled, seed fills gaps;", sub2="provisional, then signed off")
+    c.arrow([(B + bw, mid(r1)), (rm, mid(r1)), (rm, r5 + 40), (D + bw + 4, r5 + 40)], "road graph, critical elements",
+            at=(C + bw / 2 + 40, mid(r1) - 12))
+    c.arrow([(B + bw, mid(r2)), (C - 4, mid(r2))])
+    c.arrow([(C + bw, mid(r2)), (D - 4, mid(r2))])
+    c.arrow([(D + bw / 2, r2 + bh), (D + bw / 2, r3 - 4)], "requirements", at=(D + bw / 2 + 12, r2 + bh + 32), anchor="start")
+
+    # per exercise or order
+    c.box(C, r3, bw, bh, "S2 Order understanding", "block roles, task, outputs;", sub2="L2 parser, numbers checked", kind="llm")
+    c.box(D, r3, bw, bh, "Readback and task", "what was understood or not;", sub2="the operator confirms")
+    c.box(B, r4, bw, bh, "S2.3 Sketch reader", "marks found by code,", sub2="named by L9, georeferenced", kind="llm")
+    c.arrow([(B + bw, mid(r3) - 15), (C - 4, mid(r3) - 15)])
+    c.arrow([(B + bw / 2, r3 + bh), (B + bw / 2, r4 - 4)], "illustration", at=(B + bw / 2 + 12, r3 + bh + 32), anchor="start")
+    c.arrow([(B + bw, mid(r4)), (C - 25, mid(r4)), (C - 25, mid(r3) + 22), (C - 4, mid(r3) + 22)], "named zones",
+            at=(C - 13, mid(r4) + 6), anchor="start")
+    c.arrow([(C + bw, mid(r3)), (D - 4, mid(r3))])
+    c.box(C, r5, bw, bh5, "Exercise solver", "k itineraries (NET.DISTINCT),", sub2="towns, turn radii, checker,",
+          sub3="on the S0 road graph")
+    c.box(D, r5, bw, bh5, "S3-S9 Movement planning", "routes, criticality (L4),", sub2="CP-SAT network and credits,",
+          sub3="checks, playbooks, COAs (L5/L8)")
+    c.arrow([(D + 40, r3 + bh), (D + 40, r4 + 75), (C + bw / 2, r4 + 75), (C + bw / 2, r5 - 4)], "itineraries task",
+            at=((C + bw / 2 + D + 40) / 2, r4 + 63))
+    c.arrow([(D + bw / 2, r3 + bh), (D + bw / 2, r5 - 4)], "movement task", at=(D + bw / 2 + 12, r4 + 40), anchor="start")
+    c.box(C, r6, bw, bh, "Requested outputs", "layers, GeoJSON,", sub2="decision-process text", kind="out")
+    c.box(D, r6, bw, bh, "Plan and orders", "COAs, overlay, march tables,", sub2="playbooks, recce tasks", kind="out")
+    c.arrow([(C + bw / 2, r5 + bh5), (C + bw / 2, r6 - 4)])
+    c.arrow([(D + bw / 2, r5 + bh5), (D + bw / 2, r6 - 4)], "operator's choice", at=(D + bw / 2 + 12, r5 + bh5 + 30), anchor="start")
+
+    # per incident
+    c.box(B, r7, bw, bh, "S10 Report parser", "L6: typed, graded report", kind="llm")
+    c.box(C, r7, bw, bh, "S10 Belief and repair", "playbook, or S5 from", sub2="the current positions")
+    c.box(D, r7, bw, bh, "FRAGO", "L7 phrases the", sub2="structured difference", kind="llm")
+    c.arrow([(B + bw, mid(r7)), (C - 4, mid(r7))])
+    c.arrow([(C + bw, r7 + 70), (D - 4, r7 + 70)])
+    c.arrow([(C + bw - 30, r7), (C + bw - 30, r7 - 27), (C + bw + 25, r7 - 27), (C + bw + 25, r5 + 70), (D - 4, r5 + 70)],
+            "repair, re-time", at=(C + bw - 42, r7 - 35), anchor="end")
+    c.arrow([(D, r5 + 100), (C + bw + 45, r5 + 100), (C + bw + 45, r7 + 30), (C + bw + 4, r7 + 30)], "playbooks",
+            at=(C + bw + 55, r6 - 12), anchor="start", dashed=True)
+    c.legend(1225)
     return c.svg()
 
 
@@ -303,14 +325,19 @@ def main(argv=None) -> None:
     ap.add_argument("--out", default=str(Path(__file__).parent))
     ap.add_argument("--bench", help="markdown written by `coa-net bench --out` (adds the benchmark chart)")
     ap.add_argument("--html-only", action="store_true")
+    ap.add_argument("--only", help="comma-separated figure names to build, e.g. coa-net-architecture (default: all)")
     args = ap.parse_args(argv)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    figs, timings = demo_figures()
+    only = set(args.only.split(",")) if args.only else None
+    figs, timings = ({}, {}) if only is not None and only <= {"coa-net-architecture", "benchmark"} else demo_figures()
     figs["coa-net-architecture"] = (architecture(), 1400)
-    figs["incident-loop"] = (incident_loop(timings), 1400)
+    if only is None or "incident-loop" in only:
+        figs["incident-loop"] = (incident_loop(timings), 1400)
     if args.bench:
         figs["benchmark"] = (bench_chart(Path(args.bench).read_text(encoding="utf-8")), 1400)
+    if only is not None:
+        figs = {k: v for k, v in figs.items() if k in only}
     pages = {}
     for name, (svg, width) in figs.items():
         p = out / f"{name}.html"

@@ -6,10 +6,12 @@ usual local runtimes for <= tens-of-billions-parameter open models: vLLM
 or TGI. Outputs are requested as JSON, constrained by a JSON schema when the
 server supports it, and always validated by the caller.
 
-Every language-model role (L1 to L8 in the methodology) has a deterministic
+Every language-model role (L1 to L9 in the methodology) has a deterministic
 offline fallback, so the pipeline runs without any model; set
-``COA_LLM_BASE_URL`` and ``COA_LLM_MODEL`` to enable one. Token usage is
-recorded per stage for the frugality metrics.
+``COA_LLM_BASE_URL`` and ``COA_LLM_MODEL`` to enable one. The sketch reader
+(L9) sends the numbered sketch as an image, so it needs a vision-language
+model behind the same endpoint (Mistral Small 3.2 takes images). Token usage
+is recorded per stage for the frugality metrics.
 """
 
 from __future__ import annotations
@@ -96,6 +98,17 @@ class OpenAICompatibleClient:
             {"role": "system", "content": system + "\nReply with a single JSON object and nothing else."},
             {"role": "user", "content": user + "\n\nJSON schema of the answer:\n" + json.dumps(schema)},
         ]
+        return self._complete(messages, schema, stage)
+
+    def complete_json_images(self, system: str, user: str, schema: dict, images: list[str], stage: str = "") -> dict:
+        """Same as ``complete_json`` with images (data URLs or http URLs) after the text, for vision-language models (L9)."""
+        content: list[dict] = [{"type": "text", "text": user + "\n\nJSON schema of the answer:\n" + json.dumps(schema)}]
+        content += [{"type": "image_url", "image_url": {"url": u}} for u in images]
+        messages = [{"role": "system", "content": system + "\nReply with a single JSON object and nothing else."},
+                    {"role": "user", "content": content}]
+        return self._complete(messages, schema, stage)
+
+    def _complete(self, messages: list[dict], schema: dict, stage: str) -> dict:
         payload: dict[str, Any] = {"model": self.model, "messages": messages, "temperature": self.temperature}
         if self.use_json_schema:
             payload["response_format"] = {"type": "json_schema", "json_schema": {"name": "answer", "schema": schema}}
@@ -130,6 +143,10 @@ class ScriptedLLM:
         out = self.responder(stage, user)
         self.usage.record(stage, (len(system) + len(user)) // 4, len(json.dumps(out)) // 4, 0.0)
         return out
+
+    def complete_json_images(self, system: str, user: str, schema: dict, images: list[str], stage: str = "") -> dict:
+        self.images_seen = getattr(self, "images_seen", 0) + len(images)
+        return self.complete_json(system, user, schema, stage)
 
 
 def from_env() -> OpenAICompatibleClient | None:
