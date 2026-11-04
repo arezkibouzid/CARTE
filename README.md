@@ -78,7 +78,7 @@ Reading it: COA-Net removes every avoidable single point of failure (95 % of gro
 | S9 COAs and briefing (L5, L8) | `coa.py`, `explain.py` | Facts table, COA comparison whose numbers are checked against the facts, contrastive explanations. |
 | S10 incident loop (L6, L7) | `belief.py`, `incidents.py`, `orders.py` | Admiralty-graded reports, belief update, playbook or repair from current positions, re-timing, verification, redundancy restoration, FRAGO from a structured plan difference. |
 | Evaluation | `baselines.py`, `bench.py` | B0-B1, COA-Net greedy and CP-SAT, incident loop with and without playbooks. |
-| Outputs | `render.py`, `pipeline.py`, `cli.py` | HTML report, SVG maps, road movement graph, COA chart, GeoJSON, optional Folium map; `COANet` session object; command line. |
+| Outputs | `render.py`, `pipeline.py`, `cli.py` | HTML report, SVG maps, road movement graph, COA chart, GeoJSON, optional Folium map (`render.render_folium`, Python API only: no command calls it); `COANet` session object; command line. |
 
 **Not done yet:** the long-context and vision-language baselines (B2, B3), runs on other real map extracts (F2), checking SCH.VARY (needs several rotations), most ablations (only A5a greedy and A7 no playbooks are in the benchmark), and the human evaluation. The organisers' Scenario 1 (F3) now runs end to end: exercise 1 and a full plan with incidents on a test order ([docs/real_data_validation.md](docs/real_data_validation.md)). No language model was run for any of these numbers: they come from the deterministic fallbacks, so token budgets are not measured yet. The deviations from the methodology are listed in its section 11.4 and, for the real data, in the validation document.
 
@@ -149,7 +149,7 @@ coa-net plan --bdtopo DATA/Scenario1_BDTopo.shp --places examples/places_scenari
     --out outputs/scenario1_plan
 ```
 
-`exercise` reads the statement and the sketch from the PDF, the town populations and built-up areas from the 1:100 000 scan (OCR on CPU), georeferences the sketch's zones against the scan, compiles the constraints into requirements (NET.DISTINCT, SEG.TOWN on top of the seed base), searches the three separated itineraries with junction turns priced, checks them again from the geometry, and writes `itineraries.geojson` (with the difficult turns and their radii), `difficult_areas.geojson`, two map layers on the scan, `decision_process.txt` and `metrics.json`.
+`exercise` reads the statement and the sketch from the PDF, the town populations and built-up areas from the 1:100 000 scan (OCR on CPU), georeferences the sketch's zones against the scan, compiles the constraints into requirements (NET.DISTINCT, SEG.TOWN on top of the seed base), searches the three separated itineraries with junction turns priced, checks them again from the geometry, and writes `itineraries.geojson` (with the difficult turns and their radii), `difficult_areas.geojson`, `zones.geojson`, `towns_over_threshold.geojson`, two map layers on the scan, `decision_process.txt` and `metrics.json`.
 
 ![Exercise 1 itineraries on the 1:100 000 scan](docs/figures/real/exercise1-itineraries.jpg)
 
@@ -166,6 +166,7 @@ src/coa_net/
   scenario.py      `coa-net exercise` pipeline and its outputs (layers, GeoJSON, decision text)
   audit.py         data audit: files, OSM/BD TOPO agreement, scan alignment, scan check of routes
   scenarios.py     synthetic theatre, random missions and incidents
+  schemas.py       typed records passed between stages: locations, vehicle groups, convoys, mission, incidents
   vehicles.py      vehicle catalogue (illustrative values), binding profiles, march columns
   requirements.py  28 templates, tiers, seed requirement base
   documents.py     document intake: PDF, Word, text, images (OCR); blocks with page, paragraph, section; figures and captions
@@ -195,7 +196,8 @@ src/coa_net/
   pipeline.py      COANet session object
   baselines.py     B0-B1
   bench.py         benchmark
-  cli.py           command line
+  cli.py           command line (`coa-net templates` prints the requirement template catalogue)
+  __main__.py      `python -m coa_net`, calls `cli.main()`
   data/            seed requirements, sample doctrine, order and incidents
 deploy/            serving the model locally: vLLM (H100), llama.cpp (team machine), settings template
 docs/              methodology, benchmark table, figures (PNG) and the script that draws them
@@ -213,6 +215,9 @@ Each code folder has a README that lists its public interface, the rules develop
 - [src/README.md](src/README.md): the source root.
 - [examples/README.md](examples/README.md): the Python API example and the Brittany inputs.
 - [docs/README.md](docs/README.md) and [docs/figures/README.md](docs/figures/README.md): the documents and the figure generator.
+- [deploy/README.md](deploy/README.md): serving the model locally (vLLM, llama.cpp) and the `COA_LLM_*` settings template.
+
+`tests/` holds the pytest suite and has no contract of its own. Run `pytest` from the repository root to check the system (`testpaths = ["tests"]` and `pythonpath = ["src"]` in [pyproject.toml](pyproject.toml)).
 
 ### Rules that hold across the system
 
@@ -233,7 +238,10 @@ Each code folder has a README that lists its public interface, the rules develop
   - `report.html`, `panel_*.svg`, `network.geojson`, `facts.md`, `fragos.txt`, `metrics.json`, `readback.md`
   - `bench.md`
   - `compile-doctrine`: `requirements.json`, `requirements_doctrine.json`, `corpus_report.md`, `signoff.csv`, `documents.json`
-  - `exercise --pdf`: `exercise.txt`, `blocks.json`, `sketch_marks.png`, `readback.md`, with the layers and texts listed above
+  - `exercise`: `itineraries.geojson`, `difficult_areas.geojson`, `zones.geojson`, `towns_over_threshold.geojson`, `map_itineraries.png`, `map_difficult_areas.png`, `decision_process.txt`, `metrics.json`; a cache folder (`OUT/cache` unless `--cache` is given) for built-up areas, OCR towns, zones and georeferencing
+  - `exercise --pdf`: also `exercise.txt`, `blocks.json`, the extracted illustration `sketch.<ext>`, `sketch_marks.png`, `readback.md`
+  - `audit`: `audit.json` (default `outputs/audit.json`)
+  - `llm-check --out FILE`: the check report as JSON
 - **Model server:** with `--llm` or `coa-net llm-check`, calls to a locally deployed OpenAI-compatible model server (`GET /models`, then `POST /chat/completions`), configured with the `COA_LLM_*` variables above; with `COA_LLM_LOG`, a local file of prompts and answers. The `deploy/` scripts download the model on their first run unless local files are given.
 - **Map data:**
   - Optional OSM downloads through osmnx, cached as GraphML; `cache/` and `*.graphml` are git-ignored.

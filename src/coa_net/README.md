@@ -29,10 +29,10 @@ Package exports (`__init__.py`): `COA`, `COANet`, `__version__`. Run it as `pyth
 ### Session API (`pipeline.py`)
 
 - `COANet`: the session object.
-  - **Configuration:** `H`, `requirements`, `catalogue`, `llm`, `use_cpsat=True`, `time_limit_s=10.0`, `sim_reps=100`, `seed=0`, `explain=True`, `recce=True`, `recce_max_elements=None` (cap on the unknown elements valued per COA, for large maps), `data_notes=[]` (data facts and data-driven policy changes, listed in the report under "Data and assumptions").
+  - **Configuration:** `H`, `requirements`, `catalogue`, `llm`, `use_cpsat=True`, `time_limit_s=10.0`, `sim_reps=100`, `seed=0`, `archetypes=None` (the COA archetypes passed to `design.make_coas`; None for the default menu), `explain=True`, `recce=True`, `recce_max_elements=None` (cap on the unknown elements valued per COA, for large maps), `data_notes=[]` (data facts and data-driven policy changes, listed in the report under "Data and assumptions").
   - `COANet.from_graph(G, **kw)` wraps an `nx.DiGraph` in a `CorridorGraph`.
   - `plan(order, intent_order=None, intent_eps=None)` runs S2 to S9 and returns the list of `COA`s, default COA first.
-  - `simulate(reps, window)`, `choose(name=None)`, `incident(report, time_min=None)`.
+  - `simulate(reps, window)`, `choose(name=None)`, `incident(report, time_min=None, refresh_playbooks=True)`.
   - The `current` property returns `(design, ref, sched, crit)`.
   - Markdown output: `map`, `march_table_markdown`, `routes_markdown`, `annex_markdown`.
   - `report(out_dir, title)` and `metrics()`.
@@ -42,14 +42,14 @@ Package exports (`__init__.py`): `COA`, `COANet`, `__version__`. Run it as `pyth
 
 | Subcommand | What it does |
 | --- | --- |
-| `demo` | Runs the synthetic theatre with the sample order and the sample incidents. |
+| `demo` | Runs the synthetic theatre with the sample order and the sample incidents. Options: `--seed` (default 0), `--out` (default `outputs/demo`). |
 | `plan --order FILE` | Plans from an order: a text file, or a document (PDF, Word, image) read by `orderdoc`. The graph source is one of `--place` (OSM), `--graphml`, `--bdtopo` (GeoPackage, or the organisers' v2 ROUTE `.shp`) or `--synthetic N`. Optional: `--places`, `--dem`, `--incident "HH:MM@text"` (repeatable), `--max-rank N` (corridor backbone), `--recce-max N`, `--out`. Also writes `readback.md`. |
 | `exercise --data DIR --pdf FILE` | Solves an exercise on the organisers' Scenario files. The statement and the illustration are read from the exercise document (PDF, Word or image; `--sketch IMG` and `--exercise FILE` override them). Writes the itinerary and difficult-area layers, the GeoJSON with turns and radii, maps, the decision text, `metrics.json`, `readback.md` and `sketch_marks.png`. Options: `--out`, `--cache`, `--seeds`, `--no-turns`, `--no-compare`, `--no-osm`, `--requirements`, `--provisional`, `--llm` (the sketch reader L9, which needs a vision-language model), explicit file paths. |
-| `audit --data DIR` | Audits a Scenario delivery: files, CRS, encodings, OSM/BD TOPO agreement, scan alignment. |
+| `audit --data DIR` | Audits a Scenario delivery: files, CRS, encodings, OSM/BD TOPO agreement, scan alignment. `--out` (default `outputs/audit.json`). |
 | `compile-doctrine [PATH ...]` | Compiles a set of doctrine documents (files or folders of PDF, Word, text or images) into one requirement base: the doctrine's draft instances plus the seed instances they leave. Without a path, it compiles the bundled sample. Writes `requirements.json`, `requirements_doctrine.json`, `corpus_report.md`, `signoff.csv` and `documents.json`. Options: `--out`, `--precedence` (document ids or title words, strongest first), `--no-seed`, `--llm`. |
 | `signoff --base --sheet --out` | Applies a filled sign-off sheet (accept, edit or reject for each instance) to a compiled base. Option: `--reviewer`. |
 | `read-order ORDER` | Reads an order document without the map: the task, the constraints, the desired outputs, the readback, and the command that solves it. Option: `--out` (readback file). |
-| `bench` | Runs the planning and incident benchmarks. Options: `--seeds`, `--convoys`, `--reps`, `--out`. |
+| `bench` | Runs the planning and incident benchmarks. Options: `--seeds`, `--convoys`, `--reps`, `--no-cpsat`, `--out`. |
 | `fetch-osm --place --out` | Downloads an OSM extract and caches it. |
 | `llm-check` | Checks the locally deployed model server named by the `COA_LLM_*` variables: where it is (local or not), the models it serves, a schema-constrained JSON answer, an image (L9), the generation rate, and one call through `call_validated`. Prints the variables to export, and exits with code 1 when the server does not answer or the JSON answer is wrong. Options: `--no-image`, `--out FILE` (the result as JSON). |
 | `templates` | Prints the requirement template catalogue. |
@@ -86,10 +86,10 @@ Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the do
   - Packaged samples: `sample_text`, `sample_incidents`.
 
 - **`realdata.py`** (organisers' Scenario data; needs the `real` extra)
-  - Readers: `read_lines` (CRS inferred from lon/lat bounds when there is no `.prj`), `load_scenario_bdtopo`, `load_scenario_osm`, each returning `(G, LoadReport)`.
+  - Readers: `read_lines` (CRS inferred from lon/lat bounds when there is no `.prj`), `load_scenario_bdtopo`, `load_scenario_osm`. `read_lines` returns `(GeoDataFrame, assumed_crs)`; the two loaders return `(G, LoadReport)`.
   - Attribute mapping: `_bd_attrs` (BD TOPO v2 ROUTE fields), `_osm_attrs` and `osm_segments` (Geofabrik fields; ways cut at shared vertices).
   - Graph: `build_graph`, `simplify_chains`, `keep_largest_scc`; slopes with a precision interval (`slope_lo_pct`, `slope_hi_pct`).
-  - Policy: `systemic_unknowns` downgrades `forbid` to `risk` for an attribute missing on at least 90 % of the relevant roads; `roadside_halts` makes junctions of three or more main roads halt candidates (`RH-n`) when the data has no halt area.
+  - Policy: `systemic_unknowns` downgrades any `on_unknown` other than `risk` (`forbid` or `recce`) to `risk` for an attribute missing on at least 90 % of the relevant roads; `roadside_halts` makes junctions of three or more main roads halt candidates (`RH-n`) when the data has no halt area.
 - **`scanmap.py`**
   - Built-up areas from the scan tint: `builtup_polygons`.
   - OCR (RapidOCR, ONNX, CPU): `ocr_labels`, `towns_from_labels`, `reread_populations`, `town_areas`, `places_from_labels`.
@@ -215,20 +215,38 @@ Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the do
 - `llm.py`:
   - Client protocol: `LLMClient`.
   - Clients: `OpenAICompatibleClient`, and `ScriptedLLM` for tests. Both have `complete_json`, and `complete_json_images` for the sketch reader (L9).
-  - `OpenAICompatibleClient(base_url, model, api_key=None, use_json_schema=True, timeout=120.0, connect_timeout=5.0, log_path=None)` also has `models()` (the models the server lists), `describe()` (endpoint, model, `local`, schema use, `schema_rejected`, `down`), and the attributes `down` (why the server was marked down, or None) and `schema_rejected` (calls answered only after the schema was dropped).
+  - `OpenAICompatibleClient(base_url, model, api_key=None, temperature=0.0, timeout=120.0, use_json_schema=True, max_retries=2, connect_timeout=5.0, log_path=None)` also has `models()` (the models the server lists), `describe()` (endpoint, model, `local`, schema use, `schema_rejected`, `down`), and the attributes `down` (why the server was marked down, or None) and `schema_rejected` (calls answered only after the schema was dropped).
   - Setup and checks: `from_env(check=True)`, `LOCAL_DEFAULT_URL` (`http://127.0.0.1:8000/v1`), `is_local_url(url, resolve=True)`, `call_validated`, `schema_problems`, `unsupported`, `Usage`.
   - Errors: `LLMUnavailable` (the server does not answer, or was marked down), `LLMConfigError` (an endpoint outside this machine and its private network, without `COA_LLM_ALLOW_REMOTE=1`).
 - `pipeline.py:COANet.metrics()["llm_usage"]["server"]` and the report's data notes say which model ran where, with its calls and tokens, or that every role used its fallback. [pipeline.py:COANet._model_line]
 - `bench.py`:
   - Benchmarks: `run_planning_bench`, `run_incident_bench`.
   - Reporting: `to_markdown`, `incidents_markdown`, `bootstrap_ci`, `network_metrics`, `PIPELINES`.
+  - `PIPELINES` is `["B0", "B1", "COA-Net (greedy)", "COA-Net"]`; the `bench` subcommand's help text says "baselines B0-B3", but `BASELINES` registers only `B0` and `B1`. [bench.py:PIPELINES, baselines.py:BASELINES, cli.py:main]
 - `data/` holds packaged inputs: `seed_requirements.json`, `sample_doctrine.txt`, `sample_order.txt` and `sample_incidents.json`.
+
+### Other public helpers
+
+Other public (non-underscore) top-level helpers, records and constants, outside the stage APIs above.
+
+- `graph.py`: `node_xy`, `edge_midpoint`, `heading_deg`, `path_edges`, `path_length_m`, `road_rank`, `place_label`.
+- `corridors.py`: `Corridor` (one contracted corridor of `CorridorGraph`).
+- `loaders.py`: `osm_to_graph`. `realdata.py`: `to_l93`, `radius_profile`, `bdtopo_segments`.
+- `scanmap.py`: records `Label`, `Town`, `SketchGeoref`; `unresolved_towns`.
+- `exercise.py`: records `Itinerary`, `DistinctResult`; geometry `route_line`, `resample`, `edge_lines`, `edge_headings`.
+- `scenario.py`: `load_graph_cached` (keyed by `file_key` and `GRAPH_CACHE_VERSION`), `write_outputs`, `render_overlay`.
+- `explain.py`: `blocks`, `compare`. `exercise.py`: `shapely_midpoints`. `scenario.py`: `annotate_areas`, `mark_junctions`, `nearest_node_fast`, `np_resample`, `COLORS`. `scenarios.py`: `add_halt_areas` (not the `loaders` function of the same name). `cli.py`: `cmd_demo`, `cmd_fetch`, `cmd_audit`, `cmd_templates`.
+- `candidates.py`: `compact_names`. `schedule.py`: `driven_since_halt`. `simulate.py`: `plan_elements`, `UnitOutcome`, `RepOutcome`.
+- `anticipation.py`: `Answer`, `group_response`. `incidents.py`: `Position`. `coa.py`: `recce_status`. `explain.py`: `road_route`. `render.py`: `group_colors`.
+- Model prompts are module constants: `L5_SYSTEM` (coa), `L8_SYSTEM` (explain), `L9_SYSTEM` (figures), `FRAGO_SYSTEM` (orders), `ORDER_SYSTEM` and `INCIDENT_SYSTEM` (parsing), `INTENT_SYSTEM` (intent), `RED_TEAM_SYSTEM` (criticality), `L1_SYSTEM` (doctrine).
+- Tuning values are module constants, to pre-register before the event: `criticality.py` (`TYPE_LIKELIHOOD`, `CLASS_PROBABILITY`, `DELTA_MAX_MIN`, `STRANDED_PENALTY`), `belief.py` (`CREDIBILITY_BASE`, `RELIABILITY_FACTOR`), `anticipation.py` (`RECCE_SPEED_KMH`, `RECCE_DETOUR`, `RECCE_TASK_MIN`), `incidents.py` (`TURN_AROUND_MIN`, `DEFAULT_BREAKDOWN_MIN`), `corridors.py` (`OB_CLEARANCE_M`, `OB_WIDTH_M`, `OB_SLOPE_PCT`), `schedule.py` (`MEET_MARGIN_M`, `HORIZON_EXTRA_MIN`). `corpus.py:KIND_RANK` ranks document kinds `order` < `standard` < `doctrine` < `other` for precedence.
+
 
 ## Invariants
 
 ### Language-model boundary
 
-- **No model output goes in unchecked.** Every model call goes through `call_validated`, with one retry by default. The answer's shape is checked against the role's schema first (type, required fields, field types), because a server that refuses the schema gets a plain JSON prompt; then the role's own check runs. When no model is configured, or the output fails validation, the caller uses its deterministic fallback. [llm.py:call_validated, llm.py:schema_problems]
+- **No model output goes in unchecked.** Every model call goes through `call_validated`, with one retry by default (`retries=1`). Inside each attempt the client makes up to `max_retries + 1` (3) requests when the answer is not valid JSON or the schema is dropped, so one `call_validated` call can send up to 6 requests. [llm.py:OpenAICompatibleClient._complete] The answer's shape is checked against the role's schema first (type, required fields, field types), because a server that refuses the schema gets a plain JSON prompt; then the role's own check runs. When no model is configured, or the output fails validation, the caller uses its deterministic fallback. [llm.py:call_validated, llm.py:schema_problems]
 - **The model is deployed locally.** Without `COA_LLM_BASE_URL` the client calls `LOCAL_DEFAULT_URL`. An endpoint is accepted only if its host is this machine or a private address (not a global IP; `localhost`, `.localhost` and `.local` names; a name whose addresses all resolve to private ones), unless `COA_LLM_ALLOW_REMOTE=1`; the report then says the model was remote. [llm.py:from_env, llm.py:is_local_url]
 - **A dead server costs one timeout per run.** The connection times out after `connect_timeout` seconds and a call after `timeout`. The first connection error or timeout marks the client `down`, and every later call raises `LLMUnavailable` at once without a request, so every later role falls back immediately. Other HTTP errors drop the schema and retry once as plain JSON; `schema_rejected` counts the calls where that worked. [llm.py:OpenAICompatibleClient._post, llm.py:OpenAICompatibleClient._complete]
 - **The doctrine method does not depend on the deployment.** L1 gets the same template cards and passages whatever the server, with no worked examples in its prompt, and its instances go through the same checks and union with the patterns. [doctrine.py:L1_SYSTEM, doctrine.py:_l1_call]
@@ -261,7 +279,7 @@ Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the do
 - **Slopes are not trusted beyond their precision.** A section is blocked by SEG.GRADE only if its low slope bound (end altitudes moved by their stated precision) exceeds the limit; between the bounds it is undecided and follows `on_unknown`. [realdata.py:build_graph, costing.py:GroupCoster.evaluate]
 - **Implausible slopes are unknown.** A section steeper than `MAX_PLAUSIBLE_SLOPE_PCT` (35 %) gets no slope and `slope_suspect=True`. [realdata.build_graph]
 - **Convoy terminals sit on roads the column can use.** If a group's origin cannot reach the largest strongly connected set of its usable corridor arcs (or its destination cannot be reached from it), `build_context` moves it to the nearest junction of that set, at most `TERMINAL_MAX_MOVE_M` (5 km) away, names the junction if unnamed, and adds a note. [mission._usable_terminals]
-- **Systemic unknowns.** When an attribute is missing on at least 90 % of the roads a requirement looks at (bridge load class in BD TOPO and OSM), `forbid` would close every such road, so the policy becomes `risk` and the change is reported. [realdata.py:systemic_unknowns]
+- **Systemic unknowns.** When an attribute is missing on at least 90 % of the roads a requirement looks at (bridge load class in BD TOPO and OSM), `forbid` would close every such road, so the policy (`forbid` or `recce`) becomes `risk` and the change is reported. Only the bridge load class share is used; the tunnel height share is computed but not applied. [realdata.py:systemic_unknowns]
 - **Sketch geometry comes from code.** A mark's polygon is the convex hull of its pixels, mapped through the RANSAC affine fitted on place names read on both the sketch and the scans. If a zone named in the order is not among the marks, `run_exercise` stops with `ValueError` and points to `sketch_marks.png`. [figures.py:georef_marks, scanmap.py:georeference_sketch, scenario.py:run_exercise]
 - **Exercise itineraries are checked from the geometry.** Separation, intersection, zone membership, towns and blocked roads are recomputed on the output lines, not taken from the solver. [exercise.py:check]
 
@@ -272,7 +290,7 @@ Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the do
 - **Reconciliation across documents.** Instances with the same `rule_key` (template, constraint or objective, scope and discriminators) state the same rule. Equal values corroborate each other. Between documents of different precedence, the stronger document wins. At the same precedence, the stricter tier is kept and each parameter takes the stricter value. A rule stated as a constraint in one document and as an objective in another keeps both, and the constraint applies. Every case is listed in the corpus report. Precedence is the `--precedence` list first, then standards (STANAG, AMovP, ATP and similar), then general doctrine (AJP), then other documents. [corpus.py:reconcile, corpus.py:compile_corpus, corpus.py:doc_kind]
 - **The seed base only fills gaps.** A seed parameter that the doctrine states for the same template and check (in any scope) is dropped from the seed instance, and a seed instance with no parameter left is dropped. The report lists what was replaced and what was kept. [corpus.py:merge_seed]
 - **Sign-off.** `accept` approves, `reject` rejects, and `edit` approves the edited parameters and tier after validation; an invalid edit leaves the draft. Any other decision leaves the draft and is reported. [corpus.py:apply_signoff]
-- **Task routing.** A document that asks for itineraries and has no convoy line, departure time or march table is an `itineraries` task. Any of those makes it a `movement` task, even when it also asks for itineraries. Neither gives `unknown`, which is left to the operator. [orderdoc.py:read_order]
+- **Task routing.** A document that asks for itineraries and has no convoy line, departure time or march table is an `itineraries` task. Any of those, or an order id such as `order LOG-01`, makes it a `movement` task, even when it also asks for itineraries. [orderdoc.py:_MOVEMENT] Neither gives `unknown`, which is left to the operator. [orderdoc.py:read_order]
 - **What the order reader cannot enforce is said.** The readback lists as NOT ENFORCED every constraint item that no parser recognised, as NOT PRODUCED every desired output that no writer produces, and every number the parser kept that is not in the document. [orderdoc.py:uncovered, orderdoc.py:check_numbers, orderdoc.py:readback_markdown]
 
 ### Design and schedule
@@ -336,7 +354,8 @@ Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the do
   - With `COA_LLM_LOG`, one JSON line per model call appended to that file (stage, model, seconds, messages with image data replaced by its length, answer or error, usage). `llm-check --out`: its result as JSON. [llm.py:OpenAICompatibleClient._log, cli.py:cmd_llm_check]
   - The GraphML cache. [loaders.py:save_graphml_osm]
   - The folium map. [render.py:render_folium]
-  - Exercise outputs: `itineraries.geojson`, `difficult_areas.geojson`, `zones.geojson`, `towns_over_threshold.geojson`, `map_*.png`, `decision_process.txt`, `metrics.json`, `readback.md`, `sketch_marks.png`, `input/` (the sketch image, `exercise.txt` and `blocks.json`), and the OCR, built-up, zone, georeferencing and marks cache. [scenario.py:run_exercise, scenario.py:exercise_from_pdf, scanmap.py:ocr_labels, cli.py:cmd_exercise]
+  - Exercise outputs: `itineraries.geojson`, `difficult_areas.geojson`, `zones.geojson`, `towns_over_threshold.geojson`, `map_*.png`, `decision_process.txt`, `metrics.json`, `readback.md`, `sketch_marks.png`, `input/` (the sketch image, `exercise.txt` and `blocks.json`), and the OCR, built-up, towns (`towns_<key>.json`), zone, georeferencing and marks cache, plus the pickled BD TOPO graph `bdtopo_graph_<key>_v<GRAPH_CACHE_VERSION>.pkl`. [scenario.py:load_graph_cached]
+  - `audit`: the audit report as JSON (default `outputs/audit.json`). [audit.py:audit, cli.py:cmd_audit] [scenario.py:run_exercise, scenario.py:exercise_from_pdf, scanmap.py:ocr_labels, cli.py:cmd_exercise]
 - **Graph and state mutation:**
   - `finalize_graph` and `normalize_edge` rewrite edge attributes.
   - `BeliefState.apply` writes `closed`, `closed_p`, `threat` and `weather` into `G`.
@@ -347,7 +366,7 @@ Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the do
   - `name_marks` writes names and roles onto the `Mark`s.
 
   [graph.py:finalize_graph, belief.py:BeliefState.apply, incidents.py:handle_incident, corridors.py:CorridorGraph.add_articulation, corpus.py:apply_signoff, figures.py:name_marks]
-- **Global state:** the osmnx `settings.useful_tags_*` lists are extended. [loaders.py:load_osm] The road-name part of the gazetteer is cached per graph (weak reference, rebuilt when the graph's size changes). [graph.py:gazetteer]
+- **Global state:** the osmnx `settings.useful_tags_*` lists are extended. [loaders.py:load_osm, loaders.py:save_graphml_osm] The road-name part of the gazetteer is cached per graph (weak reference, rebuilt when the graph's size changes). [graph.py:gazetteer]
 - **Compute:**
   - Each CP-SAT `Solve` uses up to `time_limit_s`, and one design runs several solves, one per objective level.
   - `explain_plan` re-solves once per group.
@@ -355,7 +374,7 @@ Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the do
   - OCR of a full 1:100 000 scan takes minutes on a CPU; its result is cached. [scanmap.py:ocr_labels]
 
   [design.py:_solve_cpsat, explain.py:explain_plan, anticipation.py:value_of_information]
-- **Randomness:** only local, seeded `random.Random` instances (scenarios, simulator, bootstrap). The global RNG is never touched.
+- **Randomness:** only local, seeded instances: `random.Random` (scenarios, simulator, bootstrap) and `numpy.random.default_rng` (`audit.py` sampling, the RANSAC fit in `scanmap.py:georeference_sketch`). The global RNG is never touched.
 - **Timing:** wall-clock timings are recorded in `seconds` fields, so they vary from run to run.
 
 ## Verification

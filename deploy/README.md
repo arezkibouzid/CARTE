@@ -20,9 +20,9 @@ Sizes are those listed by the model card and the GGUF repositories. With a 16k c
 ## Interface
 
 - `serve_vllm.sh`: vLLM on `127.0.0.1:8000`, model name `mistral-small-3.2`. Variables: `MODEL` (repository or local folder), `NAME`, `PORT`, `MAX_LEN` (default 16384), `GPU_UTIL` (default 0.90).
-- `serve_llamacpp.sh`: llama.cpp `llama-server` on `127.0.0.1:8000`. By default it downloads `unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M` with its vision projector. Variables: `GGUF` and `MMPROJ` (local files, for offline use), `HF_REPO`, `ALIAS` (the model name the server lists, default `mistral-small-3.2` as with vLLM), `PORT`, `CTX`, `NGL` (layers on the GPU; 0 without a GPU).
-- `coa-llm.env.example`: the `COA_LLM_*` variables COA-Net reads. Copy it to `coa-llm.env`, then `set -a; . deploy/coa-llm.env; set +a`.
-- `coa-net llm-check` (in the package): asks the server for its models, then checks a schema-constrained JSON answer, an image (for L9) and the speed. `--no-image` skips the image probe, and `--out FILE` writes the result as JSON. It exits with code 1 if the server does not answer or the JSON answer is wrong.
+- `serve_llamacpp.sh`: llama.cpp `llama-server` on `127.0.0.1:8000`. By default it downloads `unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M` with its vision projector. Variables: `GGUF` and `MMPROJ` (local files, for offline use), `HF_REPO`, `ALIAS` (the model name the server lists, default `mistral-small-3.2` as with vLLM), `PORT`, `CTX` (default 16384), `NGL` (layers on the GPU, default 99; 0 without a GPU).
+- `coa-llm.env.example`: the `COA_LLM_*` variables COA-Net reads (`COA_LLM_API_KEY`, also read by `coa_net/llm.py:from_env`, is not in the template; set it only if the server requires a key). Copy it to `coa-llm.env`, then `set -a; . deploy/coa-llm.env; set +a`.
+- `coa-net llm-check` (in the package): asks the server for its models, then checks a schema-constrained JSON answer, an image (for L9), the speed, and a validated call through `call_validated` (the path every role uses). It then prints a suggested `export COA_LLM_BASE_URL=… COA_LLM_MODEL=…` line (with `COA_LLM_JSON_SCHEMA=0` if the schema was not honoured). `--no-image` skips the image probe, and `--out FILE` writes the result, including every probe, as JSON. [coa_net/cli.py:cmd_llm_check] It exits with code 1 if the server does not answer or the JSON answer is wrong.
 
 ### Before the event (on a team machine)
 
@@ -63,19 +63,25 @@ COA-Net can also run on the GPU server itself, with the same variables.
 
 - **Local by default.** Without `COA_LLM_BASE_URL`, COA-Net calls `http://127.0.0.1:8000/v1`. An endpoint outside this machine and its private network is refused unless `COA_LLM_ALLOW_REMOTE=1`; the report then says the model was remote. [coa_net/llm.py:from_env, coa_net/llm.py:is_local_url]
 - **Checked before the run.** `--llm` asks the server for its models first, and stops with advice if it does not answer. [coa_net/cli.py:_llm]
-- **Fast failure during the run.** The connection times out after `COA_LLM_CONNECT_TIMEOUT` seconds (5), a call after `COA_LLM_TIMEOUT` (120). After the first failure, the client stops calling the server for the rest of the run, so that every later role uses its deterministic fallback at once. The report and `metrics.json` say so. [coa_net/llm.py:OpenAICompatibleClient._post, coa_net/pipeline.py:COANet._model_line]
+- **Fast failure during the run.** The connection times out after `COA_LLM_CONNECT_TIMEOUT` seconds (5), a call after `COA_LLM_TIMEOUT` (120). After the first connection error or timeout, the client stops calling the server for the rest of the run, so that every later role uses its deterministic fallback at once. The report and `metrics.json` say so. An HTTP error status or an unparsable answer does not mark the server down; later roles still call it. [coa_net/llm.py:OpenAICompatibleClient._post, coa_net/pipeline.py:COANet._model_line]
 - **Same settings everywhere.** Temperature 0, schema-constrained output when the server accepts it, a plain JSON prompt otherwise; in both cases the answer's shape is checked against the schema before the role's own checks. The model card recommends 0.15 for chat; COA-Net only asks for typed records, so it keeps 0. [coa_net/llm.py:call_validated, coa_net/llm.py:schema_problems]
-- **The servers listen on 127.0.0.1 only.** Another machine reaches them through an SSH tunnel.
+- **The servers listen on 127.0.0.1 only.** Another machine reaches them through an SSH tunnel. [serve_vllm.sh:--host, serve_llamacpp.sh:--host]
+- **Both servers answer to the same name and port.** `NAME` (vLLM) and `ALIAS` (llama.cpp) both default to `mistral-small-3.2`, and `PORT` to 8000, matching the default `COA_LLM_BASE_URL` (`coa_net/llm.py:LOCAL_DEFAULT_URL`). Change them together with `COA_LLM_BASE_URL` / `COA_LLM_MODEL`. [serve_vllm.sh:NAME, serve_llamacpp.sh:ALIAS]
+- **Local GGUF needs its projector.** When `GGUF` is set, `serve_llamacpp.sh` stops with an error unless `MMPROJ` is set too (`${MMPROJ:?...}`), so a local model never starts without the vision projector L9 needs. Both scripts run under `set -euo pipefail` and `exec` the server, so the script process becomes the server process. [serve_llamacpp.sh:MMPROJ]
+- **Mistral formats on vLLM.** `serve_vllm.sh` always passes `--tokenizer-mode mistral --config-format mistral --load-format mistral`; another model through this script needs those flags removed. [serve_vllm.sh]
 
 ## Side Effects
 
 - `serve_llamacpp.sh` without `GGUF` downloads the model and its vision projector from Hugging Face on its first run.
 - `serve_vllm.sh` with a repository name downloads the weights unless `HF_HUB_OFFLINE=1` and a local folder are given.
-- `COA_LLM_LOG` makes COA-Net append every prompt and answer to that file, without image data.
+- `COA_LLM_LOG` makes COA-Net append every prompt and answer to that file, without image data. [coa_net/llm.py:OpenAICompatibleClient._log]
+- Both scripts open a listening port (`PORT`, default 8000) on 127.0.0.1 and hold GPU memory while running (`GPU_UTIL`, default 0.90 of the GPU, for vLLM; `NGL` layers for llama.cpp).
+- `coa-net llm-check --out FILE` writes the check report as JSON, creating the parent folder. [coa_net/cli.py:cmd_llm_check]
 
 ## Verification
 
 - Run: `coa-net llm-check` against the running server
 - Run: `pytest tests/test_local_llm.py` (the client against a stand-in local server, without a model)
+- Run: `pytest` (the whole suite; `testpaths = ["tests"]` in `pyproject.toml`)
 
 Sources: the model card of `mistralai/Mistral-Small-3.2-24B-Instruct-2506` (memory, vLLM version, temperature, licence); the GGUF repositories of unsloth and gabriellarson (file sizes); the llama.cpp server README (`--mmproj`, `-hf`, `--jinja`, `/health`); the vLLM structured-outputs page (`response_format` with `json_schema`); the Ollama OpenAI-compatibility page (port 11434, base64 images); the Ollama library page of `mistral-small3.2` (vision, tools); the `Qwen/Qwen3-8B-GGUF` page (file sizes, licence, sampling advice).
