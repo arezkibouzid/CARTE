@@ -128,7 +128,7 @@ def cmd_plan(args) -> None:
     if args.graphml or args.place or args.bdtopo:
         from .loaders import add_places, load_bdtopo, load_osm
 
-        places = {k: tuple(v) for k, v in json.loads(Path(args.places).read_text()).items()} if args.places else None
+        places = {k: tuple(v) for k, v in json.loads(Path(args.places).read_text(encoding="utf-8")).items()} if args.places else None
         if args.bdtopo and args.bdtopo.lower().endswith(".shp"):
             # organisers' Scenario data: BD TOPO v2 ROUTE shapefile without .prj (see realdata.py)
             from .realdata import load_scenario_bdtopo, roadside_halts, systemic_unknowns
@@ -393,8 +393,20 @@ def cmd_exercise(args) -> None:
     if reading is None:
         reading = reading_from_text(text, "exercise.txt")
     reqs, notes = _base(args) if (args.requirements or args.provisional) else (None, [])
+    extra = None
+    if args.graphhopper:
+        from .gh import gh_variant
+
+        extra = {"GraphHopper (same roads and costs)": gh_variant(Path(args.out) / "graphhopper", home=args.gh_home,
+                                                                  n_seeds=args.seeds)}
     run = run_exercise(paths, args.out, text, cache=args.cache, n_seeds=args.seeds, turn_aware=not args.no_turns,
-                       compare=not args.no_compare, osm_check=not args.no_osm, llm=_llm(args), requirements=reqs)
+                       compare=not args.no_compare, osm_check=not args.no_osm, llm=_llm(args), requirements=reqs,
+                       extra_solvers=extra)
+    if extra:
+        print("router comparison:")
+        for name, c in run.facts["router_comparison"].items():
+            print(f"  {name}: {c['itineraries']} itineraries, cost {c['total_cost_min']} min, time {c['total_time_min']} min, "
+                  f"{c['total_km']} km, min separation {c['min_separation_m']} m, {c['seconds']} s")
     from .exercise import parse_exercise
 
     rb = exercise_readback(reading, parse_exercise(text)[0], run.facts)
@@ -508,6 +520,9 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--requirements", help="requirement base JSON (default: seed base; e.g. the base compiled from the doctrine)")
     x.add_argument("--provisional", action="store_true", help="use draft instances (doctrine not signed off yet), flagged")
     x.add_argument("--llm", action="store_true", help="name the sketch's marks with the model (L9, needs a vision-language model)")
+    x.add_argument("--graphhopper", action="store_true", help="also solve NET.DISTINCT with a local GraphHopper server "
+                   "on the same roads and costs, and compare (needs Java 17+ and graphhopper-web-*.jar)")
+    x.add_argument("--gh-home", help="folder with graphhopper-web-*.jar and a jdk* folder (default: COA_GH_HOME or ../tools)")
     for k in ("bdtopo", "osm", "scan100", "scan250"):
         x.add_argument(f"--{k}", help=f"explicit path for {k}")
     x.set_defaults(fn=cmd_exercise)

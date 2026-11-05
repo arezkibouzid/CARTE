@@ -98,7 +98,11 @@ Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the do
   - `parse_exercise` compiles an exercise statement into an `ExerciseSpec` and requirement instances (NET.DISTINCT, SEG.TOWN).
   - `RoadArrays`, `Router` (junction graph), `TurnRouter` (line graph with turn costs), `solve_distinct` (k itineraries, pairwise separation, no intersection).
   - Geometry: `chord_radius`, `turns_on`, `itinerary_facts`, `difficult_areas`, `check`.
-- **`scenario.py`**: `run_exercise` (the `exercise` command), `exercise_from_pdf` (statement and illustration of an exercise document), `ScenarioPaths`, `ScenarioRun`, `EXERCISE_1`, `decision_text`.
+- **`gh.py`** (optional, `coa-net exercise --graphhopper`): GraphHopper as a second NET.DISTINCT engine on the same roads and costs.
+  - `export_osm` writes `R.ok` as one-way OSM ways (way id = edge index + 1, cost encoded as `maxspeed`) plus one hub per zone linked to every zone node.
+  - `GraphHopperServer` starts a local GraphHopper (flexible mode, profile `coa`); `GHRouter` queries hub to hub and maps `osm_way_id` details back to edge indices.
+  - `solve_distinct_gh` mirrors `solve_distinct`: GraphHopper `alternative_route` seeds, 5 km bands as per-request custom-model areas, exact separation check on `R`.
+- **`scenario.py`**: `run_exercise` (the `exercise` command; `extra_solvers` adds engines to `router_comparison`), `exercise_from_pdf` (statement and illustration of an exercise document), `ScenarioPaths`, `ScenarioRun`, `EXERCISE_1`, `decision_text`.
 - **`audit.py`**: `audit`, `coverage`, `raster_alignment`, `road_ink`, `scan_agreement`.
 
 ### Documents (`documents.py`, shared by S1 and S2)

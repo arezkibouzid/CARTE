@@ -77,7 +77,7 @@ DEFAULT_CATALOGUE: dict[str, VehicleType] = {
 def load_catalogue(path: str | Path | None = None) -> dict[str, VehicleType]:
     if path is None:
         return dict(DEFAULT_CATALOGUE)
-    raw = json.loads(Path(path).read_text())
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
     return {d["name"]: VehicleType(**d) for d in raw}
 
 

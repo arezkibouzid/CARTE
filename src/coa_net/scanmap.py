@@ -82,7 +82,7 @@ class Label:
 def ocr_labels(tif: str, tile: int = 1600, overlap: int = 200, cache: str | None = None, min_conf: float = 0.5) -> list[Label]:
     """OCR every tile of the scan (RapidOCR); labels de-duplicated across tile overlaps. Cached as JSON."""
     if cache and Path(cache).exists():
-        return [Label(**d) for d in json.loads(Path(cache).read_text())]
+        return [Label(**d) for d in json.loads(Path(cache).read_text(encoding="utf-8"))]
     import rasterio
     from rapidocr_onnxruntime import RapidOCR
 
@@ -114,7 +114,9 @@ def ocr_labels(tif: str, tile: int = 1600, overlap: int = 200, cache: str | None
             kept.append(l)
     if cache:
         Path(cache).parent.mkdir(parents=True, exist_ok=True)
-        Path(cache).write_text(json.dumps([asdict(k) for k in kept], ensure_ascii=False))
+        tmp = Path(str(cache) + ".tmp")  # written whole, then renamed: a failed write leaves no truncated cache
+        tmp.write_text(json.dumps([asdict(k) for k in kept], ensure_ascii=False), encoding="utf-8")
+        tmp.replace(cache)
     return kept
 
 
