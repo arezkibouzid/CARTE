@@ -165,7 +165,8 @@ def annotate_areas(G, lines: np.ndarray, edges: list, builtup, towns_big) -> dic
 
 def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXERCISE_1, cache: str | Path | None = None,
                  n_seeds: int = 20, max_rank: int | None = None, turn_aware: bool = True, compare: bool = True,
-                 osm_check: bool = True, llm=None, requirements: list | None = None, network: str = "scan") -> ScenarioRun:
+                 osm_check: bool = True, llm=None, requirements: list | None = None, network: str = "scan",
+                 corrector: str | Path | None = None) -> ScenarioRun:
     """Solve an itineraries exercise. ``llm``: model for the sketch reader (L9, needs images); ``requirements``: the
     requirement base (default: the seed base; give the base compiled from the event's doctrine).
 
@@ -199,6 +200,8 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
                              "min_sep_m": spec.min_sep_m, "min_town_pop": spec.min_town_pop, "outputs": spec.outputs}
     t = run.tick("parse exercise", t)
 
+    from .scanlearn import uncertainty_penalty
+
     # 2. graph (parsed once, then read back from the cache: several exercises run on the same map)
     if network in ("scan", "scan250"):
         tif = paths.scan100 if network == "scan" else paths.scan250
@@ -208,6 +211,11 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
         run.facts["network"] = {"source": f"image: {Path(tif).name}", "scan_report": G.graph.get("scan_report", {}).get("seconds")}
         run.facts["load_scan"] = {k: v for k, v in rep_bd.__dict__.items()}
         t = run.tick("read the road network from the scan" + (" (from the cache)" if cached else ""), t)
+        if corrector:
+            from .scanlearn import correct_graph
+
+            run.facts["network"]["corrector"] = correct_graph(G, tif, corrector)
+            t = run.tick("learned corrector of the image network", t)
         max_rank = 5 if max_rank is None else max_rank
     else:
         G, rep_bd, cached = load_graph_cached(paths.bdtopo, cache)
@@ -362,8 +370,9 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
             pen[i] *= 1.5  # possibly too narrow for the column: avoided like a built-up road
         elif ev.pref:
             pen[i] *= 1.2
-        if G.edges[e].get("scan_gap"):
-            pen[i] *= 1.5  # a link the image reader drew across a label: unconfirmed, used only if it pays
+        if G.edges[e].get("source_id") == "scan":
+            # a link drawn across a label (1.5x), or a road the learned corrector doubts (up to 2x): used only if it pays
+            pen[i] *= uncertainty_penalty(G.edges[e])
     t = run.tick("road arrays and zone nodes", t)
     variants = {}
     if compare or not turn_aware:

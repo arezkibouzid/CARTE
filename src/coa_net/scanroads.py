@@ -43,7 +43,7 @@ import numpy as np
 
 log = logging.getLogger(__name__)
 
-SCAN_LOADER_VERSION = 6
+SCAN_LOADER_VERSION = 7
 
 # symbol classes (values of the class raster)
 C_OTHER, C_CASING, C_RED, C_ORANGE, C_WATER, C_BLACK, C_WHITE, C_CASING_LIGHT, C_BLUE = 0, 1, 2, 3, 4, 5, 6, 7, 8
@@ -84,6 +84,8 @@ class ScanParams:
     smooth_px: int = 7         # moving-average window along the centre line (pixel staircase -> smooth bends)
     bridge_probe_px: tuple = (2, 7)  # water looked for this far on each side of the centre line
     river_px: int = 5          # water this wide on both sides is a river (bridge); thinner is a stream (culvert)
+    dual_sep_m: float = 100.0  # two parallel blue lines closer than this are the two bands of one dual carriageway
+    dual_keep_m: float = 5.5   # ... each is moved to this distance from the pair's centre (BD TOPO: about 11 m apart)
 
     @classmethod
     def for_scan(cls, px_m: float) -> "ScanParams":
@@ -91,7 +93,7 @@ class ScanParams:
         if px_m > 12:  # 1:250 000
             # the 1:250 000 draws minor roads with a mid grey casing and no tracks: no dashed class
             return cls(channel_px=3, close_px=2, dash_px=5, wide_px=5, spur_m=120.0, gap_m=250.0, min_component_m=1500.0,
-                       bridge_probe_px=(2, 5), dash_ratio=0.0, river_px=2)
+                       bridge_probe_px=(2, 5), dash_ratio=0.0, river_px=2, dual_sep_m=200.0)
         return cls()
 
 
@@ -117,6 +119,8 @@ class ScanReport:
     junctions_merged: int = 0
     water_lines_dropped: int = 0
     bridges: int = 0
+    dual_lines_moved: int = 0
+    dual_km_paired: float = 0.0
     km_by_symbol: dict = field(default_factory=dict)
     seconds: dict = field(default_factory=dict)
 
@@ -128,6 +132,7 @@ class ScanReport:
                 ("label gaps joined / dead ends left", f"{self.gaps_joined} / {self.gaps_left}"),
                 ("small pieces dropped", self.components_dropped), ("blue lines on water dropped", self.water_lines_dropped),
                 ("roads crossing an expressway kept apart (flyover or underpass)", self.grade_separations), ("bridges (water on both sides)", self.bridges),
+                ("dual-carriageway lines moved onto the median", f"{self.dual_lines_moved} ({self.dual_km_paired:.0f} km of blue line paired)"),
                 ("km by symbol", ", ".join(f"{k} {v:.0f}" for k, v in self.km_by_symbol.items())),
                 ("time (s)", ", ".join(f"{k} {v:.1f}" for k, v in self.seconds.items()))]
         return "| item | value |\n| --- | --- |\n" + "\n".join(f"| {k} | {v} |" for k, v in rows)
@@ -595,6 +600,9 @@ def extract(tif: str, params: ScanParams | None = None, window=None, progress=No
 
     # an expressway has no level crossing: a road drawn across it is a flyover or an underpass
     rep.grade_separations = separate_expressway_crossings(pieces)
+    # the two blue bands of a dual carriageway are drawn far wider apart than the carriageways: move them onto the median
+    rep.dual_lines_moved, paired_px = centre_dual_carriageways(pieces, p.dual_sep_m / px_m, p.dual_keep_m / px_m)
+    rep.dual_km_paired = paired_px * px_m / 1000
     # small isolated pieces (lettering, symbols, hatching) are dropped before gaps are joined
     pieces, rep.components_dropped = drop_small_components(pieces, p.min_component_m / px_m)
 
@@ -721,6 +729,82 @@ def _arm(pc: "Piece", at_start: bool, k: int = 8) -> np.ndarray:
     d = pts[min(k, len(pts) - 1)] - pts[0]
     n = np.hypot(*d)
     return d / n if n > 0 else d
+
+
+def _tangents(rc: np.ndarray, k: int = 4) -> np.ndarray:
+    n = len(rc)
+    i0, i1 = np.clip(np.arange(n) - k, 0, n - 1), np.clip(np.arange(n) + k, 0, n - 1)
+    t = (rc[i1] - rc[i0]).astype(float)
+    return t / np.maximum(np.hypot(t[:, 0], t[:, 1]), 1e-9)[:, None]
+
+
+def centre_dual_carriageways(pieces: list, max_sep_px: float, keep_px: float, min_paired: float = 0.3) -> tuple[int, float]:
+    """IGN draws a dual carriageway as two wide blue bands either side of a thin median, far wider than the road:
+    the centre line of each band lies some 25 m outside the carriageway it stands for, while the real
+    carriageways run along the median, about 11 m apart. Each blue line that has a parallel blue partner is
+    moved towards it, to ``keep_px`` from the pair's centre. Vertices without a partner (near junctions, at the
+    ends of the bands) take the offset of the nearest paired vertex of their line, so the line moves as a whole;
+    a node takes the mean offset of its blue arms, and every other road ending there moves with it.
+    Returns (lines moved, pixels of blue line paired)."""
+    from scipy.spatial import cKDTree
+
+    blue = [i for i, pc in enumerate(pieces) if pc.sym["symbol"] == "blue" and len(pc.rc) >= 3]
+    if len(blue) < 2:
+        return 0, 0.0
+    V = np.vstack([pieces[i].rc for i in blue])
+    O = np.concatenate([np.full(len(pieces[i].rc), i) for i in blue])
+    Tg = np.vstack([_tangents(pieces[i].rc) for i in blue])
+    tree = cKDTree(V)
+    off = np.full(V.shape, np.nan)
+    for r, js in enumerate(tree.query_ball_point(V, max_sep_px)):
+        js = np.asarray(js)
+        if len(js) < 2:
+            continue
+        v = V[js] - V[r]
+        d = np.hypot(v[:, 0], v[:, 1])
+        ok = (d > 2.0) & (O[js] != O[r]) & (np.abs(Tg[js] @ Tg[r]) > 0.9)
+        ok &= np.abs((v / np.maximum(d, 1e-9)[:, None]) @ Tg[r]) < 0.35
+        if ok.any():
+            k = js[ok][np.argmin(d[ok])]
+            u = (V[k] - V[r]) / d[ok].min()
+            off[r] = u * max(d[ok].min() / 2 - keep_px, 0.0)
+    moved, paired = 0, 0.0
+    shift: dict[int, np.ndarray] = {}
+    node_off: dict = {}
+    s = 0
+    for i in blue:
+        n = len(pieces[i].rc)
+        o = off[s:s + n]
+        s += n
+        good = ~np.isnan(o[:, 0])
+        paired += float(good.sum())
+        if good.mean() < min_paired:
+            continue
+        idx = np.arange(n)
+        g = idx[good]
+        pos = np.searchsorted(g, idx)
+        hi_, lo_ = g[np.clip(pos, 0, len(g) - 1)], g[np.clip(pos - 1, 0, len(g) - 1)]
+        o = o[np.where(np.abs(hi_ - idx) <= np.abs(lo_ - idx), hi_, lo_)]
+        if n > 17:  # smooth along the line so that it moves as a band, not pixel by pixel
+            o = _smooth(o, 15)
+        shift[i] = o
+        node_off.setdefault(pieces[i].a, []).append(o[0])
+        node_off.setdefault(pieces[i].b, []).append(o[-1])
+        moved += 1
+    mean_off = {k: np.mean(v, axis=0) for k, v in node_off.items()}
+    for i, pc in enumerate(pieces):
+        if i not in shift and pc.a not in mean_off and pc.b not in mean_off:
+            continue
+        orig = pc.rc.astype(float)
+        rc = orig + shift[i] if i in shift else orig.copy()
+        if pc.a in mean_off:
+            rc[0] = orig[0] + mean_off[pc.a]
+        if pc.b in mean_off:
+            rc[-1] = orig[-1] + mean_off[pc.b]
+        pc.rc = rc
+        if i in shift:
+            pc.sym = dict(pc.sym, dual=True)
+    return moved, paired
 
 
 def separate_expressway_crossings(pieces: list, straight_deg: float = 150.0) -> int:

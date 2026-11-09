@@ -93,3 +93,39 @@ def test_expressway_crossing_is_not_a_junction():
     whites = [pc for pc in ps[:4] if pc.sym["symbol"] == "white"]
     assert {pc.a for pc in whites} != {1} and whites[0].a == whites[1].a
     assert ps[6].a == 2
+
+
+def test_dual_carriageway_lines_move_onto_the_median():
+    from coa_net.scanroads import centre_dual_carriageways
+
+    xs = np.arange(0, 200, dtype=float)
+    north = Piece(np.column_stack([np.full_like(xs, 100.0), xs]), 1, 2, {"symbol": "blue"})
+    south = Piece(np.column_stack([np.full_like(xs, 110.0), xs]), 3, 4, {"symbol": "blue"})
+    side = Piece(np.array([[100.0, 0.0], [60.0, 0.0]]), 1, -1, {"symbol": "white"})  # a road ending on the north line
+    moved, _ = centre_dual_carriageways([north, south, side], max_sep_px=14, keep_px=1.0)
+    assert moved == 2
+    assert abs(north.rc[100, 0] - 104.0) < 0.2 and abs(south.rc[100, 0] - 106.0) < 0.2
+    assert np.allclose(side.rc[0], north.rc[0])  # the road on the junction moved with it
+
+
+def test_corrector_applies_probabilities_and_gate():
+    import networkx as nx
+
+    from coa_net.scanlearn import _key, apply_corrections, uncertainty_penalty
+
+    G = nx.DiGraph()
+    for n, (x, y) in enumerate([(0, 0), (0.01, 0), (0.02, 0), (0.03, 0)]):
+        G.add_node(n, x=x, y=y)
+    attrs = [dict(scan_symbol="white", scan_gap=False, highway="unclassified", road_rank=5, source_id="scan", bridge=False),
+             dict(scan_symbol="white", scan_gap=True, highway="unclassified", road_rank=5, source_id="scan", bridge=False),
+             dict(scan_symbol="white", scan_gap=False, highway="unclassified", road_rank=5, source_id="scan", bridge=True)]
+    for (u, v), d in zip([(0, 1), (1, 2), (2, 3)], attrs):
+        G.add_edge(u, v, **d)
+        G.add_edge(v, u, **d)
+    P = {"roads": {_key(G, 0, 1): {"road_real": 0.9, "white_imp4": 0.8}, _key(G, 1, 2): {"road_real": 0.6},
+                   _key(G, 2, 3): {"road_real": 0.95, "bridge_real": 0.1}}}
+    ch = apply_corrections(G, P, enabled={"drop_gap", "white_to_rank4"})
+    assert ch["white roads to rank 4"] == 1 and G.edges[0, 1]["road_rank"] == 4
+    assert G.has_edge(1, 2) and abs(uncertainty_penalty(G.edges[1, 2]) - 1.4) < 1e-9  # a likely gap stays, priced
+    assert G.edges[2, 3]["bridge"]  # bridge_to_culvert not switched on
+    assert uncertainty_penalty({"scan_gap": True}) == 1.5 and uncertainty_penalty({}) == 1.0

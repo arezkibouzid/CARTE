@@ -1,4 +1,4 @@
-"""Command line: ``coa-net demo | plan | exercise | scan-roads | read-order | compile-doctrine | signoff | llm-check | audit | bench | fetch-osm |
+"""Command line: ``coa-net demo | plan | exercise | scan-roads | scan-learn | read-order | compile-doctrine | signoff | llm-check | audit | bench | fetch-osm |
 templates``."""
 
 from __future__ import annotations
@@ -138,6 +138,10 @@ def cmd_plan(args) -> None:
             cache.mkdir(parents=True, exist_ok=True)
             G, rep, _ = load_graph_cached(args.scan, cache, kind="scan")
             print(f"road network read from the scan {args.scan}: {rep.nodes} junctions, {rep.km:.0f} km ({rep.seconds:.0f} s)")
+            if args.corrector:
+                from .scanlearn import correct_graph
+
+                print(f"learned corrector: {correct_graph(G, args.scan, args.corrector)}")
             reqs, notes = systemic_unknowns(G, load_requirements(args.requirements))
             notes += roadside_halts(G, max_rank=min(3, args.max_rank or 3))
             for n in notes:
@@ -413,7 +417,7 @@ def cmd_exercise(args) -> None:
     reqs, notes = _base(args) if (args.requirements or args.provisional) else (None, [])
     run = run_exercise(paths, args.out, text, cache=args.cache, n_seeds=args.seeds, turn_aware=not args.no_turns,
                        compare=not args.no_compare, osm_check=not args.no_osm, llm=_llm(args), requirements=reqs,
-                       network=args.network)
+                       network=args.network, corrector=args.corrector)
     from .exercise import parse_exercise
 
     rb = exercise_readback(reading, parse_exercise(text)[0], run.facts)
@@ -440,6 +444,10 @@ def cmd_scan_roads(args) -> None:
     G, rep, cached = load_graph_cached(tif, cache, kind="scan")
     print(f"road network read from {tif}{' (cache)' if cached else ''}: {rep.nodes} junctions, {rep.km:.0f} km "
           f"({rep.largest_scc_share:.0%} of the junctions in the largest connected network), {time.perf_counter() - t0:.0f} s")
+    if args.corrector:
+        from .scanlearn import correct_graph
+
+        print(f"learned corrector: {correct_graph(G, tif, args.corrector)}")
     write_network_outputs(G, tif, out)
     if not args.no_check and paths.bdtopo:
         from .scancheck import validate
@@ -449,6 +457,43 @@ def cmd_scan_roads(args) -> None:
         print((out / "validation.md").read_text(encoding="utf-8"))
         print(f"correctness vs BD TOPO (25 m) {res['correctness_vs_bdtopo']['25m']:.1%}")
     print(f"outputs in {out}: network.geojson, scan_report.md, map_network.png" + ("" if args.no_check else ", validation.md/.json"))
+
+
+def cmd_scan_learn(args) -> None:
+    import copy
+
+    from . import scanlearn as sl
+    from .scenario import ScenarioPaths, load_graph_cached
+
+    paths = ScenarioPaths.from_dir(args.data)
+    tif = args.tif or (paths.scan100 if args.scale == "100k" else paths.scan250)
+    if not (tif and paths.bdtopo):
+        sys.exit("scan-learn needs the scan and the BD TOPO shapefile (labels)")
+    out = Path(args.out)
+    cache = Path(args.cache) if args.cache else out / "cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    t0 = time.perf_counter()
+    G, rep, cached = load_graph_cached(tif, cache, kind="scan")
+    print(f"road network read from {tif}{' (cache)' if cached else ''}: {rep.km:.0f} km")
+    ds = sl.build_dataset(G, tif, paths.bdtopo, paths.osm, grid=args.grid)
+    cv = sl.cross_validate(ds)
+    models = sl.train_final(ds)
+    P = sl.predictions_from_oof(ds, cv)
+    sl.save(out, models, P, cv, ds, tif, sl.scan_graph_key(tif))
+    Gc = copy.deepcopy(G)
+    changes = sl.correct_graph(Gc, tif, out)
+    md = sl.markdown(cv, sl.feature_importance(models), changes, ds)
+    (out / "corrector_report.md").write_text(md, encoding="utf-8")
+    (out / "corrector_scores.json").write_text(json.dumps(sl.jsonable(cv), indent=1, default=float), encoding="utf-8")
+    print(md)
+    if not args.no_check:
+        from .scancheck import validate
+
+        G_ref, _, _ = load_graph_cached(paths.bdtopo, cache)
+        res = validate(Gc, paths.bdtopo, paths.osm, G_ref=G_ref, out=out / "corrected_network")
+        print(f"corrected network: correctness vs BD TOPO (25 m) {res['correctness_vs_bdtopo']['25m']:.1%}; "
+              f"checks in {out / 'corrected_network' / 'validation.md'}")
+    print(f"corrector in {out} ({time.perf_counter() - t0:.0f} s): use --corrector {out} with exercise, plan --scan or scan-roads")
 
 
 def cmd_audit(args) -> None:
@@ -492,6 +537,7 @@ def main(argv: list[str] | None = None) -> None:
     src.add_argument("--bdtopo", help="BD TOPO GeoPackage with a troncon_de_route layer, or the organisers' v2 ROUTE shapefile (.shp)")
     src.add_argument("--scan", help="scanned map (GeoTIFF, e.g. 'Scenario1 100K.tif'): the road network is read from the image")
     src.add_argument("--synthetic", type=int, default=0, help="synthetic theatre seed (default)")
+    p.add_argument("--corrector", help="with --scan: learned corrector folder (coa-net scan-learn) applied to the image network")
     p.add_argument("--places", help='JSON {"name": [lon, lat]} gazetteer for the order')
     p.add_argument("--dem", help="DEM raster for slopes (needs rasterio)")
     p.add_argument("--incident", action="append", help='"HH:MM@free-text report", repeatable')
@@ -557,6 +603,7 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--network", choices=("scan", "scan250", "bdtopo"), default="scan",
                    help="road graph source: scan = read from the 1:100 000 image (default; BD TOPO and OSM only check it), "
                         "scan250 = from the 1:250 000 image, bdtopo = the BD TOPO shapefile (the pipeline on main)")
+    x.add_argument("--corrector", help="learned corrector folder (coa-net scan-learn) applied to the image network")
     for k in ("bdtopo", "osm", "scan100", "scan250"):
         x.add_argument(f"--{k}", help=f"explicit path for {k}")
     x.set_defaults(fn=cmd_exercise)
@@ -570,7 +617,19 @@ def main(argv: list[str] | None = None) -> None:
     sr.add_argument("--cache", help="cache folder (default: OUT/cache)")
     sr.add_argument("--no-check", action="store_true", help="skip the sanity checks against BD TOPO and OSM")
     sr.add_argument("--pairs", type=int, default=300, help="junction pairs for the route comparison")
+    sr.add_argument("--corrector", help="learned corrector folder (coa-net scan-learn) applied before the checks")
     sr.set_defaults(fn=cmd_scan_roads)
+
+    sl = sub.add_parser("scan-learn", help="train the learned corrector of the image network on the shapefiles (labels), "
+                        "scored by spatial cross-validation on blocks of the sheet it never saw")
+    sl.add_argument("--data", required=True, help="folder with the Scenario files (scan; shapefiles as labels)")
+    sl.add_argument("--scale", choices=("100k", "250k"), default="100k")
+    sl.add_argument("--tif", help="explicit scan path (overrides --data/--scale)")
+    sl.add_argument("--out", default="outputs/scan_learn", help="corrector folder: models, out-of-fold predictions, report")
+    sl.add_argument("--cache", help="cache folder (default: OUT/cache)")
+    sl.add_argument("--grid", type=int, default=4, help="the sheet is cut into GRID x GRID blocks for the cross-validation")
+    sl.add_argument("--no-check", action="store_true", help="skip the sanity checks of the corrected network")
+    sl.set_defaults(fn=cmd_scan_learn)
 
     a = sub.add_parser("audit", help="audit a Scenario delivery: files, CRS, encodings, OSM/BD TOPO agreement, scan alignment")
     a.add_argument("--data", required=True)
