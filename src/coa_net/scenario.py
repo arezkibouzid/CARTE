@@ -107,21 +107,32 @@ def file_key(path: str | Path, content: bool = False) -> str:
     return hashlib.sha1(f"{p.resolve()}|{st.st_size}|{int(st.st_mtime)}".encode()).hexdigest()[:12]
 
 
-def load_graph_cached(path: str, cache: Path | None):
-    """``load_scenario_bdtopo`` with a pickle cache keyed by the file's size and date and the loader version.
+def load_graph_cached(path: str, cache: Path | None, kind: str = "bdtopo"):
+    """The road graph with a pickle cache keyed by the file's size and date and the loader version.
 
-    The cache is this program's own output, in the run's cache folder; never point it at files from elsewhere."""
+    ``kind``: ``"bdtopo"`` (BD TOPO shapefile, :func:`load_scenario_bdtopo`) or ``"scan"`` (road network read
+    from a scanned map, :func:`coa_net.scanroads.load_scenario_scan`). The cache is this program's own output,
+    in the run's cache folder; never point it at files from elsewhere."""
     import pickle
 
+    from .scanroads import SCAN_LOADER_VERSION, load_scenario_scan
+
+    def load():
+        if kind == "scan":
+            G, rep, _ = load_scenario_scan(path)
+            return G, rep
+        return load_scenario_bdtopo(path)
+
     if cache is None:
-        G, rep = load_scenario_bdtopo(path)
+        G, rep = load()
         return G, rep, False
-    f = Path(cache) / f"bdtopo_graph_{file_key(path)}_v{GRAPH_CACHE_VERSION}.pkl"
+    version = f"s{SCAN_LOADER_VERSION}" if kind == "scan" else str(GRAPH_CACHE_VERSION)
+    f = Path(cache) / f"{kind}_graph_{file_key(path)}_v{version}.pkl"
     if f.exists():
         with f.open("rb") as fh:
             G, rep = pickle.load(fh)
         return G, rep, True
-    G, rep = load_scenario_bdtopo(path)
+    G, rep = load()
     with f.open("wb") as fh:
         pickle.dump((G, rep), fh, protocol=pickle.HIGHEST_PROTOCOL)
     return G, rep, False
@@ -153,10 +164,15 @@ def annotate_areas(G, lines: np.ndarray, edges: list, builtup, towns_big) -> dic
 
 
 def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXERCISE_1, cache: str | Path | None = None,
-                 n_seeds: int = 20, max_rank: int = 4, turn_aware: bool = True, compare: bool = True,
-                 osm_check: bool = True, llm=None, requirements: list | None = None) -> ScenarioRun:
+                 n_seeds: int = 20, max_rank: int | None = None, turn_aware: bool = True, compare: bool = True,
+                 osm_check: bool = True, llm=None, requirements: list | None = None, network: str = "scan") -> ScenarioRun:
     """Solve an itineraries exercise. ``llm``: model for the sketch reader (L9, needs images); ``requirements``: the
-    requirement base (default: the seed base; give the base compiled from the event's doctrine)."""
+    requirement base (default: the seed base; give the base compiled from the event's doctrine).
+
+    ``network``: where the road graph comes from - ``"scan"`` (read from the 1:100 000 scan, the image input the
+    brief encourages; the shapefiles only check it), ``"scan250"`` (from the 1:250 000 scan) or ``"bdtopo"`` (the
+    BD TOPO shapefile, as on main). ``max_rank`` defaults to 5 on a scan (the map draws BD TOPO importance 4 and 5
+    roads with one white symbol, so it cannot tell them apart) and 4 on BD TOPO."""
     import geopandas as gpd
     import shapely
 
@@ -184,9 +200,33 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
     t = run.tick("parse exercise", t)
 
     # 2. graph (parsed once, then read back from the cache: several exercises run on the same map)
-    G, rep_bd, cached = load_graph_cached(paths.bdtopo, cache)
-    run.facts["load_bdtopo"] = rep_bd.__dict__
-    t = run.tick("load BD TOPO graph" + (" (from the cache)" if cached else ""), t)
+    if network in ("scan", "scan250"):
+        tif = paths.scan100 if network == "scan" else paths.scan250
+        if not tif:
+            raise ValueError(f"network '{network}' needs the scanned map ({'*100K.tif' if network == 'scan' else '*250K.tif'})")
+        G, rep_bd, cached = load_graph_cached(tif, cache, kind="scan")
+        run.facts["network"] = {"source": f"image: {Path(tif).name}", "scan_report": G.graph.get("scan_report", {}).get("seconds")}
+        run.facts["load_scan"] = {k: v for k, v in rep_bd.__dict__.items()}
+        t = run.tick("read the road network from the scan" + (" (from the cache)" if cached else ""), t)
+        max_rank = 5 if max_rank is None else max_rank
+    else:
+        G, rep_bd, cached = load_graph_cached(paths.bdtopo, cache)
+        run.facts["network"] = {"source": f"shapefile: {Path(paths.bdtopo).name}"}
+        run.facts["load_bdtopo"] = rep_bd.__dict__
+        t = run.tick("load BD TOPO graph" + (" (from the cache)" if cached else ""), t)
+        max_rank = 4 if max_rank is None else max_rank
+    run.facts["network"]["max_rank"] = max_rank
+    # turn radius: chord of +-10 m on BD TOPO centre lines; a 1:100 000 scan (7 m pixels, generalised symbols) cannot
+    # resolve such a short chord, so +-20 m (about three pixels) is used there and the radii are indicative only
+    half_chord = 10.0 if network == "bdtopo" else 20.0
+    run.facts["network"]["turn_half_chord_m"] = half_chord
+    if network != "bdtopo":
+        spec.assumptions[:] = [
+            (f"difficult turn: centreline radius below {spec.turn_radius_warn_m:g} m, critical below {spec.turn_radius_crit_m:g} m "
+             "(path length / heading change over a 40 m window of the centre line read on the scan; the map generalises roads "
+             "and its pixels are about 7 m, so radii are indicative: a critical turn is a reconnaissance item)") if a.startswith("difficult turn")
+            else ("steep: not assessed (the scan has contour lines but no slope is read from them in this version)") if a.startswith("steep")
+            else a for a in spec.assumptions]
 
     # 3. perception on the scan
     builtup = towns = towns_big = None
@@ -322,6 +362,8 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
             pen[i] *= 1.5  # possibly too narrow for the column: avoided like a built-up road
         elif ev.pref:
             pen[i] *= 1.2
+        if G.edges[e].get("scan_gap"):
+            pen[i] *= 1.5  # a link the image reader drew across a label: unconfirmed, used only if it pays
     t = run.tick("road arrays and zone nodes", t)
     variants = {}
     if compare or not turn_aware:
@@ -343,7 +385,7 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
     for name, r_ in results.items():
         crit = sharp = 0
         for it in r_.itineraries:
-            crit += sum(1 for x in turns_on(it.line, spec.turn_radius_warn_m, spec.turn_radius_crit_m) if x["severity"] == "critical")
+            crit += sum(1 for x in turns_on(it.line, spec.turn_radius_warn_m, spec.turn_radius_crit_m, half_chord_m=half_chord) if x["severity"] == "critical")
             sharp += int(np.nansum(probe.turns_of(it.edge_idx) > spec.sharp_turn_deg))
         cmp[name] = {"itineraries": len(r_.itineraries), "total_time_min": round(sum(i.time_min for i in r_.itineraries), 1),
                      "total_km": round(sum(i.length_m for i in r_.itineraries) / 1000, 1), "critical_turns": crit,
@@ -358,7 +400,7 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
     for it in res.itineraries:
         it.facts = itinerary_facts(R, it, evals, small, spec, need_width_m=2 * catalogue[spec.vehicle].width_m + 0.5)
         it.facts["width_need_m"] = round(catalogue[spec.vehicle].width_m + (grp.active.param("SEG.GAUGE", "width_margin_m", 0.0) or 0.0), 2)
-        it.turns = turns_on(it.line, spec.turn_radius_warn_m, spec.turn_radius_crit_m)
+        it.turns = turns_on(it.line, spec.turn_radius_warn_m, spec.turn_radius_crit_m, half_chord_m=half_chord)
         mark_junctions(G, R, it)
         it.facts["turns_difficult"] = sum(1 for x in it.turns if x["severity"] == "difficult")
         it.facts["turns_critical"] = sum(1 for x in it.turns if x["severity"] == "critical")
@@ -383,7 +425,37 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
             agree[it.id] = round(len(hit) / len(samp), 3)
         run.facts["osm_agreement_25m"] = agree
         t = run.tick("cross-check with OSM", t)
-    if paths.scan100 and res.itineraries:
+    if network != "bdtopo" and paths.bdtopo and osm_check and res.itineraries:
+        # the network came from the image: does every itinerary run on roads that BD TOPO has?
+        from .realdata import BDTOPO_EXCLUDED, read_lines
+
+        bd, _ = read_lines(paths.bdtopo, "cp1252", columns=["NATURE"])
+        bd = bd[~bd["NATURE"].str.lower().isin(BDTOPO_EXCLUDED)]
+        btree = shapely.STRtree(bd.to_crs(L93).geometry.values)
+        agree, agree50, worst = {}, {}, {}
+        for it in res.itineraries:
+            pts = np_resample(it.line, 50.0)
+            samp = shapely.points(pts)
+            hits = {}
+            for dist in (25.0, 50.0):
+                idx = btree.query(samp, predicate="dwithin", distance=dist)
+                hits[dist] = np.zeros(len(samp), bool)
+                if idx.size:
+                    hits[dist][np.unique(idx[0])] = True
+            agree[it.id] = round(float(hits[25.0].mean()), 3)
+            agree50[it.id] = round(float(hits[50.0].mean()), 3)
+            # longest stretch with no BD TOPO road within 50 m (the map displaces roads by up to a few tens of
+            # metres): where the image may have invented a link
+            run_, best = 0, 0
+            for h in hits[50.0]:
+                run_ = 0 if h else run_ + 1
+                best = max(best, run_)
+            worst[it.id] = int(best * 50)
+        run.facts["bdtopo_agreement_25m"] = agree
+        run.facts["bdtopo_agreement_50m"] = agree50
+        run.facts["bdtopo_longest_unmatched_m"] = worst
+        t = run.tick("cross-check with BD TOPO (sanity check of the image network)", t)
+    if paths.scan100 and res.itineraries and network == "bdtopo":
         from shapely import affinity
 
         from .audit import scan_agreement
@@ -559,10 +631,19 @@ def decision_text(run: ScenarioRun, res, spec, checks) -> str:
              f"(k={spec.k}, {spec.min_sep_m / 1000:g} km, no intersection), X-02 SEG.TOWN (> {spec.min_town_pop} inhabitants).")
     L.append("")
     L.append("2. Data used and what was read from it")
-    bd = F["load_bdtopo"]
-    L.append(f"   - Road graph: IGN BD TOPO v2 shapefile, {bd['kept']} of {bd['features']} sections kept (footpaths, steps, cycle tracks "
-             f"and roads under construction removed), {bd['nodes']} junctions, {bd['km']:.0f} km of road. No .prj: lon/lat EPSG:4326 assumed "
-             "from the bounds, lengths and distances computed in Lambert-93.")
+    if "load_scan" in F:
+        sc = F["load_scan"]
+        L.append(f"   - Road graph: read from the image ({F['network']['source']}), not from a shapefile: road symbols classified by "
+                 f"colour (blue expressway, red main road, orange departmental road, white road, dashed track), centre lines thinned "
+                 f"and joined at junctions and across labels; {sc['nodes']} junctions, {sc['km']:.0f} km of road in the largest connected "
+                 f"network ({sc['largest_scc_share']:.0%} of the junctions). The map gives no width, load class or slope: they stay "
+                 f"unknown. White roads are one symbol for minor and secondary roads, so roads of class 5 and better are searched.")
+        L.append("   - BD TOPO and OSM are used only to check the result (section 5).")
+    else:
+        bd = F["load_bdtopo"]
+        L.append(f"   - Road graph: IGN BD TOPO v2 shapefile, {bd['kept']} of {bd['features']} sections kept (footpaths, steps, cycle tracks "
+                 f"and roads under construction removed), {bd['nodes']} junctions, {bd['km']:.0f} km of road. No .prj: lon/lat EPSG:4326 assumed "
+                 "from the bounds, lengths and distances computed in Lambert-93.")
     if "towns" in F:
         big = ", ".join(f"{n.title()} ({p})" for n, p in F["towns_big"])
         L.append(f"   - Towns and populations read by OCR on the IGN 1:100 000 scan (population in thousands printed next to each town "
@@ -597,14 +678,19 @@ def decision_text(run: ScenarioRun, res, spec, checks) -> str:
         L.append(f"       {v:7d}  {k}")
     for n in F.get("systemic_unknowns", []):
         L.append("   - Data-driven policy change: " + n)
-    L.append("   - Other unknown attributes (width where BD TOPO gives 0, slope where the altitude precision is unknown) do not block: "
-             "they are priced as risk, as in COA-Net.")
-    L.append("   - Widths: BD TOPO gives LARGEUR in whole or half metres (a 3 m road may be up to 3.5 m wide); a road is excluded only if "
-             "it is too narrow even at the top of that rounding; if it may be too narrow, it stays usable, is priced as a risk and "
-             "its length is reported per itinerary.")
-    L.append("   - Slope is computed from the end altitudes of each BD TOPO section (Z_INI, Z_FIN) and their stated precision (PREC_ALTI, "
-             "1 m or 2.5 m): a section is excluded only if it is steeper than the column limit even at the low end of that interval; "
-             "if only the high end exceeds the limit, the section stays usable and is priced as a risk.")
+    if "load_scan" in F:
+        L.append("   - Width, slope and load class are not on the map: every road keeps them unknown, which does not block but is "
+                 "priced as risk, as in COA-Net; the map symbol gives the road class (and so the speed) and the bridges (road over a "
+                 "river). Links the reader drew across a label cost 1.5x, so a route uses them only when it pays.")
+    else:
+        L.append("   - Other unknown attributes (width where BD TOPO gives 0, slope where the altitude precision is unknown) do not block: "
+                 "they are priced as risk, as in COA-Net.")
+        L.append("   - Widths: BD TOPO gives LARGEUR in whole or half metres (a 3 m road may be up to 3.5 m wide); a road is excluded only if "
+                 "it is too narrow even at the top of that rounding; if it may be too narrow, it stays usable, is priced as a risk and "
+                 "its length is reported per itinerary.")
+        L.append("   - Slope is computed from the end altitudes of each BD TOPO section (Z_INI, Z_FIN) and their stated precision (PREC_ALTI, "
+                 "1 m or 2.5 m): a section is excluded only if it is steeper than the column limit even at the low end of that interval; "
+                 "if only the high end exceeds the limit, the section stays usable and is priced as a risk.")
     L.append("")
     L.append("4. How the three itineraries were chosen")
     L.append("   - Travel time per road from the road class and the march speed cap; built-up roads and roads that may be too narrow "
@@ -629,15 +715,24 @@ def decision_text(run: ScenarioRun, res, spec, checks) -> str:
     L.append("5. Result")
     for it in res.itineraries:
         f = it.facts
-        L.append(f"   {it.id}: {f['length_km']} km, {f['time_min']} min; roads {' - '.join(f['roads'][:12])}")
+        if f["roads"]:
+            L.append(f"   {it.id}: {f['length_km']} km, {f['time_min']} min; roads {' - '.join(f['roads'][:12])}")
+        else:  # image network: no road numbers, the map symbols instead
+            L.append(f"   {it.id}: {f['length_km']} km, {f['time_min']} min; map symbols "
+                     + ", ".join(f"{k} {v} km" for k, v in f.get("map_symbols_km", {}).items()))
         L.append(f"      bridges {f['bridges']} (load class unknown), tunnels {f['tunnels']}, fords {f['fords']}; built-up {f['builtup_km']} km"
                  + (f" ({', '.join(t.title().rstrip('-') for t in f['built_up_towns_crossed'])}, all under the threshold)"
                     if f["built_up_towns_crossed"] else ""))
         L.append(f"      turns: {f['turns_critical']} critical (radius < {spec.turn_radius_crit_m:g} m) and {f['turns_difficult']} difficult "
                  f"(< {spec.turn_radius_warn_m:g} m), {f.get('turns_at_junctions', 0)} of them at junctions; smallest radius "
                  f"{f['min_radius_m']} m; width unknown on {f['width_unknown_km']} km, possibly under {f.get('width_need_m', 0):g} m on "
-                 f"{f.get('width_uncertain_km', 0)} km; steepest section {f['max_slope_pct']} %")
+                 f"{f.get('width_uncertain_km', 0)} km; "
+                 + (f"steepest section {f['max_slope_pct']} %" if f.get("slope_known", True) else "slope unknown (not on the map)"))
         checks_ = []
+        if "bdtopo_agreement_25m" in F:
+            checks_.append(f"{F['bdtopo_agreement_25m'][it.id]:.1%} of the route lies within 25 m of a BD TOPO road and "
+                           f"{F['bdtopo_agreement_50m'][it.id]:.1%} within 50 m (the map displaces roads; longest stretch with no BD TOPO "
+                           f"road within 50 m: {F['bdtopo_longest_unmatched_m'][it.id]} m)")
         if "osm_agreement_25m" in F:
             checks_.append(f"{F['osm_agreement_25m'][it.id]:.1%} of the route lies within 25 m of an OSM drivable road")
         if "scan_agreement_2px" in F:

@@ -1,4 +1,4 @@
-"""Command line: ``coa-net demo | plan | exercise | read-order | compile-doctrine | signoff | llm-check | audit | bench | fetch-osm |
+"""Command line: ``coa-net demo | plan | exercise | scan-roads | read-order | compile-doctrine | signoff | llm-check | audit | bench | fetch-osm |
 templates``."""
 
 from __future__ import annotations
@@ -125,11 +125,29 @@ def cmd_demo(args) -> None:
 
 def cmd_plan(args) -> None:
     kw, reqs, data_notes = {}, None, []
-    if args.graphml or args.place or args.bdtopo:
+    if args.graphml or args.place or args.bdtopo or args.scan:
         from .loaders import add_places, load_bdtopo, load_osm
 
         places = {k: tuple(v) for k, v in json.loads(Path(args.places).read_text()).items()} if args.places else None
-        if args.bdtopo and args.bdtopo.lower().endswith(".shp"):
+        if args.scan:
+            # image input: the road network is read from the scanned map (see scanroads.py)
+            from .realdata import roadside_halts, systemic_unknowns
+            from .scenario import load_graph_cached
+
+            cache = Path(args.out) / "cache"
+            cache.mkdir(parents=True, exist_ok=True)
+            G, rep, _ = load_graph_cached(args.scan, cache, kind="scan")
+            print(f"road network read from the scan {args.scan}: {rep.nodes} junctions, {rep.km:.0f} km ({rep.seconds:.0f} s)")
+            reqs, notes = systemic_unknowns(G, load_requirements(args.requirements))
+            notes += roadside_halts(G, max_rank=min(3, args.max_rank or 3))
+            for n in notes:
+                print("data-driven policy change: " + n)
+            data_notes = [f"road network read from the scanned map {Path(args.scan).name}: {rep.km:.0f} km; widths, slopes and "
+                          "load classes unknown (not on the map)"] + notes
+            if places:
+                for name, info in add_places(G, places, snap_max_rank=3).items():
+                    print(f"place {name}: junction {info['node']}, {info['distance_m']} m from the map position")
+        elif args.bdtopo and args.bdtopo.lower().endswith(".shp"):
             # organisers' Scenario data: BD TOPO v2 ROUTE shapefile without .prj (see realdata.py)
             from .realdata import load_scenario_bdtopo, roadside_halts, systemic_unknowns
 
@@ -171,7 +189,7 @@ def cmd_plan(args) -> None:
     order_text, reading = _order_text(args.order)
     if reading.task == "itineraries":
         print("note: this order asks for itineraries between drawn zones; `coa-net exercise --pdf` solves that task")
-    _run(session, order_text, incidents, Path(args.out), args.place or args.graphml or args.bdtopo or "map", args.coa)
+    _run(session, order_text, incidents, Path(args.out), args.place or args.graphml or args.bdtopo or args.scan or "map", args.coa)
     from .orderdoc import movement_readback
 
     (Path(args.out) / "readback.md").write_text(movement_readback(reading, session.mission), encoding="utf-8")
@@ -394,7 +412,8 @@ def cmd_exercise(args) -> None:
         reading = reading_from_text(text, "exercise.txt")
     reqs, notes = _base(args) if (args.requirements or args.provisional) else (None, [])
     run = run_exercise(paths, args.out, text, cache=args.cache, n_seeds=args.seeds, turn_aware=not args.no_turns,
-                       compare=not args.no_compare, osm_check=not args.no_osm, llm=_llm(args), requirements=reqs)
+                       compare=not args.no_compare, osm_check=not args.no_osm, llm=_llm(args), requirements=reqs,
+                       network=args.network)
     from .exercise import parse_exercise
 
     rb = exercise_readback(reading, parse_exercise(text)[0], run.facts)
@@ -404,6 +423,32 @@ def cmd_exercise(args) -> None:
     print((Path(args.out) / "decision_process.txt").read_text(encoding="utf-8"))
     print(f"outputs in {args.out}: itineraries.geojson, difficult_areas.geojson, zones.geojson, map_*.png, decision_process.txt, "
           "metrics.json, readback.md, sketch_marks.png")
+
+
+def cmd_scan_roads(args) -> None:
+    from .scanroads import write_network_outputs
+    from .scenario import ScenarioPaths, load_graph_cached
+
+    paths = ScenarioPaths.from_dir(args.data)
+    tif = args.tif or (paths.scan100 if args.scale == "100k" else paths.scan250)
+    if not tif:
+        sys.exit(f"no {args.scale} scan in {args.data}")
+    out = Path(args.out)
+    cache = Path(args.cache) if args.cache else out / "cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    t0 = time.perf_counter()
+    G, rep, cached = load_graph_cached(tif, cache, kind="scan")
+    print(f"road network read from {tif}{' (cache)' if cached else ''}: {rep.nodes} junctions, {rep.km:.0f} km "
+          f"({rep.largest_scc_share:.0%} of the junctions in the largest connected network), {time.perf_counter() - t0:.0f} s")
+    write_network_outputs(G, tif, out)
+    if not args.no_check and paths.bdtopo:
+        from .scancheck import validate
+
+        G_ref, _, _ = load_graph_cached(paths.bdtopo, cache)
+        res = validate(G, paths.bdtopo, paths.osm, G_ref=G_ref, out=out, n_pairs=args.pairs)
+        print((out / "validation.md").read_text(encoding="utf-8"))
+        print(f"correctness vs BD TOPO (25 m) {res['correctness_vs_bdtopo']['25m']:.1%}")
+    print(f"outputs in {out}: network.geojson, scan_report.md, map_network.png" + ("" if args.no_check else ", validation.md/.json"))
 
 
 def cmd_audit(args) -> None:
@@ -445,6 +490,7 @@ def main(argv: list[str] | None = None) -> None:
     src.add_argument("--place", help="OSM place name, downloaded with osmnx")
     src.add_argument("--graphml", help="cached OSM graph (see fetch-osm)")
     src.add_argument("--bdtopo", help="BD TOPO GeoPackage with a troncon_de_route layer, or the organisers' v2 ROUTE shapefile (.shp)")
+    src.add_argument("--scan", help="scanned map (GeoTIFF, e.g. 'Scenario1 100K.tif'): the road network is read from the image")
     src.add_argument("--synthetic", type=int, default=0, help="synthetic theatre seed (default)")
     p.add_argument("--places", help='JSON {"name": [lon, lat]} gazetteer for the order')
     p.add_argument("--dem", help="DEM raster for slopes (needs rasterio)")
@@ -508,9 +554,23 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--requirements", help="requirement base JSON (default: seed base; e.g. the base compiled from the doctrine)")
     x.add_argument("--provisional", action="store_true", help="use draft instances (doctrine not signed off yet), flagged")
     x.add_argument("--llm", action="store_true", help="name the sketch's marks with the model (L9, needs a vision-language model)")
+    x.add_argument("--network", choices=("scan", "scan250", "bdtopo"), default="scan",
+                   help="road graph source: scan = read from the 1:100 000 image (default; BD TOPO and OSM only check it), "
+                        "scan250 = from the 1:250 000 image, bdtopo = the BD TOPO shapefile (the pipeline on main)")
     for k in ("bdtopo", "osm", "scan100", "scan250"):
         x.add_argument(f"--{k}", help=f"explicit path for {k}")
     x.set_defaults(fn=cmd_exercise)
+
+    sr = sub.add_parser("scan-roads", help="read the road network from a scanned map (image input) and check it against the "
+                        "shapefiles: network.geojson, validation.md, overlay figures")
+    sr.add_argument("--data", required=True, help="folder with the Scenario files (scans; shapefiles for the checks)")
+    sr.add_argument("--scale", choices=("100k", "250k"), default="100k", help="which scan to read")
+    sr.add_argument("--tif", help="explicit scan path (overrides --data/--scale)")
+    sr.add_argument("--out", default="outputs/scan_roads")
+    sr.add_argument("--cache", help="cache folder (default: OUT/cache)")
+    sr.add_argument("--no-check", action="store_true", help="skip the sanity checks against BD TOPO and OSM")
+    sr.add_argument("--pairs", type=int, default=300, help="junction pairs for the route comparison")
+    sr.set_defaults(fn=cmd_scan_roads)
 
     a = sub.add_parser("audit", help="audit a Scenario delivery: files, CRS, encodings, OSM/BD TOPO agreement, scan alignment")
     a.add_argument("--data", required=True)

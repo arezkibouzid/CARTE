@@ -10,6 +10,14 @@ Prototype for the AMIAD hackathon (Rennes, 12-14 Nov 2026): design the maneuver 
 
 **Model deployment (3 Nov 2026).** Every model role runs on one open model deployed locally, on a machine the team controls (the organisers' H100 at the event, a team machine before it), never through a hosted API. The doctrine method does not change: the model is used as published, without fine-tuning and without doctrine examples in its prompts, since no doctrine is available before the event. See [Using a local language model](#using-a-local-language-model), [deploy/README.md](deploy/README.md) and methodology section 6.5.
 
+**Image input (9 Nov 2026, branch `scan-roads`).** The brief says: "focusing on the image input and keeping the shapefiles for sanity checks is encouraged". On this branch the road network itself is read from the scanned IGN map: road symbols are classified by colour (blue expressway, red main road, orange departmental road, white road, dashed track), thinned to centre lines, joined at junctions and across the labels printed over them, and turned into the same road graph the rest of COA-Net uses. BD TOPO and OSM only check the result. On Scenario 1 the 1:100 000 scan gives 22,260 km of road in about 75 seconds; 86.5 % of it lies within 25 m of a BD TOPO or OSM road, and exercise 1 solved on the image network alone passes its 19 checks. Method, measured results and limits: [docs/image_input_method.md](docs/image_input_method.md).
+
+```bash
+coa-net scan-roads --data DATA --out outputs/scan_roads          # network from the 1:100k image + checks against the shapefiles
+coa-net exercise --data DATA --pdf exercise.pdf --out outputs/ex1  # exercise on the image network (--network bdtopo: as on main)
+coa-net plan --order ORDER --scan "DATA/Scenario1 100K.tif" --out outputs/plan_scan
+```
+
 ## Quick start
 
 ```bash
@@ -162,6 +170,8 @@ src/coa_net/
   loaders.py       OSM, BD TOPO, DEM
   realdata.py      organisers' Scenario shapefiles (BD TOPO v2, OSM Geofabrik): CRS, encodings, attributes, graph
   scanmap.py       IGN scans: built-up tint, OCR of town names and populations, sketch georeferencing and zones
+  scanroads.py     road network read from a scanned map (image input): symbol colours, centre lines, junctions, label gaps, bridges
+  scancheck.py     sanity checks of the image network against BD TOPO and OSM (buffer, class, junction and route measures)
   exercise.py      exercise statements: parser, NET.DISTINCT solver, turn-aware router, turn radii, checks, difficult areas
   scenario.py      `coa-net exercise` pipeline and its outputs (layers, GeoJSON, decision text)
   audit.py         data audit: files, OSM/BD TOPO agreement, scan alignment, scan check of routes

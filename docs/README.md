@@ -7,6 +7,7 @@ Design and reference documents for COA-Net, and the figures they use. This folde
 - `COA-Net_methodology.md`: the methodology and design of COA-Net. Revised on 3 Nov 2026 after the organisers' answer: the doctrine is a set of textual documents handed out at the event, and orders are multimodal documents like the preparation exercise PDF. The revision adds document intake, the doctrine-set compiler with sign-off, order understanding with a readback, the sketch reader (L9), and the matching hypotheses, risks and event-day plan. A second revision the same day deploys the model locally: one open model on a machine the team controls, never a hosted API, with the doctrine method unchanged (no fine-tuning, no doctrine examples in the prompts). It adds section 6.5 (machines, serving, checks, offline use), section 11.7 (the client measured against a stand-in server), ablation A16 and risks R28 to R30. The commands are in `../deploy/README.md`.
 - `benchmark_100_seeds.md`: output of the synthetic benchmark over 100 seeds.
 - `hackathon_brief.md`: the organisers' AMIAD hackathon brief, copied word for word in French.
+- `image_input_method.md`: the image-input method (9 Nov 2026): the road network read from the scanned IGN maps, with the shapefiles kept for sanity checks; method, parameters, measured results on Scenario 1 and limits.
 - `real_data_validation.md`: inspection of the organisers' Scenario 1 data, the changes it required, and the measured results of exercise 1 and of a full plan with incidents on that map.
 
 ## Subdirectories & Boundaries
