@@ -129,3 +129,13 @@ def test_corrector_applies_probabilities_and_gate():
     assert G.has_edge(1, 2) and abs(uncertainty_penalty(G.edges[1, 2]) - 1.4) < 1e-9  # a likely gap stays, priced
     assert G.edges[2, 3]["bridge"]  # bridge_to_culvert not switched on
     assert uncertainty_penalty({"scan_gap": True}) == 1.5 and uncertainty_penalty({}) == 1.0
+
+
+def test_real_bench_missions_are_seeded():
+    from coa_net.realbench import random_real_mission
+
+    places = {"A": (-2.0, 48.0), "B": (-2.0, 48.5), "C": (-2.6, 48.2), "D": (-1.5, 47.8)}
+    m1, m2 = random_real_mission(places, 7), random_real_mission(places, 7)
+    assert m1 == m2 and 1 <= len(m1.convoys) <= 4
+    for c in m1.convoys:
+        assert c.origin.name != c.destination.name and c.latest_arrival_min - c.earliest_departure_min == 180

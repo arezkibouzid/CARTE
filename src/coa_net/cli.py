@@ -1,4 +1,4 @@
-"""Command line: ``coa-net demo | plan | exercise | scan-roads | scan-learn | read-order | compile-doctrine | signoff | llm-check | audit | bench | fetch-osm |
+"""Command line: ``coa-net demo | plan | exercise | scan-roads | scan-learn | real-bench | read-order | compile-doctrine | signoff | llm-check | audit | bench | fetch-osm |
 templates``."""
 
 from __future__ import annotations
@@ -386,6 +386,42 @@ def cmd_bench(args) -> None:
         Path(args.out).write_text(text + "\n", encoding="utf-8")
 
 
+def cmd_real_bench(args) -> None:
+    import pickle
+
+    from . import realbench as rb
+    from .bench import to_markdown
+    from .loaders import add_places
+    from .realdata import roadside_halts, systemic_unknowns
+    from .scenario import ScenarioPaths, load_graph_cached
+
+    paths = ScenarioPaths.from_dir(args.data)
+    out = Path(args.out)
+    cache = out / "cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    if args.network == "bdtopo":
+        G, _, _ = load_graph_cached(paths.bdtopo, cache)
+        max_rank = args.max_rank or 4
+    else:
+        G, _, _ = load_graph_cached(paths.scan100, cache, kind="scan")
+        max_rank = args.max_rank or 5
+        if args.corrector:
+            from .scanlearn import correct_graph
+
+            print(f"learned corrector: {correct_graph(G, paths.scan100, args.corrector)}")
+    reqs, notes = systemic_unknowns(G, load_requirements(args.requirements))
+    roadside_halts(G, max_rank=3)
+    places = {k: tuple(v) for k, v in json.loads(Path(args.places).read_text()).items()}
+    add_places(G, places, snap_max_rank=3)
+    scorer = rb.BDScorer(paths.bdtopo) if args.network != "bdtopo" and paths.bdtopo else None
+    res = rb.run(G, None, range(args.seeds), max_rank, reqs, reps=args.reps, scorer=scorer, places_xy=places)
+    with (out / "results.pkl").open("wb") as fh:
+        pickle.dump(res, fh)
+    text = to_markdown(res, f"{args.network}{' + corrector' if args.corrector else ''}: baselines and COA-Net, random missions")
+    (out / "bench.md").write_text(text + "\n", encoding="utf-8")
+    print(text)
+
+
 def cmd_fetch(args) -> None:
     from .loaders import save_graphml_osm
 
@@ -607,6 +643,19 @@ def main(argv: list[str] | None = None) -> None:
     for k in ("bdtopo", "osm", "scan100", "scan250"):
         x.add_argument(f"--{k}", help=f"explicit path for {k}")
     x.set_defaults(fn=cmd_exercise)
+
+    rbp = sub.add_parser("real-bench", help="the 100-seed benchmark on a real network (random missions between the towns of a "
+                         "gazetteer): B0, B1 and COA-Net; on the image network the routes are also checked against BD TOPO")
+    rbp.add_argument("--data", required=True, help="folder with the Scenario files")
+    rbp.add_argument("--places", required=True, help='JSON {"name": [lon, lat]} gazetteer (towns the missions link)')
+    rbp.add_argument("--network", choices=("scan", "bdtopo"), default="scan")
+    rbp.add_argument("--corrector", help="with --network scan: learned corrector folder (coa-net scan-learn)")
+    rbp.add_argument("--max-rank", type=int, help="corridor backbone (default 5 on the image network, 4 on BD TOPO)")
+    rbp.add_argument("--seeds", type=int, default=100)
+    rbp.add_argument("--reps", type=int, default=20, help="Monte Carlo replications per plan")
+    rbp.add_argument("--requirements", help="requirement base JSON (default: seed base)")
+    rbp.add_argument("--out", default="outputs/real_bench")
+    rbp.set_defaults(fn=cmd_real_bench)
 
     sr = sub.add_parser("scan-roads", help="read the road network from a scanned map (image input) and check it against the "
                         "shapefiles: network.geojson, validation.md, overlay figures")

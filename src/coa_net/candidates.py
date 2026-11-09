@@ -588,12 +588,17 @@ def disjoint_pair(H: CorridorGraph, group: Group, max_turn: float | None = None)
 
     Corridors without critical elements have capacity 2, so the two routes may
     share ordinary roads; only bridges, tunnels and the like must be distinct."""
-    flow_e = _two_unit_min_cost_flow(_flow_network(H, group.coster), group.origin, group.destination)
+    net = _flow_network(H, group.coster)
+    flow_e = _two_unit_min_cost_flow(net, group.origin, group.destination)
     if flow_e is None:
         return None
     flow: dict[Any, dict[Any, int]] = {}
     for (a, b), f in flow_e.items():
         flow.setdefault(a, {})[b] = f
+    # element nodes are shared by every arc crossing the element: a unit may enter an element at a junction on
+    # one arc and leave it on another arc that starts there, without passing that arc's head node. Each edge
+    # leaving an element node is owned by the arc whose chain it belongs to, so that arc is recorded too.
+    owners = _element_exit_owners(H, group.coster)
     paths = []
     for _ in range(2):
         node = group.origin
@@ -607,9 +612,37 @@ def disjoint_pair(H: CorridorGraph, group: Group, max_turn: float | None = None)
             flow[node][nxt] -= 1
             if isinstance(nxt, tuple) and nxt and nxt[0] == "a":
                 arcs.append(nxt[1])
+            elif isinstance(node, tuple) and node and node[0] == "e" and arcs:
+                cands = owners.get((node, nxt), [])
+                if cands and arcs[-1] not in cands:
+                    here = H.arc_end(arcs[-1])
+                    a2 = next((a for a in cands if H.arc_nodes(a)[0] == here), None)
+                    if a2 is not None:
+                        arcs.append(a2)
             node = nxt
-        paths.append(_remove_loops(H, arcs, group.origin))
+        path = _remove_loops(H, arcs, group.origin)
+        if any(H.arc_end(a) != H.arc_nodes(b)[0] for a, b in zip(path[:-1], path[1:])):
+            return None  # not a drivable sequence: no disjoint pair from this flow
+        paths.append(path)
     return paths[0], paths[1]
+
+
+def _element_exit_owners(H: CorridorGraph, coster) -> dict[tuple[Any, Any], list[Arc]]:
+    """Arcs owning each edge that leaves an element node in :func:`_flow_network`."""
+    own: dict[tuple[Any, Any], list[Arc]] = {}
+    for u, outs in H.out.items():
+        for arc, v in outs:
+            ae = coster.arcs.get(arc)
+            if ae is None or not ae.ok:
+                continue
+            prev = None
+            for e in H.corridors[arc[0]].arc_elements(arc[1]):
+                if prev is not None:
+                    own.setdefault((prev, ("e", e, "in")), []).append(arc)
+                prev = ("e", e, "out")
+            if prev is not None:
+                own.setdefault((prev, v), []).append(arc)
+    return own
 
 
 def _remove_loops(H: CorridorGraph, arcs: list[Arc], src: Any) -> tuple[Arc, ...]:
