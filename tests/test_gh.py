@@ -64,6 +64,18 @@ def test_custom_model_gives_each_area_its_own_id():
     assert gh.custom_model()["priority"][0] == {"if": "!car_access", "multiply_by": "0"}
 
 
+def test_turn_penalty_follows_the_scipy_turn_cost():
+    tp = gh.turn_penalty(turn_min=1.0, sharp_deg=75.0, sharp_min=1.0)
+    assert tp[0]["if"].startswith("road_class == SERVICE") and tp[0]["add"] == "0"  # connectors are free
+    assert tp[-1] == {"else": "", "add": "Infinity"}  # no U-turn
+    adds = [float(s["add"]) for s in tp[1:-1]]
+    assert adds[0] == 0.0 and adds == sorted(adds)  # straight on is free, sharper costs more
+    m = [12.0 * i for i in range(len(adds))]
+    expect = [60 * ((a / 90) ** 2 + (1.0 if a > 75 else 0.0)) for a in m]
+    assert adds == pytest.approx(expect, abs=0.05)
+    assert m[-1] == 168.0  # the last bin before the U-turn ban
+
+
 def test_exclusion_polygon_covers_masked_roads():
     import shapely
 
@@ -105,3 +117,26 @@ def test_graphhopper_matches_scipy_on_a_grid(tmp_path):
         a, b = (it.line for it in res.itineraries)
         assert a.distance(b) >= 3000.0
         assert len(ref.itineraries) == 2
+
+
+@pytest.mark.skipif(not _home_ok(), reason="GraphHopper jar or JDK not found (COA_GH_HOME)")
+def test_graphhopper_with_turn_costs_matches_the_turn_aware_router(tmp_path):
+    from coa_net.exercise import TurnRouter
+
+    R, src, dst = grid()
+    tr = TurnRouter(R, src, dst, turn_min=1.0, sharp_deg=75.0, sharp_min=1.0)
+
+    def priced(p):
+        return float(R.time_min[p].sum() + np.nansum(tr.turn_cost_of(p)))
+
+    ex = gh.export_osm(R, tmp_path / "g.osm.pbf", R.time_min, src, dst)
+    with gh.GraphHopperServer(ex.path, tmp_path / "gh", port=8997, heap="512m", turns=gh.turn_penalty()) as srv:
+        router = gh.GHRouter(srv.url, ex)
+        p = router.shortest(None)
+        best = tr.shortest(R.ok)
+        plain = Router(R, src, dst).shortest(R.ok)
+        assert p and best
+        # GraphHopper's turn angles are quantised to 12 degrees (90 -> 84 or 96): close to the line-graph optimum
+        assert priced(p) == pytest.approx(priced(best), rel=0.05)
+        assert np.count_nonzero(tr.turns_of(p) > 45) <= np.count_nonzero(tr.turns_of(plain) > 45)
+        assert len(router.alternatives(None, 4)) >= 2  # alternative_route works edge-based

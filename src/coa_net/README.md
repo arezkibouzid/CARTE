@@ -102,6 +102,7 @@ Flags shared by `demo` and `plan`: `--requirements`, `--provisional` (use the do
   - `export_osm` writes `R.ok` as one-way OSM ways (way id = edge index + 1, cost encoded as `maxspeed`) plus one hub per zone linked to every zone node.
   - `GraphHopperServer` starts a local GraphHopper (flexible mode, profile `coa`); `GHRouter` queries hub to hub and maps `osm_way_id` details back to edge indices.
   - `solve_distinct_gh` mirrors `solve_distinct`: GraphHopper `alternative_route` seeds, 5 km bands as per-request custom-model areas, exact separation check on `R`.
+  - Turn costs (`--gh-turns`, `gh_variant(turns=True)`): `turn_penalty` turns the `TurnRouter` cost into GraphHopper `turn_penalty` statements on `change_angle` (12-degree steps, no U-turn) for an edge-based profile; the best set is selected with the same `TurnRouter` turn costs.
 - **`scenario.py`**: `run_exercise` (the `exercise` command; `extra_solvers` adds engines to `router_comparison`), `exercise_from_pdf` (statement and illustration of an exercise document), `ScenarioPaths`, `ScenarioRun`, `EXERCISE_1`, `decision_text`.
 - **`audit.py`**: `audit`, `coverage`, `raster_alignment`, `road_ink`, `scan_agreement`.
 

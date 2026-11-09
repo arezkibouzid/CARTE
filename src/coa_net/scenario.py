@@ -355,6 +355,9 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
                      "total_km": round(sum(i.length_m for i in r_.itineraries) / 1000, 1), "critical_turns": crit,
                      "junction_turns_over_sharp_deg": sharp, "seconds": round(r_.seconds, 1), "distinct_sets": r_.feasible_sets,
                      "total_cost_min": round(sum(float((R.time_min * pen)[i.edge_idx].sum()) for i in r_.itineraries), 1),
+                     # the same cost plus the turn-aware router's junction turn costs: the objective of the turn-aware search
+                     "total_cost_with_turns_min": round(sum(float((R.time_min * pen)[i.edge_idx].sum())
+                                                            + float(np.nansum(probe.turn_cost_of(i.edge_idx))) for i in r_.itineraries), 1),
                      "min_separation_m": _min_sep(r_.itineraries), "log": r_.log}
     run.facts["router_comparison"] = cmp
     # 8. facts, turns, checker

@@ -399,14 +399,18 @@ def cmd_exercise(args) -> None:
 
         extra = {"GraphHopper (same roads and costs)": gh_variant(Path(args.out) / "graphhopper", home=args.gh_home,
                                                                   n_seeds=args.seeds)}
-    run = run_exercise(paths, args.out, text, cache=args.cache, n_seeds=args.seeds, turn_aware=not args.no_turns,
+        if args.gh_turns:
+            extra["GraphHopper with turn costs"] = gh_variant(Path(args.out) / "graphhopper_turns", home=args.gh_home,
+                                                              port=8991, n_seeds=args.seeds, turns=True)
+    run =run_exercise(paths, args.out, text, cache=args.cache, n_seeds=args.seeds, turn_aware=not args.no_turns,
                        compare=not args.no_compare, osm_check=not args.no_osm, llm=_llm(args), requirements=reqs,
                        extra_solvers=extra)
     if extra:
         print("router comparison:")
         for name, c in run.facts["router_comparison"].items():
-            print(f"  {name}: {c['itineraries']} itineraries, cost {c['total_cost_min']} min, time {c['total_time_min']} min, "
-                  f"{c['total_km']} km, min separation {c['min_separation_m']} m, {c['seconds']} s")
+            print(f"  {name}: {c['itineraries']} itineraries, cost {c['total_cost_min']} min "
+                  f"({c['total_cost_with_turns_min']} min with turns), time {c['total_time_min']} min, {c['total_km']} km, "
+                  f"min separation {c['min_separation_m']} m, {c['critical_turns']} critical turns, {c['seconds']} s")
     from .exercise import parse_exercise
 
     rb = exercise_readback(reading, parse_exercise(text)[0], run.facts)
@@ -522,7 +526,9 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--llm", action="store_true", help="name the sketch's marks with the model (L9, needs a vision-language model)")
     x.add_argument("--graphhopper", action="store_true", help="also solve NET.DISTINCT with a local GraphHopper server "
                    "on the same roads and costs, and compare (needs Java 17+ and graphhopper-web-*.jar)")
-    x.add_argument("--gh-home", help="folder with graphhopper-web-*.jar and a jdk* folder (default: COA_GH_HOME or ../tools)")
+    x.add_argument("--gh-turns", action="store_true", help="with --graphhopper: also solve with GraphHopper pricing "
+                   "junction turns like the turn-aware search (turn_penalty, edge-based)")
+    x.add_argument("--gh-home",help="folder with graphhopper-web-*.jar and a jdk* folder (default: COA_GH_HOME or ../tools)")
     for k in ("bdtopo", "osm", "scan100", "scan250"):
         x.add_argument(f"--{k}", help=f"explicit path for {k}")
     x.set_defaults(fn=cmd_exercise)

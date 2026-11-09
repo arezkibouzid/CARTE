@@ -56,6 +56,32 @@ def custom_model(excl: list | None = None) -> dict:
     return cm
 
 
+ORIENTATION_STEP_DEG = 12.0  # GraphHopper stores edge orientations on 5 bits, in steps of 12 degrees
+
+
+def turn_penalty(turn_min: float = 1.0, sharp_deg: float = 75.0, sharp_min: float = 1.0) -> list[dict]:
+    """``exercise.TurnRouter``'s turn cost as GraphHopper ``turn_penalty`` statements (seconds).
+
+    GraphHopper's ``change_angle`` (degrees, signed: left/right) comes from orientations quantised to 12 degrees,
+    so the deflection is a multiple of 12: each multiple gets the SciPy cost ``turn_min * (a / 90)**2`` (+
+    ``sharp_min`` above ``sharp_deg``). Turns from or onto a zone connector are free. Deflections of 174 degrees
+    and more are forbidden, like the SciPy router's U-turns (our ways are one-way, so GraphHopper's own U-turn
+    rule never applies to a road and its reverse).
+    """
+    st = ORIENTATION_STEP_DEG
+    out: list[dict] = [{"if": "road_class == SERVICE || prev_road_class == SERVICE", "add": "0"}]
+    m = 0.0
+    while m + st / 2 < 180.0:
+        lo, hi = max(m - st / 2, 0.0), m + st / 2
+        sec = 60.0 * (turn_min * (m / 90.0) ** 2 + (sharp_min if m > sharp_deg else 0.0))
+        cond = (f"change_angle > -{hi:g} && change_angle < {hi:g}" if lo == 0 else
+                f"(change_angle >= {lo:g} && change_angle < {hi:g}) || (change_angle <= -{lo:g} && change_angle > -{hi:g})")
+        out.append({"else_if": cond, "add": f"{sec:.1f}"})
+        m += st
+    out.append({"else": "", "add": "Infinity"})
+    return out
+
+
 # ---------------------------------------------------------------------------
 # export
 # ---------------------------------------------------------------------------
@@ -157,11 +183,15 @@ def default_home() -> Path:
 
 
 class GraphHopperServer:
-    """A local GraphHopper server on one exported PBF file (graph imported into ``work/graph-cache``)."""
+    """A local GraphHopper server on one exported PBF file (graph imported into ``work/graph-cache``).
+
+    ``turns``: ``turn_penalty`` statements (see ``turn_penalty``) for an edge-based profile that prices turns;
+    the profile, not the request, carries them (a request's custom model is merged into the profile's)."""
 
     def __init__(self, pbf: str | Path, work: str | Path, home: str | Path | None = None, port: int = 8989,
-                 heap: str = "4g"):
-        self.home = Path(home) if home else default_home()
+                 heap: str = "4g", turns: list[dict] | None = None):
+        self.turns = turns
+        self.home = (Path(home) if home else default_home()).resolve()  # Java runs in ``work``: a relative home breaks
         self.pbf, self.work, self.port, self.heap = Path(pbf).resolve(), Path(work).resolve(), port, heap
         self.url = f"http://localhost:{port}"
         self.proc: subprocess.Popen | None = None
@@ -181,16 +211,23 @@ class GraphHopperServer:
 
     def write_config(self) -> Path:
         self.work.mkdir(parents=True, exist_ok=True)
-        (self.work / "coa.json").write_text(json.dumps(custom_model()), encoding="utf-8")
+        cm = custom_model()
+        ev = "car_access, road_access, max_speed, road_class, osm_way_id"
+        turn_cfg = ""
+        if self.turns:
+            cm["turn_penalty"] = self.turns
+            ev += ", orientation"
+            turn_cfg = "\n      turn_costs:\n        vehicle_types: [motorcar]"
+        (self.work / "coa.json").write_text(json.dumps(cm), encoding="utf-8")
         cfg = f"""graphhopper:
   datareader.file: {self.pbf.resolve().as_posix()}
   graph.location: {(self.work / 'graph-cache').resolve().as_posix()}
-  graph.encoded_values: car_access, road_access, max_speed, road_class, osm_way_id
+  graph.encoded_values: {ev}
   import.osm.ignored_highways: footway,construction,cycleway,path,steps
   custom_models.directory: {self.work.resolve().as_posix()}
   profiles:
     - name: {PROFILE}
-      custom_model_files: [coa.json]
+      custom_model_files: [coa.json]{turn_cfg}
   profiles_ch: []
   profiles_lm: []
   routing.non_ch.max_waypoint_distance: 100000000
@@ -254,16 +291,20 @@ server:
 class GHRouter:
     """Zone-to-zone paths from a GraphHopper server, as edge-index lists of ``R`` (connectors removed)."""
 
-    def __init__(self, url: str, export: Export, timeout_s: float = 120.0):
+    def __init__(self, url: str, export: Export, timeout_s: float = 120.0, exploration: float = 3.0):
         import requests
 
         self.url, self.ex, self.timeout = url.rstrip("/"), export, timeout_s
+        # alternative_route.max_exploration_factor. Exercise 1: node-based, 3.0 -> 20 paths in 2.6 s (1.0 -> 1 path);
+        # edge-based (turn costs), 3.0 -> 52 s and > 120 s with exclusion areas, 1.5 -> 19 paths in 1.9 s
+        self.exploration = exploration
         self.session = requests.Session()
         self.calls = 0
         self.seconds = 0.0
 
     def _query(self, excl: list | None, alternatives: int = 0, max_weight_factor: float = 1.6,
-               max_share_factor: float = 0.6, max_exploration_factor: float = 3.0) -> list[list[int]]:
+               max_share_factor: float = 0.6, max_exploration_factor: float | None = None) -> list[list[int]]:
+        max_exploration_factor = max_exploration_factor or self.exploration
         body = {"points": [list(self.ex.hubs["source"]), list(self.ex.hubs["target"])], "profile": PROFILE,
                 "ch.disable": True, "custom_model": custom_model(excl), "points_encoded": False,
                 "instructions": False, "details": ["osm_way_id"]}
@@ -324,9 +365,10 @@ def _flatten(geoms: list[dict]) -> list[dict]:
 
 
 def solve_distinct_gh(R: RoadArrays, router: GHRouter, k: int, sep_m: float, cost_min: np.ndarray, n_seeds: int = 20,
-                      n_second: int = 3, time_budget_s: float = 300.0) -> DistinctResult:
+                      n_second: int = 3, time_budget_s: float = 300.0, turn_cost=None) -> DistinctResult:
     """``exercise.solve_distinct`` with GraphHopper as the path engine: GraphHopper alternatives as seeds, exclusion
-    bands as custom-model areas, the cheapest feasible set of k itineraries (cost measured on ``R``)."""
+    bands as custom-model areas, the cheapest feasible set of k itineraries (cost measured on ``R``; ``turn_cost``:
+    a ``TurnRouter`` whose turn costs are added, as ``solve_distinct`` does with a turn-aware router)."""
     import shapely
 
     t0 = time.perf_counter()
@@ -335,7 +377,10 @@ def solve_distinct_gh(R: RoadArrays, router: GHRouter, k: int, sep_m: float, cos
     bands: dict[tuple, list[dict]] = {}
 
     def cost(edges: list[int]) -> float:
-        return float(cost_min[edges].sum())
+        c = float(cost_min[edges].sum())
+        if turn_cost is not None:
+            c += float(np.nansum(turn_cost.turn_cost_of(edges)))
+        return c
 
     def band(edges: list[int]) -> list[dict]:
         key = tuple(edges)
@@ -353,7 +398,8 @@ def solve_distinct_gh(R: RoadArrays, router: GHRouter, k: int, sep_m: float, cos
         return ok
 
     seeds = router.alternatives(None, n_seeds)
-    log.append(f"{len(seeds)} first-itinerary seeds from GraphHopper alternative_route (within 1.6x, share <= 0.6)")
+    log.append(f"{len(seeds)} first-itinerary seeds from GraphHopper alternative_route (within 1.6x, share <= 0.6, "
+               f"exploration factor {router.exploration:g})")
     sets: list[tuple[float, list[list[int]]]] = []
     tried = rejected = 0
     for si, e1 in enumerate(seeds):
@@ -404,10 +450,16 @@ def solve_distinct_gh(R: RoadArrays, router: GHRouter, k: int, sep_m: float, cos
     return DistinctResult(its, tried, len(sets), time.perf_counter() - t0, log, alts)
 
 
-def gh_variant(work: str | Path, home: str | Path | None = None, port: int = 8989, n_seeds: int = 20):
-    """A solver for ``scenario.run_exercise(extra_solvers=...)``: export, start GraphHopper, solve, stop."""
+def gh_variant(work: str | Path, home: str | Path | None = None, port: int = 8989, n_seeds: int = 20,
+               turns: bool = False):
+    """A solver for ``scenario.run_exercise(extra_solvers=...)``: export, start GraphHopper, solve, stop.
+
+    ``turns``: price junction turns like the turn-aware SciPy router (``spec.turn_penalty_min``, ``sharp_turn_deg``,
+    ``sharp_turn_min``), in GraphHopper's search (``turn_penalty``) and in the selection of the best set."""
 
     def solve(R: RoadArrays, src: np.ndarray, dst: np.ndarray, pen: np.ndarray, spec) -> DistinctResult:
+        from .exercise import TurnRouter
+
         cost = R.time_min * pen
         t0 = time.perf_counter()
         ex = export_osm(R, Path(work) / "roads.osm.pbf", cost, src, dst)
@@ -415,10 +467,16 @@ def gh_variant(work: str | Path, home: str | Path | None = None, port: int = 898
         import shutil
 
         shutil.rmtree(Path(work) / "graph-cache", ignore_errors=True)  # the export changes with the exercise
-        with GraphHopperServer(ex.path, work, home=home, port=port) as srv:
-            res = solve_distinct_gh(R, GHRouter(srv.url, ex), spec.k, spec.min_sep_m, cost, n_seeds=n_seeds)
+        tp = turn_penalty(spec.turn_penalty_min, spec.sharp_turn_deg, spec.sharp_turn_min) if turns else None
+        pricer = TurnRouter(R, src, dst, pen, turn_min=spec.turn_penalty_min, sharp_deg=spec.sharp_turn_deg,
+                            sharp_min=spec.sharp_turn_min) if turns else None
+        with GraphHopperServer(ex.path, work, home=home, port=port, turns=tp) as srv:
+            router = GHRouter(srv.url, ex, exploration=1.5 if turns else 3.0)
+            res = solve_distinct_gh(R, router, spec.k, spec.min_sep_m, cost, n_seeds=n_seeds,
+                                    turn_cost=pricer)
         res.log.insert(0, f"export {ex.ways} OSM ways in {t_export:.1f} s (speeds {ex.speeds_kmh[0]:.0f}-"
-                          f"{ex.speeds_kmh[1]:.0f} km/h), GraphHopper import and start {srv.import_s:.1f} s")
+                          f"{ex.speeds_kmh[1]:.0f} km/h), GraphHopper import and start {srv.import_s:.1f} s"
+                          + (", turns priced (turn_penalty, edge-based)" if turns else ""))
         return res
 
     return solve

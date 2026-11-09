@@ -153,7 +153,7 @@ coa-net plan --bdtopo DATA/Scenario1_BDTopo.shp --places examples/places_scenari
 
 ![Exercise 1 itineraries on the 1:100 000 scan](docs/figures/real/exercise1-itineraries.jpg)
 
-**Second routing engine.** `coa-net exercise ... --graphhopper` also solves the itineraries with a local GraphHopper server (Java 17+, `graphhopper-web-*.jar` in `COA_GH_HOME` or `../tools`) on the same roads and costs, and prints the comparison. On exercise 1 it finds the same best set as the built-in router, with a faster search: [docs/graphhopper_comparison.md](docs/graphhopper_comparison.md).
+**Second routing engine.** `coa-net exercise ... --graphhopper` also solves the itineraries with a local GraphHopper server (Java 17+, `graphhopper-web-*.jar` in `COA_GH_HOME` or `../tools`) on the same roads and costs, and prints the comparison. `--gh-turns` adds a GraphHopper variant that prices junction turns like the turn-aware search. On exercise 1 both variants find the same best sets as the built-in router, more slowly (39 s and 184 s against 30 s and 45 s): [docs/graphhopper_comparison.md](docs/graphhopper_comparison.md).
 
 ## Layout
 
