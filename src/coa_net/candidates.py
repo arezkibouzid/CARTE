@@ -83,6 +83,7 @@ class Route:
     max_leg_km: float  # longest distance between fuel points
     tags: set[str] = field(default_factory=set)
     violations: list[tuple[str, str, str]] = field(default_factory=list)  # route-level (req id, tier, detail)
+    doubt_m: float = 0.0  # image network: length-weighted doubt of the learned corrector (m)
 
     @property
     def key(self) -> tuple[Arc, ...]:
@@ -155,7 +156,7 @@ def search(
         return ()
     bc, bn = _banned_sets(H, banned_elements)
     bad_arcs = banned_arcs or set()
-    w = weight or (lambda arc, ae: ae.time_min)
+    w = weight or (lambda arc, ae: ae.time_min + ae.doubt_min)
     arcs = coster.arcs
     G = H.G
     tick = itertools.count()
@@ -445,6 +446,7 @@ def make_route(H: CorridorGraph, group: Group, arcs: tuple[Arc, ...], aps: set[s
         max_turn=max_turn,
         max_leg_km=max_leg / 1000.0,
         tags=set(tags or ()),
+        doubt_m=sum(a.doubt_m for a in aes),
     )
     r.violations = route_violations(r, group)
     return r
@@ -520,7 +522,7 @@ def _flow_network(H: CorridorGraph, coster) -> dict[tuple[Any, Any], tuple[int, 
             if ae is None or not ae.ok:
                 continue
             head = ("a", arc)
-            net[(u, head)] = (2, int(round(ae.time_min * 100)))
+            net[(u, head)] = (2, int(round((ae.time_min + ae.doubt_min) * 100)))
             prev = head
             for e in H.corridors[arc[0]].arc_elements(arc[1]):
                 ein, eout = ("e", e, "in"), ("e", e, "out")
@@ -667,7 +669,7 @@ def _remove_loops(H: CorridorGraph, arcs: list[Arc], src: Any) -> tuple[Arc, ...
 
 def _weight_fn(H: CorridorGraph, coster: GroupCoster, wx: float, wb: float, wo: float, wp: float):
     def w(arc: Arc, ae: ArcEval) -> float:
-        return ae.time_min + wx * ae.exposure + wb * ae.builtup_m / 1000 + wo * ae.open_m / 1000 + wp * ae.pref_m / 1000
+        return ae.time_min + ae.doubt_min + wx * ae.exposure + wb * ae.builtup_m / 1000 + wo * ae.open_m / 1000 + wp * ae.pref_m / 1000
 
     return w
 
@@ -782,7 +784,7 @@ def generate_candidates(
         for r in pool.values():
             for c in r.corridors:
                 used[c] = used.get(c, 1.0) * 1.6
-        add(run(weight=lambda arc, ae: ae.time_min * used.get(arc[0], 1.0)), "diverse")
+        add(run(weight=lambda arc, ae: (ae.time_min + ae.doubt_min) * used.get(arc[0], 1.0)), "diverse")
     for base in sorted(pool.values(), key=lambda r: r.time_min)[:3]:
         crit = frozenset(base.elements - aps)
         if crit:

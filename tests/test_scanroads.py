@@ -126,7 +126,8 @@ def test_corrector_applies_probabilities_and_gate():
                    _key(G, 2, 3): {"road_real": 0.95, "bridge_real": 0.1}}}
     ch = apply_corrections(G, P, enabled={"drop_gap", "white_to_rank4"})
     assert ch["white roads to rank 4"] == 1 and G.edges[0, 1]["road_rank"] == 4
-    assert G.has_edge(1, 2) and abs(uncertainty_penalty(G.edges[1, 2]) - 1.4) < 1e-9  # a likely gap stays, priced
+    assert G.has_edge(1, 2) and abs(uncertainty_penalty(G.edges[1, 2]) - 2.2) < 1e-9  # a likely gap stays, priced 1 + 3 (1 - p)
+    assert uncertainty_penalty({"scan_p_real": 0.9}) == 1.0 and abs(uncertainty_penalty({"scan_p_real": 0.3}) - 2.2) < 1e-9
     assert G.edges[2, 3]["bridge"]  # bridge_to_culvert not switched on
     assert uncertainty_penalty({"scan_gap": True}) == 1.5 and uncertainty_penalty({}) == 1.0
 
@@ -139,3 +140,20 @@ def test_real_bench_missions_are_seeded():
     assert m1 == m2 and 1 <= len(m1.convoys) <= 4
     for c in m1.convoys:
         assert c.origin.name != c.destination.name and c.latest_arrival_min - c.earliest_departure_min == 180
+
+
+def test_route_checks_list_gaps_doubtful_roads_and_bridges():
+    import networkx as nx
+
+    from coa_net.scanlearn import route_checks
+
+    G = nx.DiGraph()
+    for n in range(5):
+        G.add_node(n, x=n * 0.01, y=48.0)
+    kinds = [dict(), dict(scan_gap=True, scan_p_real=0.6), dict(scan_p_real=0.4), dict(scan_p_real=0.3), dict(bridge=True, scan_p_real=0.95)]
+    for i, k in enumerate(kinds[:4]):
+        G.add_edge(i, i + 1, source_id="scan", length_m=1000.0, **k)
+    G.add_edge(4, 3, source_id="scan", length_m=1000.0)
+    ch = route_checks(G, [0, 1, 2, 3, 4])
+    assert [c["kind"].split(":")[0] for c in ch] == ["label-gap join", "doubtful road"]
+    assert abs(ch[1]["start_km"] - 2.0) < 1e-9 and abs(ch[1]["end_km"] - 4.0) < 1e-9 and ch[1]["p"] == 0.3

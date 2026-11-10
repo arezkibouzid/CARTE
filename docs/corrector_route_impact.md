@@ -66,6 +66,8 @@ The 105 town pairs behave the same way. With the full corrector, 70 routes chang
 
 ## 5. Recommendations
 
+*Recommendations 1 to 4 were implemented on 10 November 2026; the results are in `docs/corrector_pricing_results.md`.*
+
 1. **Do not delete; price.** Turn off `drop_road` and `drop_gap`, or remove a road only when that does not disconnect anything (it is not a graph bridge). Pricing doubtful roads keeps every village reachable and costs nothing in route quality here.
 2. **Use a cautious price for label gaps**, for example 1 + 3(1 - p): about 1.3 on average, still above 2 for the joins the model doubts. Then calibrated probabilities make routing more careful, not less.
 3. **Pass the probability to the planner** (corridor and edge costs), not only to the exercise solver. Today the planner sees only the edited network.

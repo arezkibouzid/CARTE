@@ -124,7 +124,7 @@ def route_terms(g: Group, r: Route, phase: str) -> dict[str, float]:
         "builtup": g.n * r.builtup_m / 1000.0,
         "travel_time": g.weight * g.n * r.time_min,
         "cover": g.n * r.open_m / 1000.0 if phase == "day" else 0.0,
-        "preferences": g.n * r.pref_m / 1000.0,
+        "preferences": g.n * (r.pref_m + r.doubt_m) / 1000.0,  # T3 preferences, and doubtful image roads
     }
 
 

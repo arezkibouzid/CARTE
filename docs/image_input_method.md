@@ -56,7 +56,7 @@ White roads are one symbol on the 1:100 000 for BD TOPO importance 4 and 5 (meas
 
 **3.6b Dual carriageways.** IGN draws an expressway as two wide blue bands either side of a thin grey median, far wider than the road: the centre line of each band lies about 25 m outside the carriageway it stands for, while the two BD TOPO carriageways run along the median, about 11 m apart. Each blue line that has a parallel blue partner within 100 m is moved towards it, to 5.5 m from the pair's centre (`centre_dual_carriageways`). Vertices without a partner (near junctions, at the ends of the bands) take the offset of the nearest paired vertex of their line, so the line moves as a whole, and every road ending on a moved junction moves with it. On the 1:100 000, 871 km of blue line is paired and 1,387 lines are moved. This took the completeness of BD TOPO importance 1 from 46% to 82%, and the correctness of the blue symbol from 52% to 84%.
 
-**3.7 Gaps.** Labels printed over roads cut the skeleton. A dead end is joined to the nearest line ahead of it within 120 m and 40 degrees of its heading, or, failing that, to the nearest line in any direction within 40 m. Each join is flagged `scan_gap`; the exercise prices it at 1.5 times its travel time, so a route uses an unconfirmed link only when it pays. Isolated pieces shorter than 400 m (letters, symbols) are dropped first.
+**3.7 Gaps.** Labels printed over roads cut the skeleton. A dead end is joined to the nearest line ahead of it within 120 m and 40 degrees of its heading, or, failing that, to the nearest line in any direction within 40 m. Each join is flagged `scan_gap`; the exercise and the planner price it at 1.5 times its travel time (with the corrector of section 7: 1 + 3 (1 - p)), so a route uses an unconfirmed link only when it pays. Isolated pieces shorter than 400 m (letters, symbols) are dropped first.
 
 **3.8 Geometry.** Chains are smoothed with a 7-pixel moving average (the pixel staircase would otherwise read as a string of tight turns), simplified (Douglas-Peucker, 0.3 pixel) and converted to lon/lat with the GeoTIFF transform. Every road is two-way (one-way arrows are not read).
 
@@ -207,18 +207,29 @@ The reader takes a few uncertain decisions by fixed rules: a label gap is joined
 
 | correction | changes on unseen blocks | right | base rate | switched on |
 | --- | --- | --- | --- | --- |
-| remove a road with p(real) < 0.3 | 315 roads, 69 km | 82% | 7% | yes |
-| remove a label-gap join with p(real) < 0.5 | 37 joins, 3 km | 65% | 15% | yes |
+| remove a road with p(real) < 0.3 | 315 roads, 69 km | 82% | 7% | passes the gate, but off by default: priced instead (`--allow-removal` to apply) |
+| remove a label-gap join with p(real) < 0.5 | 37 joins, 3 km | 65% | 15% | passes the gate, but off by default: priced instead |
 | white road to rank 4 if p(importance 4) >= 0.7 | 101 roads, 58 km | 65% | 26% | yes |
 | bridge to culvert if p(bridge) < 0.3 | 446 | 75% | 72% | no (no better than the base rate) |
 | split a crossing into a flyover if p >= 0.5 | 2 | 0% | 2% | no |
 
-Every road also keeps its probability of being real, and that probability prices it. A road the model doubts costs up to twice its time in the exercise. A label-gap join costs 1 + (1 - p) times, instead of a fixed 1.5. On the sheet the corrector was trained on, `--corrector` applies the out-of-fold predictions, so the sanity checks stay honest. On another sheet it applies the models trained on every block.
+**Doubtful roads are priced, not deleted.** Removing roads cut 26 small pieces off the network (about 18% of the removed roads are real), so removals are off unless `scan-learn --allow-removal` is given. Instead, every road keeps its probability p of being real, and that probability prices it, in the exercise solver and in the planner alike:
 
-**What it changes, measured.**
-- Correctness against either shapefile goes from 87.8% to 88.1%.
-- Exercise 1's itineraries do not change: no corrected road was on them.
-- The full plan stays valid.
+- a label-gap join costs 1 + 3 (1 - p) times its time (the cautious price: 1.3 for a typical join at p = 0.9, 2.5 for a join at p = 0.5);
+- a road with p < 0.7 costs 1 + 3 (0.7 - p) times its time (up to 3.1 for p near 0);
+- without the corrector a gap join costs a fixed 1.5.
+
+In the planner the extra cost (price - 1) is added to the corridor search weights and to the flow costs, and the doubtful length of each route counts in the "preferences" objective next to the preferred-road length. A route therefore avoids doubtful links when a sure one costs about the same, and still takes one when it is the only way.
+
+**Map checks before the move.** `coa-net plan --scan` writes `map_checks.md` and `map_checks.geojson`: for every MSR and ASR of the chosen COA, the stretches to check first (roads with p < 0.7 and bridges read on the map, with their kilometre points and p), then a one-line count of the label-gap joins to check if time allows. Consecutive links of the same kind are merged into one stretch.
+
+On the sheet the corrector was trained on, `--corrector` applies the out-of-fold predictions, so the sanity checks stay honest. On another sheet it applies the models trained on every block.
+
+**What it changes, measured** (details in `docs/corrector_pricing_results.md`).
+- With removals (`--allow-removal`), correctness against either shapefile goes from 87.8% to 88.1%, but 26 small pieces are cut off and 4 of 300 random routes are lost. By default nothing is removed, so correctness stays at 87.8% and every route is found.
+- With pricing, routes on 300 random pairs take 20% fewer km on doubtful roads and gaps (146 to 117 km), for the same mean time.
+- Exercise 1's itineraries and the order's MSRs and ASRs do not change, and the full plan stays valid. Its map-check list comes down to about ten points to check first.
+- On the 100-seed benchmark, validity (84%), on-time probability and MSR quality are unchanged.
 
 The corrector is useful at the margins: it finds 69 km of lines that are not roads with 82% precision, and it prices doubtful links. It is not a large gain. The features cannot see the decisive cue for bridges and flyovers, which is how the two symbols overlap at the crossing. For those two decisions the next step is a small CNN, or the vision-model check of section 9, on crops around each candidate. The same out-of-fold protocol and gate would apply.
 

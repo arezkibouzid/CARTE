@@ -99,6 +99,11 @@ def _run(session: COANet, order: str, incidents: list[tuple[float, str]], out: P
         print("  concern: " + x)
     chosen = session.choose(coa)
     print(f"\nchosen: COA {chosen.label}")
+    from .scanlearn import write_plan_checks
+
+    n_checks = write_plan_checks(session.H.G, chosen, out)
+    if n_checks:
+        print(f"   map checks before the move (image network): {n_checks} stretches on the MSRs and ASRs, in {out / 'map_checks.md'}")
     for c in chosen.sched.credits.values():
         print(f"   {c.unit}: depart {hhmm(c.depart)}, arrive {hhmm(c.arrive)}" + (f" (deadline {hhmm(c.deadline)})" if c.deadline is not None else ""))
     for t, text in incidents:
@@ -515,7 +520,7 @@ def cmd_scan_learn(args) -> None:
     cv = sl.cross_validate(ds)
     models = sl.train_final(ds)
     P = sl.predictions_from_oof(ds, cv)
-    sl.save(out, models, P, cv, ds, tif, sl.scan_graph_key(tif))
+    sl.save(out, models, P, cv, ds, tif, sl.scan_graph_key(tif), allow_removal=args.allow_removal)
     Gc = copy.deepcopy(G)
     changes = sl.correct_graph(Gc, tif, out)
     md = sl.markdown(cv, sl.feature_importance(models), changes, ds)
@@ -678,6 +683,8 @@ def main(argv: list[str] | None = None) -> None:
     sl.add_argument("--cache", help="cache folder (default: OUT/cache)")
     sl.add_argument("--grid", type=int, default=4, help="the sheet is cut into GRID x GRID blocks for the cross-validation")
     sl.add_argument("--no-check", action="store_true", help="skip the sanity checks of the corrected network")
+    sl.add_argument("--allow-removal", action="store_true", help="remove the roads and label gaps the corrector doubts "
+                    "(default: price them, so that no village is cut off)")
     sl.set_defaults(fn=cmd_scan_learn)
 
     a = sub.add_parser("audit", help="audit a Scenario delivery: files, CRS, encodings, OSM/BD TOPO agreement, scan alignment")

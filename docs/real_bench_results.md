@@ -61,6 +61,8 @@ The image network also sees far fewer critical elements: 645 against 2,755 on BD
 - **The image network makes plans look safer than they are.** Without bridges over roads and railways, and without tunnels, it finds fewer single points of failure: 0% of groups against 17% on BD TOPO, which is why only 67% of groups get an ASR against 100%. The resilience figures cannot be compared across networks, because each counts losses over its own critical elements. For resilience, the image network must be completed with crossings of roads and railways; it cannot replace BD TOPO there.
 - **The corrector changes nothing measurable.** The MSRs are identical on 98% of the seeds, and validity, SPOFs and times are the same. This matches the route study in `corrector_route_impact.md`.
 
+The benchmark was rerun on 10 November with the second version of the corrector (doubtful roads priced, not removed, and the probability passed to the planner): see `docs/corrector_pricing_results.md` section 4.
+
 ## 3. Bug found and fixed
 
 Seed 23 crashed COA-Net on every network, BD TOPO included. The cheapest pair of routes sharing no critical element (`candidates.disjoint_pair`) is read from a min-cost flow in which element nodes are shared by every arc that crosses the element. A unit could enter an element at a junction on one arc and leave on the next arc without passing that arc's head, so the arc was not recorded, the route skipped a road, and `refine` failed on a missing edge.

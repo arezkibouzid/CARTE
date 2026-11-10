@@ -515,7 +515,12 @@ def feature_importance(models: dict) -> dict:
 # apply
 # ---------------------------------------------------------------------------
 
-THRESH = {"drop_gap": 0.5, "drop_road": 0.3, "uncertain_road": 0.5, "imp4": 0.7, "bridge": 0.3, "separate": 0.5}
+THRESH = {"drop_gap": 0.5, "drop_road": 0.3, "uncertain_road": 0.7, "imp4": 0.7, "bridge": 0.3, "separate": 0.5}
+# removing a road the model doubts can cut a village off (about 18 % of the removals hit real roads): by default
+# doubtful roads and label gaps are priced, never removed; ``scan-learn --allow-removal`` switches removal back on
+REMOVALS = {"drop_gap", "drop_road"}
+GAP_CAUTION = 3.0   # a label-gap join costs 1 + GAP_CAUTION x (1 - p) times its time
+ROAD_CAUTION = 3.0  # another road costs 1 + ROAD_CAUTION x (uncertain_road - p) times when p is below uncertain_road
 # a correction is switched on only if, on blocks the model never saw, most of the changes it would make are right
 # and it does clearly better than the fixed rule's own error rate
 GATE_PRECISION, GATE_LIFT, GATE_MIN = 0.6, 1.5, 10
@@ -590,7 +595,7 @@ def apply_corrections(G: nx.DiGraph, P: dict, thresh: dict | None = None, enable
 
     th = dict(THRESH, **(thresh or {}))
     on = set(DECISIONS) if enabled is None else set(enabled)
-    ch = {"label gaps removed": 0.0, "roads removed": 0.0, "roads priced as uncertain": 0.0, "white roads to rank 4": 0.0,
+    ch = {"label gaps removed": 0.0, "roads removed": 0.0, "roads priced as doubtful (p < 0.7)": 0.0, "label gaps priced": 0.0, "white roads to rank 4": 0.0,
           "bridges to culverts": 0.0, "crossings separated": 0}
     # crossings first (they need the junctions as they are)
     if "separate_crossing" in on:
@@ -635,7 +640,9 @@ def apply_corrections(G: nx.DiGraph, P: dict, thresh: dict | None = None, enable
                     ch["roads removed"] += 0.5
                     continue
                 if not d.get("scan_gap") and pr < th["uncertain_road"]:
-                    ch["roads priced as uncertain"] += 0.5
+                    ch["roads priced as doubtful (p < 0.7)"] += 0.5
+                if d.get("scan_gap"):
+                    ch["label gaps priced"] += 0.5
             p4 = probs.get("white_imp4")
             if p4 is not None and d.get("scan_symbol") == "white":
                 d["scan_p_imp4"] = round(p4, 3)
@@ -658,26 +665,31 @@ def apply_corrections(G: nx.DiGraph, P: dict, thresh: dict | None = None, enable
 
 
 def uncertainty_penalty(d: dict) -> float:
-    """Cost factor of an image road from the corrector's probability that it exists (1 when sure or unknown);
-    without a corrector a label gap costs 1.5 times its time, as before."""
+    """Cost factor of an image road from the corrector's probability that it exists (1 when sure or unknown).
+
+    Cautious by design: a label-gap join costs 1 + 3 (1 - p) times its time (about 1.3 for the typical join, which
+    is real 85 % of the time; 2.5 and more for a join the model doubts), so the calibrated probability makes routing
+    more careful than the fixed 1.5, not less; another road costs 1 + 3 (0.7 - p) times below p = 0.7 (up to 3.1).
+    Without a corrector a label gap costs 1.5 times its time, as before."""
     p = d.get("scan_p_real")
     if p is None:
         return 1.5 if d.get("scan_gap") else 1.0
     if d.get("scan_gap"):
-        return 1.0 + (1.0 - p)
-    return 1.0 + max(0.0, 0.5 - p) * 2.0
+        return 1.0 + GAP_CAUTION * (1.0 - p)
+    return 1.0 + ROAD_CAUTION * max(0.0, THRESH["uncertain_road"] - p)
 
 
 # ---------------------------------------------------------------------------
 # saving, loading, report
 # ---------------------------------------------------------------------------
 
-def save(out: Path, models: dict, P: dict, cv: dict, ds, tif: str, graph_key: str) -> None:
+def save(out: Path, models: dict, P: dict, cv: dict, ds, tif: str, graph_key: str, allow_removal: bool = False) -> None:
     out.mkdir(parents=True, exist_ok=True)
     for t, m in models.items():
         m.booster_.save_model(str(out / f"model_{t}.txt"))
     meta = {"version": CORRECTOR_VERSION, "trained_on": str(tif), "graph_key": graph_key, "thresholds": THRESH,
-            "decisions": cv.get("decisions", {}), "enabled": sorted(k for k, d in cv.get("decisions", {}).items() if d["enabled"]),
+            "decisions": cv.get("decisions", {}), "allow_removal": allow_removal,
+            "enabled": sorted(k for k, d in cv.get("decisions", {}).items() if d["enabled"] and (allow_removal or k not in REMOVALS)),
             "features_roads": list(ds["X"].columns), "features_crossings": list(ds["Xc"].columns)}
     (out / "corrector.json").write_text(json.dumps(meta, indent=1), encoding="utf-8")
     Pj = {"roads": P["roads"], "crossings": {str(k): v for k, v in (P.get("crossings") or {}).items()},
@@ -727,7 +739,10 @@ def correct_graph(G: nx.DiGraph, tif: str, corrector: str | Path, graph_key: str
     else:
         P = predictions_from_models(G, tif, models)
         mode = "models trained on " + str(meta.get("trained_on"))
-    ch = apply_corrections(G, P, meta.get("thresholds"), set(meta.get("enabled", [])))
+    enabled = set(meta.get("enabled", []))
+    if not meta.get("allow_removal"):
+        enabled -= REMOVALS  # priced, not removed (correctors saved before this rule listed removals as enabled)
+    ch = apply_corrections(G, P, dict(meta.get("thresholds") or {}, uncertain_road=THRESH["uncertain_road"]), enabled)
     ch["mode"] = mode
     G.graph["scan_corrected"] = ch
     return ch
@@ -761,8 +776,10 @@ def markdown(cv: dict, imp: dict, changes: dict | None, ds) -> str:
         km = f" ({d['km']:.0f} km)" if d.get("km") else ""
         L.append(f"| {text.get(k, k)} | {d['threshold']:g} | {d['changes']}{km} | {d['precision']:.0%} | {d['base']:.0%} | "
                  f"{d['lift']:.1f} | {'yes' if d['enabled'] else 'no'} |")
-    L += ["", "Every road also carries its probability of being real, which prices it in the exercise and the planner "
-          "(a road the model doubts costs up to twice its time; a label-gap join costs 1 + (1 - p) times).",
+    L += ["", "Removals pass the gate but are not applied unless `scan-learn --allow-removal`: about one removal in five "
+          "hits a real road and can cut a village off. Every road carries instead its probability of being real, which "
+          "prices it in the exercise and in the planner: a label-gap join costs 1 + 3 (1 - p) times its time, another road "
+          "1 + 3 (0.7 - p) times below p = 0.7.",
           "", "## Most useful features (share of the gain)", ""]
     for t, fi in imp.items():
         L.append(f"- {t}: " + ", ".join(f"{k} {v:.0%}" for k, v in fi.items()))
@@ -777,3 +794,106 @@ def jsonable(cv: dict) -> dict:
     for t, s in cv["tasks"].items():
         out["tasks"][t] = {k: v for k, v in s.items() if not k.startswith("_")}
     return out
+
+
+# ---------------------------------------------------------------------------
+# map checks: what to verify on each designated route before the move
+# ---------------------------------------------------------------------------
+
+CHECK_P = 0.7  # roads below this probability of being real are listed
+
+
+def route_checks(G: nx.DiGraph, nodes: list) -> list[dict]:
+    """Stretches of a route (node list) on the image network to check before the move: label-gap joins, roads
+    the corrector doubts (p real < 0.7) and bridges read on the map. Consecutive sections of the same kind are
+    merged; each stretch has its chainage from the start, length, position and lowest probability."""
+    out: list[dict] = []
+    km = 0.0
+    for u, v in zip(nodes[:-1], nodes[1:]):
+        if not G.has_edge(u, v):
+            continue
+        d = G.edges[u, v]
+        L = float(d.get("length_m") or 0.0) / 1000.0
+        kind = None
+        p = d.get("scan_p_real")
+        if d.get("source_id") == "scan":
+            if d.get("scan_gap"):
+                kind = "label-gap join: the map is hidden by a label here, check that the road goes through"
+            elif p is not None and p < CHECK_P:
+                kind = "doubtful road: the corrector doubts this line is a road"
+            elif d.get("bridge"):
+                kind = "bridge read on the map: load class unknown, check it carries the column"
+        if kind:
+            pb = d.get("scan_p_bridge") if d.get("bridge") else None
+            score = p if p is not None else (0.85 if d.get("scan_gap") else 1.0)
+            last = out[-1] if out else None
+            if last and last["kind"] == kind and abs(last["end_km"] - km) < 1e-6:
+                last["end_km"] = km + L
+                last["p"] = min(last["p"], score)
+                last["coords"].append((G.nodes[v]["x"], G.nodes[v]["y"]))
+            else:
+                out.append({"kind": kind, "start_km": km, "end_km": km + L, "p": score, "p_bridge": pb,
+                            "coords": [(G.nodes[u]["x"], G.nodes[u]["y"]), (G.nodes[v]["x"], G.nodes[v]["y"])]})
+        km += L
+    return out
+
+
+def plan_checks(G: nx.DiGraph, coa, H=None) -> tuple[str, list[dict]]:
+    """Map checks of every MSR and ASR of a COA, as Markdown and as rows (for GeoJSON). Empty on a network
+    that was not read from an image."""
+    if not any(d.get("source_id") == "scan" for _, _, d in G.edges(data=True)):
+        return "", []
+    rows: list[dict] = []
+    routes = []
+    for gid, r in sorted(coa.design.msr.items()):
+        routes.append((gid, "MSR", coa.ref.name_of(r) or "MSR", r))
+        for a in coa.design.asrs.get(gid, []):
+            routes.append((gid, "ASR", coa.ref.name_of(a) or "ASR", a))
+    L = [f"# Map checks before the move (COA {coa.label})", "",
+         "The road network was read from the scanned map. These stretches of the designated routes are the ones to "
+         "check (map reconnaissance, imagery or a patrol) before the columns move, lowest probability first within each "
+         f"route: label-gap joins, roads the learned corrector doubts (probability of being real below {CHECK_P:g}) and "
+         "bridges read on the map (load class unknown).", ""]
+    seen = set()
+    for gid, role, name, r in routes:
+        if (name, role) in seen:
+            continue
+        seen.add((name, role))
+        ch = route_checks(G, r.nodes)
+        total = sum(c["end_km"] - c["start_km"] for c in ch)
+        L += [f"## {name} ({role} of {gid}, {r.length_m / 1000:.1f} km): {len(ch)} stretches, {total:.1f} km to check", ""]
+        if not ch:
+            L += ["Nothing to check on the map.", ""]
+            continue
+        first = [c for c in ch if c["p"] < CHECK_P or c["kind"].startswith("bridge")]
+        rest = [c for c in ch if c not in first]
+        for c in ch:
+            rows.append(dict(c, route=name, role=role, group=gid, priority="first" if c in first else "if time allows"))
+        if first:
+            L += ["Check first:", "", "| km from start | length | what | probability real | position (lon, lat) |", "| --- | --- | --- | --- | --- |"]
+            for c in sorted(first, key=lambda c: (c["p"], c["start_km"])):
+                mid = c["coords"][len(c["coords"]) // 2]
+                L.append(f"| {c['start_km']:.1f} | {1000 * (c['end_km'] - c['start_km']):.0f} m | {c['kind']} | "
+                         f"{c['p']:.2f} | {mid[0]:.5f}, {mid[1]:.5f} |")
+            L.append("")
+        if rest:
+            km_rest = sum(c["end_km"] - c["start_km"] for c in rest)
+            worst = min(c["p"] for c in rest)
+            L += [f"Then, if time allows: {len(rest)} label-gap joins the corrector believes real (probability {worst:.2f} "
+                  f"and above, {1000 * km_rest:.0f} m in all), listed in map_checks.geojson.", ""]
+        L.append("")
+    return "\n".join(L) + "\n", rows
+
+
+def write_plan_checks(G: nx.DiGraph, coa, out: Path) -> int:
+    """Write map_checks.md and map_checks.geojson for a COA; returns the number of stretches."""
+    md, rows = plan_checks(G, coa)
+    if not md:
+        return 0
+    out = Path(out)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "map_checks.md").write_text(md, encoding="utf-8")
+    feats = [{"type": "Feature", "geometry": {"type": "LineString", "coordinates": [list(map(float, c)) for c in r["coords"]]},
+              "properties": {k: v for k, v in r.items() if k != "coords"}} for r in rows]
+    (out / "map_checks.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}), encoding="utf-8")
+    return len(rows)
