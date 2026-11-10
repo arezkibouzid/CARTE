@@ -232,6 +232,9 @@ The reader takes a few uncertain decisions by fixed rules: a label gap is joined
 - **Learned displacement.** It moves the lines back toward the roads: the network within 25 m of BD TOPO goes from 86.3% to 87.5% on unseen blocks. Only the drawing moves; road lengths are kept.
 - **Results.** Town-pair routes go from 24% to 12.9% slower than BD TOPO's. Exercise 1 comes to 190 km and 238 min, against BD TOPO's 181 km and 218 min. The Scenario 1 MSRs are within 4.4% of BD TOPO's time.
 - **Ablation.** The missing links do most of the work. Pricing, removals and the displacement do not change routes.
+- **U-Net** (`coa-net scan-unet`, `scan-learn --unet`). A small U-Net reads the scan's colours. It is trained with BD TOPO drawn onto the scan, out of fold on the same blocks, and has three outputs: road, importance 1-5, and bridge or overpass. Road AUC is 0.91 on unseen blocks.
+  - As corrector features it lifts the link model from AUC 0.74 to 0.79 and the white-road model from 0.70 to 0.74. Town-pair routes come to 11.1% slower than BD TOPO's.
+  - Used alone as its own network (no reader, no corrector), it gives 10.0% on town pairs, and 183 km for exercise 1 (BD TOPO: 181 km). But only 34% of the 100-seed groups get an alternative route (84% with reader + corrector), and it has no pricing and no map checks, so the hybrid stays the default.
 
 **Doubtful roads are priced, not deleted.** Removing roads cut 26 small pieces off the network (about 18% of the removed roads are real), so removals are off unless `scan-learn --allow-removal` is given. Instead, every road keeps its probability p of being real, and that probability prices it, in the exercise solver and in the planner alike:
 
@@ -279,7 +282,7 @@ Consistent with the symbol reader, code does the measuring and a model only name
 3. Gap penalty 1.0 / 1.5 / 3.0 on exercise 1: itinerary length and share on BD TOPO.
 4. Snap the image itineraries to BD TOPO afterwards (map matching) and compare with solving on BD TOPO directly.
 5. Read contours for slope on the routes chosen, and test against BD TOPO altitudes.
-6. Corrector: a road-segmentation U-Net trained with BD TOPO drawn onto the scan, with the same blocks; its road probability as a feature of the link and road models and as a guide for the displacement. Also train on a second IGN sheet and test on Scenario 1, to measure transfer.
+6. U-Net: a pretrained Res-U-Net (ImageNet encoder) fine-tuned on the H100 in place of the small CPU U-Net, with the same labels, folds and gates. Also train on a second IGN sheet and test on Scenario 1, to measure transfer, and resample the scan to a fixed size on paper so that every pixel parameter holds at any resolution.
 
 ## 11. Commands and outputs
 

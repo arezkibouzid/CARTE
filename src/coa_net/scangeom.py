@@ -60,7 +60,7 @@ def _normals(xy_line: np.ndarray, s: np.ndarray, ch: np.ndarray, h: float = 20.0
     return t, np.column_stack([-t[:, 1], t[:, 0]])
 
 
-def samples(G: nx.DiGraph, roads, classes, transform):
+def samples(G: nx.DiGraph, roads, classes, transform, unet=None):
     """Sample points of every road with their features (image only). Returns (table, per-road arrays)."""
     import pandas as pd
     import pyproj
@@ -135,6 +135,17 @@ def samples(G: nx.DiGraph, roads, classes, transform):
             feats[f"{side}_line_m"] = np.where(has, best, 150.0)
             rk = np.array([LINK_RANK.get(x, 5) for x in sym[allr[idx_c[np.arange(len(p)), j]]]], float)
             feats[f"{side}_line_rank"] = np.where(has, rk, 9.0)
+        if unet is not None:  # where the U-Net's road probability peaks across the line, in pixels along the normal
+            ks = np.arange(-8, 9, 1.0)
+            q = px[:, None, :] + ks[None, :, None] * npx[:, None, :]
+            H_, W_ = unet.shape[:2]
+            rr = np.clip(np.rint(q[..., 0]).astype(int), 0, H_ - 1)
+            cc = np.clip(np.rint(q[..., 1]).astype(int), 0, W_ - 1)
+            pr = unet[rr, cc, 0].astype(np.float32) / 255.0
+            j = np.argmax(pr, axis=1)
+            feats["unet_peak_px"] = ks[j]
+            feats["unet_peak_p"] = pr[np.arange(len(p)), j]
+            feats["unet_p0"] = pr[:, 8]
         rows.append(pd.DataFrame(feats))
         where.append((i, s, p, n))
     X = pd.concat(rows, ignore_index=True)
@@ -275,20 +286,26 @@ def save(out: Path, model, offsets: dict, sc: dict) -> None:
     (Path(out) / "geometry_scores.json").write_text(json.dumps(sc, indent=1), encoding="utf-8")
 
 
-def predict_offsets(G: nx.DiGraph, tif: str, model_path) -> dict:
-    """Offsets of every road of a sheet the model was not trained on (no shapefile needed)."""
+def predict_offsets(G: nx.DiGraph, tif: str, model_path, unet_path=None) -> dict:
+    """Offsets of every road of a sheet the model was not trained on (no shapefile needed). ``unet_path``: the
+    U-Net the model was trained with (its features are then computed on this sheet)."""
     import lightgbm as lgb
 
     from .scanlearn import class_raster, road_table
 
     classes, transform = class_raster(tif)
     roads = road_table(G)
-    X, where = samples(G, roads, classes, transform)
+    unet = None
+    if unet_path is not None and Path(unet_path).exists():
+        from . import scanunet
+
+        unet = scanunet.predict_sheet(tif, unet_path)[0]
+    X, where = samples(G, roads, classes, transform, unet=unet)
     pred = lgb.Booster(model_file=str(model_path)).predict(X)
     return offsets_by_road(roads, where, pred)
 
 
-def learn(G: nx.DiGraph, roads, tif: str, bdtopo: str, bounds: tuple, grid: int, folds_of_blocks, progress=print):
+def learn(G: nx.DiGraph, roads, tif: str, bdtopo: str, bounds: tuple, grid: int, folds_of_blocks, progress=print, unet=None):
     """Samples, labels, out-of-fold model and scores; also the network-level gate: on unseen blocks, the moved
     network must lie closer to BD TOPO (share within 25 m) than the original."""
     import copy
@@ -299,7 +316,7 @@ def learn(G: nx.DiGraph, roads, tif: str, bdtopo: str, bounds: tuple, grid: int,
     from .scanlearn import _key, blocks_of, class_raster
 
     classes, transform = class_raster(tif)
-    X, where = samples(G, roads, classes, transform)
+    X, where = samples(G, roads, classes, transform, unet=None if unet is None else unet[0])
     y = labels(where, bdtopo)
     inv = pyproj.Transformer.from_crs(L93, "EPSG:4326", always_xy=True)
     P = np.vstack([w[2] for w in where])

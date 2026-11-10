@@ -265,3 +265,33 @@ def test_crop_network_learns_which_symbol_is_on_top():
     y = np.array(y)
     p = fit_predict(X[:192], y[:192], X[192:], epochs=30)
     assert ((p > 0.5) == y[192:]).mean() >= 0.85
+
+
+def test_network_from_unet_traces_a_crossroads():
+    from affine import Affine
+
+    from coa_net.scanunet import network_from_unet
+
+    P = np.zeros((200, 200, 7), np.uint8)
+    P[98:101, 20:180, 0] = 230   # an east-west road
+    P[20:180, 98:101, 0] = 230   # a north-south road
+    P[..., 4] = 200              # importance 4 everywhere on the road
+    tr = Affine(8e-5, 0, -2.0, 0, -8e-5, 48.0)
+    G = network_from_unet(P, tr)
+    deg = sorted(dict(G.out_degree()).values())
+    assert deg.count(4) == 1 and deg.count(1) == 4  # one junction, four dead ends
+    d = next(iter(G.edges(data=True)))[2]
+    assert d["road_rank"] == 4 and d["source_id"] == "unet" and 300 < d["length_m"] < 700
+
+
+def test_unet_features_follow_the_probabilities():
+    from coa_net.scanunet import _line_stats
+
+    P = np.zeros((50, 50, 7), np.uint8)
+    P[25, 5:45, 0] = 255
+    P[25, 5:45, 5] = 255  # importance 5
+    rc = np.column_stack([np.full(30, 25.0), np.linspace(10, 40, 30)])
+    s = _line_stats(P, rc)
+    assert s[0] == 1.0 and s[2] == 0.0 and abs(s[3] - 5.0) < 1e-6 and s[4] == 0.0
+    gap = rc.copy(); gap[:, 0] = 10.0
+    assert _line_stats(P, gap)[0] == 0.0

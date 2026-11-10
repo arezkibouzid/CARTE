@@ -639,8 +639,25 @@ def fold_of_block(n_blocks: int, n_folds: int = 4, seed: int = 0) -> np.ndarray:
     return f
 
 
-def build_dataset(G: nx.DiGraph, tif: str, bdtopo: str, osm: str | None, grid: int = 4, progress=print):
-    """Features, labels and block of every road and crossing of the image network."""
+def _add_unet(G, roads, X, cands, Xc, links, Xl, unet):
+    """Append the U-Net features (``unet`` = (probabilities, transform)) to the road, crossing and link tables."""
+    import pandas as pd
+
+    from . import scanunet
+
+    P, tr = unet
+    if X is not None:
+        X = pd.concat([X.reset_index(drop=True), scanunet.road_unet_features(roads, P, tr)], axis=1)
+    if Xc is not None:
+        Xc = pd.concat([Xc.reset_index(drop=True), scanunet.point_unet_features(G, cands, P, tr)], axis=1)
+    if Xl is not None:
+        Xl = pd.concat([Xl.reset_index(drop=True), scanunet.link_unet_features(G, links, P, tr)], axis=1)
+    return X, Xc, Xl
+
+
+def build_dataset(G: nx.DiGraph, tif: str, bdtopo: str, osm: str | None, grid: int = 4, progress=print, unet=None):
+    """Features, labels and block of every road and crossing of the image network. ``unet``: (out-of-fold U-Net
+    probabilities, transform) of :mod:`coa_net.scanunet`, whose features are then added to every task."""
     import rasterio
 
     t = time.perf_counter()
@@ -670,6 +687,10 @@ def build_dataset(G: nx.DiGraph, tif: str, bdtopo: str, osm: str | None, grid: i
     lxy = np.asarray([[(G.nodes[c["a"]]["x"] + G.nodes[c["b"]]["x"]) / 2, (G.nodes[c["a"]]["y"] + G.nodes[c["b"]]["y"]) / 2] for c in links]).reshape(-1, 2)
     blk_l = blocks_of(lxy, bounds, grid) if len(links) else np.zeros(0, int)
     progress(f"  candidate links: {len(links)} ({Yl.mean() if len(Yl) else 0:.0%} real), {time.perf_counter() - t:.0f} s")
+    if unet is not None:
+        t = time.perf_counter()
+        X, Xc, Xl = _add_unet(G, roads, X, cands, Xc, links, Xl, unet)
+        progress(f"  U-Net features added, {time.perf_counter() - t:.0f} s")
     return {"roads": roads, "X": X, "Y": Y, "block": blk, "cands": cands, "Xc": Xc, "Yc": Yc, "block_c": blk_c,
             "links": links, "Xl": Xl, "Yl": Yl, "block_l": blk_l, "bounds": bounds, "grid": grid}
 
@@ -862,6 +883,12 @@ def predictions_from_models(G, tif, models, cnn_dir=None) -> dict:
         px_m = (abs(src.transform.a) * 111_320 * math.cos(math.radians(lat0)) + abs(src.transform.e) * 110_570) / 2
     roads = road_table(G)
     X = road_features(G, roads, classes, transform, px_m)
+    unet = None
+    if cnn_dir is not None and (Path(cnn_dir) / "unet_final.pt").exists():  # the corrector was trained with U-Net features
+        from . import scanunet
+
+        unet = scanunet.predict_sheet(tif, Path(cnn_dir) / "unet_final.pt")
+        X, _, _ = _add_unet(G, roads, X, [], None, [], None, unet)
     P = {"roads": {}, "crossings": {}}
     for task in ("road_real", "white_imp4", "bridge_real"):
         if task not in models:
@@ -881,6 +908,8 @@ def predictions_from_models(G, tif, models, cnn_dir=None) -> dict:
     cands = crossing_candidates(G)
     if cands and "crossing_separated" in models:
         Xc = crossing_features(G, cands, classes, transform)
+        if unet is not None:
+            _, Xc, _ = _add_unet(G, roads, None, cands, Xc, [], None, unet)
         P["crossing_nodes"] = [c["node"] for c in cands]
         P["crossings"] = dict(enumerate(models["crossing_separated"].predict_proba(Xc)[:, 1].astype(float)))
     if cnn_dir is not None:  # crop networks replace the tabular models where they were better on unseen blocks
@@ -903,6 +932,9 @@ def predictions_from_models(G, tif, models, cnn_dir=None) -> dict:
         links = link_candidates(G)
         if links:
             Xl = link_features(G, links, classes, transform, roads, X)
+            if unet is not None:
+                Xl = Xl.loc[:, [c for c in Xl.columns if not c.startswith("unet_")]]
+                _, _, Xl = _add_unet(G, roads, None, [], None, links, Xl, unet)
             p = models["link_real"].predict_proba(Xl)[:, 1]
             P["links"] = [[_node_key(G, c["a"]), _node_key(G, c["b"]), float(pi)] for c, pi in zip(links, p)]
     return P
@@ -1115,7 +1147,7 @@ def correct_graph(G: nx.DiGraph, tif: str, corrector: str | Path, graph_key: str
         if mode.startswith("out-of-fold") and gp.exists():
             offsets = json.loads(gp.read_text(encoding="utf-8"))
         else:
-            offsets = scangeom.predict_offsets(G, tif, Path(corrector) / "model_geometry.txt")
+            offsets = scangeom.predict_offsets(G, tif, Path(corrector) / "model_geometry.txt", Path(corrector) / "unet_final.pt")
         ch.update(scangeom.move_lines(G, offsets))
     ch["mode"] = mode
     G.graph["scan_corrected"] = ch

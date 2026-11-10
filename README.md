@@ -15,6 +15,7 @@ Prototype for the AMIAD hackathon (Rennes, 12-14 Nov 2026): design the maneuver 
 ```bash
 coa-net scan-roads --data DATA --out outputs/scan_roads          # network from the 1:100k image + checks against the shapefiles
 coa-net scan-learn --data DATA --out outputs/scan_learn          # learned corrector (shapefiles as labels, spatial cross-validation)
+coa-net scan-unet --data DATA --out outputs/scan_unet            # optional U-Net (PyTorch); then scan-learn --unet outputs/scan_unet
 coa-net exercise --data DATA --pdf exercise.pdf --corrector outputs/scan_learn --out outputs/ex1  # image network (--network bdtopo: as on main)
 coa-net plan --order ORDER --scan "DATA/Scenario1 100K.tif" --corrector outputs/scan_learn --max-rank 5 --out outputs/plan_scan
 ```
@@ -177,6 +178,7 @@ src/coa_net/
   scanroute.py     route gate of the corrector: fastest convoy routes on the corrected image network against BD TOPO, per fold
   scancnn.py       crop network (small CNN, PyTorch) for bridges and flyovers, on the same spatial folds
   scangeom.py      learned displacement of the image lines toward the roads (map generalisation)
+  scanunet.py      U-Net on the scan (road, importance, bridge), out of fold; corrector features, or a network of its own
   exercise.py      exercise statements: parser, NET.DISTINCT solver, turn-aware router, turn radii, checks, difficult areas
   scenario.py      `coa-net exercise` pipeline and its outputs (layers, GeoJSON, decision text)
   audit.py         data audit: files, OSM/BD TOPO agreement, scan alignment, scan check of routes

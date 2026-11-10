@@ -1,4 +1,4 @@
-"""Command line: ``coa-net demo | plan | exercise | scan-roads | scan-learn | real-bench | read-order | compile-doctrine | signoff | llm-check | audit | bench | fetch-osm |
+"""Command line: ``coa-net demo | plan | exercise | scan-roads | scan-learn | scan-unet | real-bench | read-order | compile-doctrine | signoff | llm-check | audit | bench | fetch-osm |
 templates``."""
 
 from __future__ import annotations
@@ -516,7 +516,18 @@ def cmd_scan_learn(args) -> None:
     t0 = time.perf_counter()
     G, rep, cached = load_graph_cached(tif, cache, kind="scan")
     print(f"road network read from {tif}{' (cache)' if cached else ''}: {rep.km:.0f} km")
-    ds = sl.build_dataset(G, tif, paths.bdtopo, paths.osm, grid=args.grid)
+    unet = None
+    if args.unet:  # out-of-fold U-Net probabilities (coa-net scan-unet) as features of every task
+        import shutil
+
+        from . import scanunet
+
+        unet = scanunet.load_raster(Path(args.unet) / "unet_oof.tif")
+        out.mkdir(parents=True, exist_ok=True)
+        for f in ("unet_final.pt", "unet_scores.json"):
+            if (Path(args.unet) / f).exists():
+                shutil.copy(Path(args.unet) / f, out / f)
+    ds = sl.build_dataset(G, tif, paths.bdtopo, paths.osm, grid=args.grid, unet=unet)
     cv = sl.cross_validate(ds)
     models = sl.train_final(ds)
     out.mkdir(parents=True, exist_ok=True)
@@ -550,7 +561,7 @@ def cmd_scan_learn(args) -> None:
     if not args.no_geometry:
         from . import scangeom
 
-        gmodel, offsets, gsc = scangeom.learn(G, ds["roads"], tif, paths.bdtopo, ds["bounds"], ds["grid"], cv["folds_of_blocks"])
+        gmodel, offsets, gsc = scangeom.learn(G, ds["roads"], tif, paths.bdtopo, ds["bounds"], ds["grid"], cv["folds_of_blocks"], unet=unet)
         scangeom.save(out, gmodel, offsets, gsc)
         extra_meta["geometry"] = gsc
         if gsc["enabled"]:
@@ -585,6 +596,20 @@ def cmd_scan_learn(args) -> None:
         print(f"corrected network: correctness vs BD TOPO (25 m) {res['correctness_vs_bdtopo']['25m']:.1%}; "
               f"checks in {out / 'corrected_network' / 'validation.md'}")
     print(f"corrector in {out} ({time.perf_counter() - t0:.0f} s): use --corrector {out} with exercise, plan --scan or scan-roads")
+
+
+def cmd_scan_unet(args) -> None:
+    from . import scanunet
+    from .scenario import ScenarioPaths
+
+    paths = ScenarioPaths.from_dir(args.data)
+    tif = args.tif or (paths.scan100 if args.scale == "100k" else paths.scan250)
+    if not (tif and paths.bdtopo):
+        sys.exit("scan-unet needs the scan and the BD TOPO shapefile (labels)")
+    t0 = time.perf_counter()
+    sc = scanunet.learn(tif, paths.bdtopo, Path(args.out), grid=args.grid, steps=args.steps, final=not args.no_final)
+    print(json.dumps(sc, indent=1))
+    print(f"U-Net in {args.out} ({time.perf_counter() - t0:.0f} s): use scan-learn --unet {args.out}")
 
 
 def cmd_audit(args) -> None:
@@ -738,9 +763,22 @@ def main(argv: list[str] | None = None) -> None:
     sl.add_argument("--route-pairs", type=int, default=60, help="route-gate pairs per fold")
     sl.add_argument("--no-cnn", action="store_true", help="skip the crop network for bridges and crossings (needs PyTorch)")
     sl.add_argument("--no-geometry", action="store_true", help="skip the learned displacement of the lines")
+    sl.add_argument("--unet", help="folder of coa-net scan-unet: its out-of-fold road, importance and structure "
+                    "probabilities become features of every task")
     sl.add_argument("--allow-removal", action="store_true", help="remove the roads and label gaps the corrector doubts "
                     "(default: price them, so that no village is cut off)")
     sl.set_defaults(fn=cmd_scan_learn)
+
+    su = sub.add_parser("scan-unet", help="train a small U-Net on the scan with BD TOPO drawn onto it (road, importance, "
+                        "structure), out of fold on the blocks of scan-learn; needs PyTorch")
+    su.add_argument("--data", required=True, help="folder with the Scenario files (scan; BD TOPO as labels)")
+    su.add_argument("--scale", choices=("100k", "250k"), default="100k")
+    su.add_argument("--tif", help="explicit scan path (overrides --data/--scale)")
+    su.add_argument("--out", default="outputs/scan_unet", help="folder for unet_oof.tif, unet_final.pt, unet_scores.json")
+    su.add_argument("--grid", type=int, default=4)
+    su.add_argument("--steps", type=int, default=2000, help="training steps per fold (batches of 8 tiles)")
+    su.add_argument("--no-final", action="store_true", help="skip the network trained on every block (for another sheet)")
+    su.set_defaults(fn=cmd_scan_unet)
 
     a = sub.add_parser("audit", help="audit a Scenario delivery: files, CRS, encodings, OSM/BD TOPO agreement, scan alignment")
     a.add_argument("--data", required=True)
