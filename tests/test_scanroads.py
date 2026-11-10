@@ -203,3 +203,65 @@ def test_graph_features_find_the_through_road():
     # roads 0-1 and 1-2 continue each other straight through junction 1: one stroke of 2 km; the side road is alone
     assert gf["stroke_roads"].values[k[(0, 1)]] == 2 and abs(gf["stroke_len_m"].values[k[(0, 1)]] - 2000.0) < 5.0
     assert gf["stroke_roads"].values[k[(1, 5)]] == 1
+
+
+def test_route_gate_keeps_a_link_that_brings_routes_to_bd_topo():
+    from coa_net.scanlearn import link_candidates
+    from coa_net.scanroute import route_gate, route_table, score
+
+    G = _line_graph()
+    Gb = _line_graph()
+    for u, v in ((2, 3), (3, 2)):
+        Gb.add_edge(u, v, **dict(G.edges[2, 1], length_m=100.0, coords=((G.nodes[u]["x"], G.nodes[u]["y"]), (G.nodes[v]["x"], G.nodes[v]["y"]))))
+    xy = lambda n: (G.nodes[n]["x"], G.nodes[n]["y"])
+    pairs = {0: [(xy(0), xy(4))]}
+    bd = route_table(Gb, pairs[0], priced=False)
+    assert abs(bd[0, 1] - 3.1) < 0.01 and abs(bd[0, 0] - 3.1 / 40 * 60) < 0.05  # rank 5: 40 km/h
+    assert score(route_table(G, pairs[0]), bd) > 0.3  # without the link, the far end snaps to the near side of the hole
+    links = link_candidates(G)
+    P = {"roads": {}, "links": [[c["key_a"], c["key_b"], 0.8 if {c["a"], c["b"]} == {2, 3} else 0.2] for c in links]}
+    gate = route_gate(G, P, {"add_link"}, {"link": 0.5}, Gb, pairs, gated=("add_link",), min_folds=1, progress=lambda s: None)
+    assert gate["enabled"] == ["add_link"] and gate["leave_one_out"]["add_link"]["kept"]
+    assert gate["corrected"]["score"] < 1e-3 < gate["no_correction"]["score"]
+
+
+def test_move_lines_shifts_the_middle_and_keeps_the_junctions():
+    import networkx as nx
+
+    from coa_net.scangeom import move_lines
+    from coa_net.scanlearn import _key
+
+    G = nx.DiGraph()
+    dlon = 100.0 / (111_320 * math.cos(math.radians(48.0)))
+    G.add_node(0, x=-2.0, y=48.0)
+    G.add_node(1, x=-2.0 + 10 * dlon, y=48.0)
+    c = tuple((-2.0 + k * dlon, 48.0) for k in range(11))
+    G.add_edge(0, 1, coords=c, length_m=1000.0)
+    G.add_edge(1, 0, coords=tuple(reversed(c)), length_m=1000.0)
+    k = _key(G, 0, 1)
+    ch = move_lines(G, {k: {"start": list(c[0]), "o": [[s, 20.0] for s in range(40, 961, 50)]}})
+    assert ch["roads moved"] == 1
+    a, b = G.edges[0, 1]["coords"], G.edges[1, 0]["coords"]
+    assert a[0] == c[0] and a[-1] == c[-1]  # junctions do not move
+    assert abs((a[5][1] - 48.0) * 111_000 - 20.0) < 2.0  # the middle moves 20 m to the left (north)
+    assert tuple(reversed(b)) == a and G.edges[1, 0]["length_m"] == G.edges[0, 1]["length_m"] == 1000.0  # only the drawing moves
+
+
+def test_crop_network_learns_which_symbol_is_on_top():
+    pytest.importorskip("torch")
+    from coa_net.scancnn import crops, fit_predict
+
+    cls = np.zeros((800, 800), np.int64)
+    centres, y = [], []
+    for i in range(256):  # two bands crossing; the one drawn last is on top: class 2 on top is a positive
+        r, c = 25 + 48 * (i // 16), 25 + 48 * (i % 16)
+        top = (i * 5 // 3) % 2
+        cls[r - 15:r + 15, c - 2:c + 2] = 1 if top else 2
+        cls[r - 2:r + 2, c - 15:c + 15] = 2 if top else 1
+        centres.append((r, c))
+        y.append(top)
+    X = crops(cls, np.array(centres, float))
+    assert X.shape == (256, 9, 40, 40) and np.allclose(X.sum(1), 1.0)
+    y = np.array(y)
+    p = fit_predict(X[:192], y[:192], X[192:], epochs=30)
+    assert ((p > 0.5) == y[192:]).mean() >= 0.85

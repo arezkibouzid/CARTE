@@ -851,7 +851,7 @@ def predictions_from_oof(ds, cv) -> dict:
     return P
 
 
-def predictions_from_models(G, tif, models) -> dict:
+def predictions_from_models(G, tif, models, cnn_dir=None) -> dict:
     """Probabilities for a sheet the models were not trained on (no shapefile needed)."""
     import rasterio
 
@@ -883,6 +883,22 @@ def predictions_from_models(G, tif, models) -> dict:
         Xc = crossing_features(G, cands, classes, transform)
         P["crossing_nodes"] = [c["node"] for c in cands]
         P["crossings"] = dict(enumerate(models["crossing_separated"].predict_proba(Xc)[:, 1].astype(float)))
+    if cnn_dir is not None:  # crop networks replace the tabular models where they were better on unseen blocks
+        from . import scancnn
+
+        cd = Path(cnn_dir)
+        if (cd / "cnn_bridge_real.pt").exists():
+            idx = np.flatnonzero(roads["bridge"].values)
+            if len(idx):
+                mid = np.asarray([g.interpolate(0.5, normalized=True).coords[0] for g in roads.geometry.values[idx]])
+                p = scancnn.predict_saved(cd / "cnn_bridge_real.pt", scancnn.crops(classes, _to_px(transform, mid)))
+                for i, pi in zip(idx, p):
+                    P["roads"].setdefault(roads["key"].values[i], {})["bridge_real"] = float(pi)
+        if (cd / "cnn_crossing_separated.pt").exists() and cands:
+            xy = np.asarray([[G.nodes[c["node"]]["x"], G.nodes[c["node"]]["y"]] for c in cands])
+            p = scancnn.predict_saved(cd / "cnn_crossing_separated.pt", scancnn.crops(classes, _to_px(transform, xy)))
+            P["crossing_nodes"] = [c["node"] for c in cands]
+            P["crossings"] = dict(enumerate(p.astype(float)))
     if "link_real" in models:
         links = link_candidates(G)
         if links:
@@ -1019,15 +1035,27 @@ def uncertainty_penalty(d: dict) -> float:
 # saving, loading, report
 # ---------------------------------------------------------------------------
 
-def save(out: Path, models: dict, P: dict, cv: dict, ds, tif: str, graph_key: str, allow_removal: bool = False) -> None:
+def road_gate_enabled(cv: dict, allow_removal: bool = False) -> set:
+    """The corrections that pass the road-level gate (removals only when allowed)."""
+    return {k for k, d in cv.get("decisions", {}).items() if d["enabled"] and (allow_removal or k not in REMOVALS)}
+
+
+def save(out: Path, models: dict, P: dict, cv: dict, ds, tif: str, graph_key: str, allow_removal: bool = False,
+         route_gate: dict | None = None, extra_enabled: set | None = None, extra_meta: dict | None = None) -> None:
     out.mkdir(parents=True, exist_ok=True)
     for t, m in models.items():
         m.booster_.save_model(str(out / f"model_{t}.txt"))
-    meta = {"version": CORRECTOR_VERSION, "trained_on": str(tif), "graph_key": graph_key, "thresholds": THRESH,
-            "decisions": cv.get("decisions", {}), "allow_removal": allow_removal,
-            "enabled": sorted(k for k, d in cv.get("decisions", {}).items() if d["enabled"] and (allow_removal or k not in REMOVALS)),
+    enabled = road_gate_enabled(cv, allow_removal)
+    thresholds = dict(THRESH)
+    if route_gate:
+        enabled = set(route_gate["enabled"]) | (enabled & REMOVALS)
+        thresholds.update(route_gate["thresholds"])
+    enabled |= set(extra_enabled or ())
+    meta = {"version": CORRECTOR_VERSION, "trained_on": str(tif), "graph_key": graph_key, "thresholds": thresholds,
+            "decisions": cv.get("decisions", {}), "allow_removal": allow_removal, "route_gate": route_gate,
+            "enabled": sorted(enabled),
             "features_roads": list(ds["X"].columns), "features_crossings": list(ds["Xc"].columns),
-            "features_links": list(ds["Xl"].columns) if "Xl" in ds else []}
+            "features_links": list(ds["Xl"].columns) if "Xl" in ds else [], **(extra_meta or {})}
     (out / "corrector.json").write_text(json.dumps(meta, indent=1), encoding="utf-8")
     Pj = {"roads": P["roads"], "crossings": {str(k): v for k, v in (P.get("crossings") or {}).items()},
           "crossing_nodes": [str(n) for n in P.get("crossing_nodes") or []], "links": P.get("links") or []}
@@ -1074,12 +1102,21 @@ def correct_graph(G: nx.DiGraph, tif: str, corrector: str | Path, graph_key: str
              "crossing_nodes": [node_type(n) for n in Pj["crossing_nodes"]], "links": Pj.get("links") or []}
         mode = "out-of-fold (sheet the corrector was trained on: each block corrected by a model that never saw it)"
     else:
-        P = predictions_from_models(G, tif, models)
+        P = predictions_from_models(G, tif, models, cnn_dir=corrector)
         mode = "models trained on " + str(meta.get("trained_on"))
     enabled = set(meta.get("enabled", []))
     if not meta.get("allow_removal"):
         enabled -= REMOVALS  # priced, not removed (correctors saved before this rule listed removals as enabled)
     ch = apply_corrections(G, P, dict(meta.get("thresholds") or {}, uncertain_road=THRESH["uncertain_road"]), enabled)
+    if "move_lines" in enabled:
+        from . import scangeom
+
+        gp = Path(corrector) / "geometry_oof_offsets.json"
+        if mode.startswith("out-of-fold") and gp.exists():
+            offsets = json.loads(gp.read_text(encoding="utf-8"))
+        else:
+            offsets = scangeom.predict_offsets(G, tif, Path(corrector) / "model_geometry.txt")
+        ch.update(scangeom.move_lines(G, offsets))
     ch["mode"] = mode
     G.graph["scan_corrected"] = ch
     return ch

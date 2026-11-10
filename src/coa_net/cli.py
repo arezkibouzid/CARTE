@@ -519,11 +519,61 @@ def cmd_scan_learn(args) -> None:
     ds = sl.build_dataset(G, tif, paths.bdtopo, paths.osm, grid=args.grid)
     cv = sl.cross_validate(ds)
     models = sl.train_final(ds)
+    out.mkdir(parents=True, exist_ok=True)
+    extra, extra_meta = set(), {}
+    if not args.no_cnn:
+        try:
+            from . import scancnn
+        except ImportError:
+            scancnn = None
+            print("crop network skipped: PyTorch is not installed")
+        if scancnn is not None:
+            try:
+                import torch  # noqa: F401
+
+                res = scancnn.cross_validate_cnn(ds, cv, G, tif)
+                extra_meta["cnn"] = res
+                scancnn.train_final_cnn(ds, G, tif, out, [t for t, r in res.items() if r["used"]])
+            except ImportError:
+                print("crop network skipped: PyTorch is not installed")
     P = sl.predictions_from_oof(ds, cv)
-    sl.save(out, models, P, cv, ds, tif, sl.scan_graph_key(tif), allow_removal=args.allow_removal)
+    gate = None
+    if not args.no_route_gate:
+        from .scanroute import fold_pairs, route_gate
+
+        G_bd, _, _ = load_graph_cached(paths.bdtopo, cache)
+        pairs = fold_pairs(ds["bounds"], ds["grid"], cv["folds_of_blocks"], per_fold=args.route_pairs)
+        prec = lambda dec, key, v: sl.decision_scores(ds, cv, {key: v})[dec]["precision"]
+        gate = route_gate(G, P, sl.road_gate_enabled(cv, args.allow_removal) - sl.REMOVALS, sl.THRESH, G_bd, pairs, precision_of=prec)
+        print(f"route gate: kept {gate['enabled']}; routes against BD TOPO, time ratio median "
+              f"{gate['no_correction']['time_ratio_median']:.3f} -> {gate['corrected']['time_ratio_median']:.3f}")
+    if not args.no_geometry:
+        from . import scangeom
+
+        gmodel, offsets, gsc = scangeom.learn(G, ds["roads"], tif, paths.bdtopo, ds["bounds"], ds["grid"], cv["folds_of_blocks"])
+        scangeom.save(out, gmodel, offsets, gsc)
+        extra_meta["geometry"] = gsc
+        if gsc["enabled"]:
+            extra.add("move_lines")
+    sl.save(out, models, P, cv, ds, tif, sl.scan_graph_key(tif), allow_removal=args.allow_removal, route_gate=gate,
+            extra_enabled=extra, extra_meta=extra_meta)
     Gc = copy.deepcopy(G)
     changes = sl.correct_graph(Gc, tif, out)
     md = sl.markdown(cv, sl.feature_importance(models), changes, ds)
+    if gate:
+        from .scanroute import markdown as route_md
+
+        md += "\n" + route_md(gate)
+    if extra_meta.get("cnn"):
+        md += "\n## Crop network (bridges and crossings)\n\n| decision | AUC tabular | AUC crop network | used |\n| --- | --- | --- | --- |\n"
+        md += "".join(f"| {sl.TASK_TEXT[t]} | {r['auc_tabular']:.3f} | {r['auc_cnn']:.3f} | {'yes' if r['used'] else 'no'} |\n"
+                      for t, r in extra_meta["cnn"].items())
+    if extra_meta.get("geometry"):
+        g = extra_meta["geometry"]
+        md += (f"\n## Learned displacement of the lines\n\n{g['scored']} sample points scored on unseen blocks: mean offset to BD TOPO "
+               f"{g['mean_offset_m']:.1f} m -> {g['mean_after_m']:.1f} m, within 10 m {g['within_10m_before']:.0%} -> "
+               f"{g['within_10m_after']:.0%}; network within 25 m of BD TOPO {g['network_25m_before']:.1%} -> "
+               f"{g['network_25m_after']:.1%} (R2 {g['r2']:.2f}). Lines moved: {'yes' if g['enabled'] else 'no'}.\n")
     (out / "corrector_report.md").write_text(md, encoding="utf-8")
     (out / "corrector_scores.json").write_text(json.dumps(sl.jsonable(cv), indent=1, default=float), encoding="utf-8")
     print(md)
@@ -683,6 +733,11 @@ def main(argv: list[str] | None = None) -> None:
     sl.add_argument("--cache", help="cache folder (default: OUT/cache)")
     sl.add_argument("--grid", type=int, default=4, help="the sheet is cut into GRID x GRID blocks for the cross-validation")
     sl.add_argument("--no-check", action="store_true", help="skip the sanity checks of the corrected network")
+    sl.add_argument("--no-route-gate", action="store_true", help="keep every correction that passes the road-level gate "
+                    "(default: also require that it brings routes closer to BD TOPO's, on pairs drawn in unseen blocks)")
+    sl.add_argument("--route-pairs", type=int, default=60, help="route-gate pairs per fold")
+    sl.add_argument("--no-cnn", action="store_true", help="skip the crop network for bridges and crossings (needs PyTorch)")
+    sl.add_argument("--no-geometry", action="store_true", help="skip the learned displacement of the lines")
     sl.add_argument("--allow-removal", action="store_true", help="remove the roads and label gaps the corrector doubts "
                     "(default: price them, so that no village is cut off)")
     sl.set_defaults(fn=cmd_scan_learn)

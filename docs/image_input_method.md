@@ -226,6 +226,13 @@ The reader takes a few uncertain decisions by fixed rules: a label gap is joined
 - Graph features (sampled betweenness, road continuity) raise the AUC of the white-road importance from 0.63 to 0.70. 748 roads move to rank 4 at 68% precision.
 - MSRs on the 100 seeds go from 12% to 5% slower than BD TOPO, and valid plans from 84% to 90%.
 
+**Fourth version (10 Nov): route gate, crop network, displacement, ablation** (details in `docs/corrector_route_gate_ablation.md`).
+- **Route gate.** A correction is kept only if it brings routes closer to BD TOPO's. The test uses 240 pairs of points whose two ends lie in blocks of one fold, and the score is the time and length ratios of the fastest convoy routes. The gate also tunes the thresholds: links at p ≥ 0.3, white roads to rank 4 at p ≥ 0.5, with a floor of 50% right changes.
+- **Crop network.** A small CNN reads 40 x 40 crops of the class raster around each crossing and bridge (PyTorch, CPU). It lifts the AUC of flyovers from 0.65 to 0.88, and of bridges from 0.59 to 0.65. Its decisions still fail both gates, so they stay off.
+- **Learned displacement.** It moves the lines back toward the roads: the network within 25 m of BD TOPO goes from 86.3% to 87.5% on unseen blocks. Only the drawing moves; road lengths are kept.
+- **Results.** Town-pair routes go from 24% to 12.9% slower than BD TOPO's. Exercise 1 comes to 190 km and 238 min, against BD TOPO's 181 km and 218 min. The Scenario 1 MSRs are within 4.4% of BD TOPO's time.
+- **Ablation.** The missing links do most of the work. Pricing, removals and the displacement do not change routes.
+
 **Doubtful roads are priced, not deleted.** Removing roads cut 26 small pieces off the network (about 18% of the removed roads are real), so removals are off unless `scan-learn --allow-removal` is given. Instead, every road keeps its probability p of being real, and that probability prices it, in the exercise solver and in the planner alike:
 
 - a label-gap join costs 1 + 3 (1 - p) times its time (the cautious price: 1.3 for a typical join at p = 0.9, 2.5 for a join at p = 0.5);
@@ -244,7 +251,7 @@ On the sheet the corrector was trained on, `--corrector` applies the out-of-fold
 - Exercise 1's itineraries and the order's MSRs and ASRs do not change, and the full plan stays valid. Its map-check list comes down to about ten points to check first.
 - On the 100-seed benchmark, validity (84%), on-time probability and MSR quality are unchanged.
 
-The corrector is useful at the margins: it finds 69 km of lines that are not roads with 82% precision, and it prices doubtful links. It is not a large gain. The features cannot see the decisive cue for bridges and flyovers, which is how the two symbols overlap at the crossing. For those two decisions the next step is a small CNN, or the vision-model check of section 9, on crops around each candidate. The same out-of-fold protocol and gate would apply.
+The corrector is useful at the margins: it finds 69 km of lines that are not roads with 82% precision, and it prices doubtful links. It is not a large gain. The features cannot see the decisive cue for bridges and flyovers, which is how the two symbols overlap at the crossing. The crop network of the fourth version sees it better (flyover AUC 0.88), but too few crossings are true flyovers for its decisions to pass the gates.
 
 Training on the shapefiles uses them as labels, not as plan input. Before relying on this at the event, confirm with the organisers that it is acceptable: the brief keeps the shapefiles for sanity checks.
 
@@ -272,7 +279,7 @@ Consistent with the symbol reader, code does the measuring and a model only name
 3. Gap penalty 1.0 / 1.5 / 3.0 on exercise 1: itinerary length and share on BD TOPO.
 4. Snap the image itineraries to BD TOPO afterwards (map matching) and compare with solving on BD TOPO directly.
 5. Read contours for slope on the routes chosen, and test against BD TOPO altitudes.
-6. Corrector: a small CNN on 64 x 64 crops around bridges and X-crossings, with the same blocks, out-of-fold scoring and gate. Also train on a second IGN sheet and test on Scenario 1, to measure transfer.
+6. Corrector: a road-segmentation U-Net trained with BD TOPO drawn onto the scan, with the same blocks; its road probability as a feature of the link and road models and as a guide for the displacement. Also train on a second IGN sheet and test on Scenario 1, to measure transfer.
 
 ## 11. Commands and outputs
 
