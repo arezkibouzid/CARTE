@@ -157,3 +157,49 @@ def test_route_checks_list_gaps_doubtful_roads_and_bridges():
     ch = route_checks(G, [0, 1, 2, 3, 4])
     assert [c["kind"].split(":")[0] for c in ch] == ["label-gap join", "doubtful road"]
     assert abs(ch[1]["start_km"] - 2.0) < 1e-9 and abs(ch[1]["end_km"] - 4.0) < 1e-9 and ch[1]["p"] == 0.3
+
+
+def _line_graph():
+    """Two roads on one line, cut by a 100 m hole (a road under an expressway), plus a side road."""
+    import networkx as nx
+
+    G = nx.DiGraph()
+    dlon = 100.0 / (111_320 * math.cos(math.radians(48.0)))
+    pts = {0: 0, 1: 10, 2: 20, 3: 21, 4: 31}  # in 100 m steps; the hole is between 2 and 3
+    for n, k in pts.items():
+        G.add_node(n, x=-2.0 + k * dlon, y=48.0)
+    G.add_node(5, x=-2.0 + 10 * dlon, y=48.0 + 0.009)
+    for a, b in ((0, 1), (1, 2), (3, 4), (1, 5)):
+        L = math.dist((G.nodes[a]["x"] / dlon, G.nodes[a]["y"] * 1112), (G.nodes[b]["x"] / dlon, G.nodes[b]["y"] * 1112)) * 100
+        for u, v in ((a, b), (b, a)):
+            G.add_edge(u, v, source_id="scan", scan_symbol="white", road_rank=5, highway="unclassified", length_m=L,
+                       coords=((G.nodes[u]["x"], G.nodes[u]["y"]), (G.nodes[v]["x"], G.nodes[v]["y"])))
+    return G
+
+
+def test_link_candidates_join_dead_ends_facing_each_other():
+    from coa_net.scanlearn import apply_corrections, link_candidates
+
+    G = _line_graph()
+    links = link_candidates(G)
+    pairs = {tuple(sorted((c["a"], c["b"]))) for c in links}
+    assert (2, 3) in pairs  # the two dead ends either side of the hole
+    assert all(c["b_dead_end"] in (0, 1) and 15 <= c["dist_m"] <= 400 for c in links)
+    P = {"roads": {}, "links": [[c["key_a"], c["key_b"], 0.8 if {c["a"], c["b"]} == {2, 3} else 0.2] for c in links]}
+    ch = apply_corrections(G, P, enabled={"add_link"})
+    assert ch["links added"] == 1 and G.has_edge(2, 3) and G.has_edge(3, 2)
+    d = G.edges[2, 3]
+    assert d["scan_link"] and d["scan_gap"] and d["scan_p_real"] == 0.8 and abs(d["length_m"] - 100.0) < 1.0
+
+
+def test_graph_features_find_the_through_road():
+    from coa_net.scanlearn import graph_features, road_table
+
+    G = _line_graph()
+    roads = road_table(G)
+    gf = graph_features(G, roads, n_sources=6, n_targets=6)
+    assert list(gf.columns) == ["btw_regional", "btw_local", "stroke_len_m", "stroke_roads", "stroke_white_share", "stroke_coloured_meets"]
+    k = {tuple(sorted((u, v))): i for i, (u, v) in enumerate(zip(roads["u"], roads["v"]))}
+    # roads 0-1 and 1-2 continue each other straight through junction 1: one stroke of 2 km; the side road is alone
+    assert gf["stroke_roads"].values[k[(0, 1)]] == 2 and abs(gf["stroke_len_m"].values[k[(0, 1)]] - 2000.0) < 5.0
+    assert gf["stroke_roads"].values[k[(1, 5)]] == 1

@@ -38,14 +38,15 @@ log = logging.getLogger(__name__)
 L93 = "EPSG:2154"
 SYMBOLS = ["blue", "red", "orange", "white", "dashed"]
 SYMBOL_CLASS = {"blue": 8, "red": 2, "orange": 3, "white": 6, "dashed": 7}  # class raster value of each symbol (scanroads C_*)
-TASKS = ("road_real", "white_imp4", "bridge_real", "crossing_separated")
+TASKS = ("road_real", "white_imp4", "bridge_real", "crossing_separated", "link_real")
 TASK_TEXT = {
     "road_real": "road is real (within 25 m of BD TOPO or OSM on most of its length)",
     "white_imp4": "white road is BD TOPO importance 4 (else 5)",
     "bridge_real": "bridge read on the scan is a BD TOPO bridge (else a culvert or a small crossing)",
     "crossing_separated": "two roads drawn crossing are grade-separated (flyover or underpass)",
+    "link_real": "a missing link between a dead end and the road it points at is a real road",
 }
-CORRECTOR_VERSION = 1
+CORRECTOR_VERSION = 2
 
 
 # ---------------------------------------------------------------------------
@@ -125,6 +126,120 @@ def road_table(G: nx.DiGraph):
 # features (image and image network only)
 # ---------------------------------------------------------------------------
 
+def graph_features(G: nx.DiGraph, roads, n_sources: int = 300, n_targets: int = 300, local_min: float = 15.0,
+                   stroke_deg: float = 35.0, seed: int = 0):
+    """Network features of each road, from the image network only.
+
+    * ``btw_regional`` / ``btw_local``: sampled betweenness, the number of fastest convoy routes (60 km/h cap)
+      between random junctions that use the road, over the whole sheet and for trips under ``local_min`` minutes;
+      roads that the network funnels traffic onto are the ones BD TOPO ranks higher;
+    * ``stroke_*``: the road continued straight through its junctions (deflection under ``stroke_deg``) as one
+      line, as a map reader follows a road: its length, the number of roads in it, its share of white symbol and
+      the number of coloured (blue, red, orange) roads it meets.
+    """
+    import pandas as pd
+    import pyproj
+    import scipy.sparse as sp
+    from scipy.sparse.csgraph import dijkstra
+
+    from .graph import speed_kmh
+
+    nodes = list(G)
+    ix = {n: i for i, n in enumerate(nodes)}
+    n = len(nodes)
+    r, c, w = [], [], []
+    for u, v, d in G.edges(data=True):
+        r.append(ix[u])
+        c.append(ix[v])
+        w.append(d["length_m"] / 1000.0 / min(speed_kmh(d), 60.0) * 60.0)
+    A = sp.csr_matrix((w, (r, c)), shape=(n, n))
+    rng = np.random.default_rng(seed)
+    src = rng.choice(n, min(n_sources, n), replace=False)
+    D, P = dijkstra(A, directed=True, indices=src, return_predecessors=True)
+    use_r: dict = {}
+    use_l: dict = {}
+    for k, s0 in enumerate(src):
+        pred, dist = P[k], D[k]
+        for tt in rng.choice(n, min(n_targets, n), replace=False):
+            if not np.isfinite(dist[tt]):
+                continue
+            local = dist[tt] <= local_min
+            x = tt
+            while x != s0 and pred[x] >= 0:
+                key = (min(pred[x], x), max(pred[x], x))
+                use_r[key] = use_r.get(key, 0) + 1
+                if local:
+                    use_l[key] = use_l.get(key, 0) + 1
+                x = pred[x]
+    # local trips are few per source: add trips from every source to its own neighbourhood
+    for k, s0 in enumerate(src):
+        pred, dist = P[k], D[k]
+        near = np.flatnonzero(dist <= local_min)
+        for tt in rng.choice(near, min(len(near), n_targets), replace=False) if len(near) else []:
+            x = tt
+            while x != s0 and pred[x] >= 0:
+                key = (min(pred[x], x), max(pred[x], x))
+                use_l[key] = use_l.get(key, 0) + 1
+                x = pred[x]
+    ru = np.array([ix[u] for u in roads["u"]])
+    rv = np.array([ix[v] for v in roads["v"]])
+    keys = [(min(a, b), max(a, b)) for a, b in zip(ru, rv)]
+    btw_r = np.log1p([use_r.get(k, 0) for k in keys])
+    btw_l = np.log1p([use_l.get(k, 0) for k in keys])
+
+    # strokes: pair the roads at each junction that continue each other best
+    tr = pyproj.Transformer.from_crs("EPSG:4326", L93, always_xy=True)
+    sym = roads["symbol"].values
+    m = len(roads)
+    import shapely
+
+    length = shapely.length(np.asarray(roads["geom93"].values, dtype=object))
+    ends: dict = {}  # node -> [(road index, heading out of the node)]
+    for i, g in enumerate(roads["geom93"].values):
+        cc = np.asarray(g.coords)
+        if len(cc) < 2:
+            continue
+        for node, a, b in ((roads["u"].values[i], cc[0], cc[min(3, len(cc) - 1)]), (roads["v"].values[i], cc[-1], cc[max(-4, -len(cc))])):
+            h = math.atan2(b[1] - a[1], b[0] - a[0])
+            ends.setdefault(node, []).append((i, h))
+    parent = list(range(m))
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    for node, inc in ends.items():
+        if len(inc) < 2:
+            continue
+        pairs = []
+        for x in range(len(inc)):
+            for y in range(x + 1, len(inc)):
+                (i, hi), (j, hj) = inc[x], inc[y]
+                if i == j:
+                    continue
+                dev = abs((math.degrees(hi - hj) + 180.0) % 360.0 - 180.0)  # 180 = straight through
+                defl = 180.0 - dev
+                if defl <= stroke_deg:
+                    pairs.append((defl, i, j))
+        used = set()
+        for defl, i, j in sorted(pairs):
+            if i in used or j in used:
+                continue
+            used.update((i, j))
+            parent[find(i)] = find(j)
+    root = np.array([find(i) for i in range(m)])
+    s_len = pd.Series(length).groupby(root).transform("sum").values
+    s_n = pd.Series(np.ones(m)).groupby(root).transform("sum").values
+    s_white = pd.Series(length * (sym == "white")).groupby(root).transform("sum").values / np.maximum(s_len, 1.0)
+    coloured_at = {node: sum(1 for i, _ in inc if sym[i] in ("blue", "red", "orange")) for node, inc in ends.items()}
+    touch = np.array([coloured_at.get(u, 0) + coloured_at.get(v, 0) for u, v in zip(roads["u"], roads["v"])], float)
+    s_col = pd.Series(touch).groupby(root).transform("sum").values
+    return pd.DataFrame({"btw_regional": btw_r, "btw_local": btw_l, "stroke_len_m": s_len, "stroke_roads": s_n,
+                         "stroke_white_share": s_white, "stroke_coloured_meets": s_col})
+
+
 def road_features(G: nx.DiGraph, roads, classes: np.ndarray, transform, px_m: float):
     """Features of each road, from the scan and the image network only."""
     import pandas as pd
@@ -199,7 +314,11 @@ def road_features(G: nx.DiGraph, roads, classes: np.ndarray, transform, px_m: fl
     df["bridge"] = roads["bridge"].astype(int).values
     df["stream"] = roads["stream"].astype(int).values
     df["width_px"] = roads["width_px"].values
+    df["width_m"] = roads["width_px"].values * px_m
     df["casing"] = roads["casing"].values
+    gf = graph_features(G, roads)
+    for k in gf.columns:
+        df[k] = gf[k].values
     return df
 
 
@@ -279,6 +398,166 @@ def crossing_features(G, cands, classes, transform):
                      "casing_b": b["casing_share"], "angle_deg": 90 - ang, "water_disc": float((disc == C_WATER).mean()),
                      "degree": len(set(G.successors(n)) | set(G.predecessors(n)))})
     return pd.DataFrame(rows)
+
+
+def _end_heading(G, n, m, tr):
+    """Unit vector (metres, L93) pointing out of dead end ``n`` along its road to ``m``, from about 40 m in."""
+    d = G.edges[n, m] if G.has_edge(n, m) else G.edges[m, n]
+    c = np.asarray(d.get("coords") or ((G.nodes[n]["x"], G.nodes[n]["y"]), (G.nodes[m]["x"], G.nodes[m]["y"])), float)
+    here = np.array([G.nodes[n]["x"], G.nodes[n]["y"]])
+    if not np.allclose(c[0], here, atol=1e-7):
+        c = c[::-1]
+    x, y = tr.transform(c[:, 0], c[:, 1])
+    xy = np.column_stack([x, y])
+    seg = np.hypot(*np.diff(xy, axis=0).T)
+    k = int(np.searchsorted(np.cumsum(seg), 40.0)) + 1
+    v = xy[0] - xy[min(k, len(xy) - 1)]
+    nv = float(np.hypot(*v))
+    return (v / nv if nv > 0 else None), d
+
+
+LINK_RANK = {"blue": 1, "red": 2, "orange": 3, "white": 5, "dashed": 6}
+
+
+def link_candidates(G: nx.DiGraph, max_m: float = 400.0, max_to_line_m: float = 200.0, cone_deg: float = 45.0,
+                    per_end: int = 2) -> list[dict]:
+    """Links the image network may be missing: a dead end facing another dead end (within ``max_m``, both
+    pointing at each other) or facing a junction of another road (within ``max_to_line_m``), when the network
+    has no short path between them. A road drawn under an expressway, a railway or a label is cut on the map;
+    the reader's gap rule joins only to the nearest line ahead, which is often the band itself."""
+    import pyproj
+    from scipy.spatial import cKDTree
+
+    tr = pyproj.Transformer.from_crs("EPSG:4326", L93, always_xy=True)
+    nid = list(G.nodes)
+    xs, ys = tr.transform([G.nodes[n]["x"] for n in nid], [G.nodes[n]["y"] for n in nid])
+    xy = np.column_stack([xs, ys])
+    pos = {n: i for i, n in enumerate(nid)}
+    tree = cKDTree(xy)
+    und = G.to_undirected(as_view=True)
+    nbrs = {n: set(G.successors(n)) | set(G.predecessors(n)) for n in G}
+    dead = {}
+    for n in G:
+        if len(nbrs[n]) == 1:
+            m = next(iter(nbrs[n]))
+            h, d = _end_heading(G, n, m, tr)
+            if h is not None and d.get("scan_symbol") not in ("blue", "dashed") and d.get("road_rank", 5) <= 5:
+                dead[n] = (h, d)
+    cos_c = math.cos(math.radians(cone_deg))
+    out, seen = [], set()
+    for a, (ha, da) in dead.items():
+        pa = xy[pos[a]]
+        cands = []
+        for j in tree.query_ball_point(pa, max_m):
+            b = nid[j]
+            if b == a or b in nbrs[a]:
+                continue
+            v = xy[j] - pa
+            dist = float(np.hypot(*v))
+            if dist < 15.0:
+                continue
+            u = v / dist
+            ca = float(np.dot(ha, u))
+            if ca < cos_c:
+                continue
+            if b in dead:
+                cb = float(np.dot(dead[b][0], -u))
+                if cb < cos_c:
+                    continue
+                kind = 1
+            else:
+                if dist > max_to_line_m:
+                    continue
+                if all((G.edges[b, m] if G.has_edge(b, m) else G.edges[m, b]).get("scan_symbol") == "blue" for m in nbrs[b]):
+                    continue  # never join onto an expressway (it has no level junction)
+                cb, kind = -1.0, 0
+            cands.append((dist * (2.0 - ca - max(cb, 0.0)), b, dist, ca, cb, kind))
+        cands.sort()
+        for _, b, dist, ca, cb, kind in cands[:per_end]:
+            key = tuple(sorted((pos[a], pos[b])))
+            if key in seen:
+                continue
+            try:
+                gd = nx.shortest_path_length(und, a, b, weight="length_m") if nx.has_path(und, a, b) else float("inf")
+            except nx.NetworkXNoPath:
+                gd = float("inf")
+            if gd < 3.0 * dist:
+                continue
+            seen.add(key)
+            out.append({"a": a, "b": b, "dist_m": dist, "cos_a": ca, "cos_b": cb, "b_dead_end": kind, "graph_ratio": min(gd / dist, 100.0),
+                        "xy_a": tuple(pa), "xy_b": tuple(xy[pos[b]]),
+                        "key_a": _node_key(G, a), "key_b": _node_key(G, b)})
+    return out
+
+
+def link_features(G, links, classes, transform, roads=None, X_roads=None):
+    """Features of each candidate link, from the scan and the image network only."""
+    import pandas as pd
+
+    from .scanroads import C_BLACK, C_BLUE, C_CASING, C_CASING_LIGHT, C_OTHER, C_RED, C_ORANGE, C_WATER, C_WHITE
+
+    btw = {}
+    if roads is not None and X_roads is not None and "btw_regional" in X_roads:
+        for u, v, b in zip(roads["u"].values, roads["v"].values, X_roads["btw_regional"].values):
+            btw[u] = max(btw.get(u, 0.0), b)
+            btw[v] = max(btw.get(v, 0.0), b)
+    nbrs = lambda n: set(G.successors(n)) | set(G.predecessors(n))
+
+    def road_of(n):
+        best = None
+        for m in nbrs(n):
+            d = G.edges[n, m] if G.has_edge(n, m) else G.edges[m, n]
+            if best is None or LINK_RANK.get(d.get("scan_symbol"), 5) < LINK_RANK.get(best.get("scan_symbol"), 5):
+                best = d
+        return best or {}
+
+    rows = []
+    for c in links:
+        a, b = c["a"], c["b"]
+        da, db = road_of(a), road_of(b)
+        p = _to_px(transform, np.array([[G.nodes[a]["x"], G.nodes[a]["y"]], [G.nodes[b]["x"], G.nodes[b]["y"]]]))
+        line = _densify_px(p, 1.0)
+        cl = _sample(classes, line)
+        blue = cl == C_BLUE
+        run, best = 0, 0
+        for x in blue:
+            run = run + 1 if x else 0
+            best = max(best, run)
+        px_m = c["dist_m"] / max(len(line) - 1, 1)
+        ra, rb = LINK_RANK.get(da.get("scan_symbol"), 5), LINK_RANK.get(db.get("scan_symbol"), 5)
+        rows.append({"dist_m": c["dist_m"], "cos_a": c["cos_a"], "cos_b": c["cos_b"], "b_dead_end": c["b_dead_end"],
+                     "graph_ratio": c["graph_ratio"], "rank_a": ra, "rank_b": rb, "same_symbol": int(da.get("scan_symbol") == db.get("scan_symbol")),
+                     "len_a_m": float(da.get("length_m") or 0.0), "len_b_m": float(db.get("length_m") or 0.0),
+                     "gap_a": int(bool(da.get("scan_gap"))), "deg_b": len(nbrs(b)),
+                     "sh_blue": float(blue.mean()), "blue_run_m": best * px_m, "sh_casing": float((cl == C_CASING).mean()),
+                     "sh_casing_light": float((cl == C_CASING_LIGHT).mean()), "sh_water": float((cl == C_WATER).mean()),
+                     "sh_black": float((cl == C_BLACK).mean()), "sh_white": float((cl == C_WHITE).mean()),
+                     "sh_fill": float(np.isin(cl, (C_RED, C_ORANGE)).mean()), "sh_other": float((cl == C_OTHER).mean()),
+                     "btw_a": btw.get(a, 0.0), "btw_b": btw.get(b, 0.0)})
+    return pd.DataFrame(rows)
+
+
+def link_labels(links, bdtopo: str, osm: str | None, step_m: float = 10.0, buffer_m: float = 25.0, need: float = 0.8):
+    """A candidate link is real when at least ``need`` of its straight line lies within ``buffer_m`` of BD TOPO or OSM."""
+    from scipy.spatial import cKDTree
+
+    from .scancheck import reference_lines
+
+    if not links:
+        return np.zeros(0)
+    bd, om = reference_lines(bdtopo, osm)
+    ref = [_pts(bd.geometry.values, step_m)[0]]
+    if om is not None and len(om):
+        ref.append(_pts(om.geometry.values, step_m)[0])
+    T = cKDTree(np.vstack(ref))
+    y = np.zeros(len(links))
+    for i, c in enumerate(links):
+        a, b = np.asarray(c["xy_a"]), np.asarray(c["xy_b"])
+        k = max(2, int(c["dist_m"] / step_m) + 1)
+        q = a[None, :] + np.linspace(0, 1, k)[:, None] * (b - a)[None, :]
+        d, _ = T.query(q, distance_upper_bound=buffer_m + 1)
+        y[i] = float((d <= buffer_m).mean() >= need)
+    return y
 
 
 # ---------------------------------------------------------------------------
@@ -384,8 +663,15 @@ def build_dataset(G: nx.DiGraph, tif: str, bdtopo: str, osm: str | None, grid: i
     cxy = np.asarray([[G.nodes[c["node"]]["x"], G.nodes[c["node"]]["y"]] for c in cands]).reshape(-1, 2)
     blk_c = blocks_of(cxy, bounds, grid) if len(cands) else np.zeros(0, int)
     progress(f"  labels and crossings: {len(cands)} crossings, {time.perf_counter() - t:.0f} s")
+    t = time.perf_counter()
+    links = link_candidates(G)
+    Xl = link_features(G, links, classes, transform, roads, X)
+    Yl = link_labels(links, bdtopo, osm)
+    lxy = np.asarray([[(G.nodes[c["a"]]["x"] + G.nodes[c["b"]]["x"]) / 2, (G.nodes[c["a"]]["y"] + G.nodes[c["b"]]["y"]) / 2] for c in links]).reshape(-1, 2)
+    blk_l = blocks_of(lxy, bounds, grid) if len(links) else np.zeros(0, int)
+    progress(f"  candidate links: {len(links)} ({Yl.mean() if len(Yl) else 0:.0%} real), {time.perf_counter() - t:.0f} s")
     return {"roads": roads, "X": X, "Y": Y, "block": blk, "cands": cands, "Xc": Xc, "Yc": Yc, "block_c": blk_c,
-            "bounds": bounds, "grid": grid}
+            "links": links, "Xl": Xl, "Yl": Yl, "block_l": blk_l, "bounds": bounds, "grid": grid}
 
 
 def _task_rows(ds, task):
@@ -394,6 +680,9 @@ def _task_rows(ds, task):
         X, y, b = ds["Xc"], ds["Yc"], ds["block_c"]
         idx = np.arange(len(y))
         return X, y, b, idx, np.zeros(len(y))  # the rule: a crossing drawn on the map is a crossroads
+    if task == "link_real":
+        X, y, b = ds["Xl"], ds["Yl"], ds["block_l"]
+        return X, y, b, np.arange(len(y)), np.zeros(len(y))  # the rule: no link beyond the label-gap joins
     X, Y, b = ds["X"], ds["Y"], ds["block"]
     if task == "road_real":
         m = np.ones(len(X), bool)
@@ -484,9 +773,12 @@ def decision_scores(ds, cv, thresh: dict | None = None) -> dict:
         base = float(is_right[ok].mean()) if ok.any() else 0.0
         lift = prec / base if base else 0.0
         d = {"changes": int(ch.sum()), "precision": prec, "base": base, "lift": lift, "threshold": th[key],
-             "enabled": bool(ch.sum() >= GATE_MIN and prec >= GATE_PRECISION and lift >= GATE_LIFT)}
+             "enabled": bool(ch.sum() >= GATE_MIN and (prec >= GATE_ADD_PRECISION if name in ADDITIONS else
+                                                         prec >= GATE_PRECISION and lift >= GATE_LIFT))}
         if "length_m" in X:
             d["km"] = float(X["length_m"].values[ch].sum() / 1000)
+        elif "dist_m" in X:
+            d["km"] = float(X["dist_m"].values[ch].sum() / 1000)
         out[name] = d
     return out
 
@@ -515,7 +807,7 @@ def feature_importance(models: dict) -> dict:
 # apply
 # ---------------------------------------------------------------------------
 
-THRESH = {"drop_gap": 0.5, "drop_road": 0.3, "uncertain_road": 0.7, "imp4": 0.7, "bridge": 0.3, "separate": 0.5}
+THRESH = {"drop_gap": 0.5, "drop_road": 0.3, "uncertain_road": 0.7, "imp4": 0.7, "bridge": 0.3, "separate": 0.5, "link": 0.5}
 # removing a road the model doubts can cut a village off (about 18 % of the removals hit real roads): by default
 # doubtful roads and label gaps are priced, never removed; ``scan-learn --allow-removal`` switches removal back on
 REMOVALS = {"drop_gap", "drop_road"}
@@ -524,12 +816,17 @@ ROAD_CAUTION = 3.0  # another road costs 1 + ROAD_CAUTION x (uncertain_road - p)
 # a correction is switched on only if, on blocks the model never saw, most of the changes it would make are right
 # and it does clearly better than the fixed rule's own error rate
 GATE_PRECISION, GATE_LIFT, GATE_MIN = 0.6, 1.5, 10
+# an addition (a link the reader did not draw) is not a change of a fixed rule's decision, so there is no rule error
+# rate to beat: it is switched on when most of the links it adds are real, with a stricter bar
+GATE_ADD_PRECISION = 0.7
+ADDITIONS = {"add_link"}
 DECISIONS = {  # name: (task, rows, change when, threshold key, a change is right when the label is)
     "drop_gap": ("road_real", "gap", "below", "drop_gap", 0),
     "drop_road": ("road_real", "road", "below", "drop_road", 0),
     "white_to_rank4": ("white_imp4", "all", "above", "imp4", 1),
     "bridge_to_culvert": ("bridge_real", "all", "below", "bridge", 0),
     "separate_crossing": ("crossing_separated", "all", "above", "separate", 1),
+    "add_link": ("link_real", "all", "above", "link", 1),
 }
 
 
@@ -548,6 +845,9 @@ def predictions_from_oof(ds, cv) -> dict:
     if "_oof" in t:
         P["crossing_nodes"] = [c["node"] for c in ds["cands"]]
         P["crossings"] = {i: float(p) for i, p in zip(t["_idx"], t["_oof"]) if not np.isnan(p)}
+    t = cv["tasks"].get("link_real", {})
+    if "_oof" in t:
+        P["links"] = [[c["key_a"], c["key_b"], float(p)] for c, p in zip(ds["links"], t["_oof"]) if not np.isnan(p)]
     return P
 
 
@@ -583,6 +883,12 @@ def predictions_from_models(G, tif, models) -> dict:
         Xc = crossing_features(G, cands, classes, transform)
         P["crossing_nodes"] = [c["node"] for c in cands]
         P["crossings"] = dict(enumerate(models["crossing_separated"].predict_proba(Xc)[:, 1].astype(float)))
+    if "link_real" in models:
+        links = link_candidates(G)
+        if links:
+            Xl = link_features(G, links, classes, transform, roads, X)
+            p = models["link_real"].predict_proba(Xl)[:, 1]
+            P["links"] = [[_node_key(G, c["a"]), _node_key(G, c["b"]), float(pi)] for c, pi in zip(links, p)]
     return P
 
 
@@ -596,7 +902,7 @@ def apply_corrections(G: nx.DiGraph, P: dict, thresh: dict | None = None, enable
     th = dict(THRESH, **(thresh or {}))
     on = set(DECISIONS) if enabled is None else set(enabled)
     ch = {"label gaps removed": 0.0, "roads removed": 0.0, "roads priced as doubtful (p < 0.7)": 0.0, "label gaps priced": 0.0, "white roads to rank 4": 0.0,
-          "bridges to culverts": 0.0, "crossings separated": 0}
+          "bridges to culverts": 0.0, "crossings separated": 0, "links added": 0}
     # crossings first (they need the junctions as they are)
     if "separate_crossing" in on:
         nodes = P.get("crossing_nodes") or []
@@ -657,6 +963,36 @@ def apply_corrections(G: nx.DiGraph, P: dict, thresh: dict | None = None, enable
                     d["bridge"] = False
                     d["scan_stream"] = True
                     ch["bridges to culverts"] += 0.5
+    if "add_link" in on and P.get("links"):
+        import pyproj
+
+        tr = pyproj.Transformer.from_crs("EPSG:4326", L93, always_xy=True)
+        by_node = {_node_key(G, n): n for n in G}
+        for ka, kb, p in P["links"]:
+            a, b = by_node.get(ka), by_node.get(kb)
+            if a is None or b is None or p < th["link"] or G.has_edge(a, b):
+                continue
+            nb = lambda n: [G.edges[n, m] if G.has_edge(n, m) else G.edges[m, n] for m in set(G.successors(n)) | set(G.predecessors(n))]
+            ends = [d for d in nb(a) + nb(b) if d.get("scan_symbol") != "blue"]
+            if not ends:
+                continue
+            src = min(ends, key=lambda d: LINK_RANK.get(d.get("scan_symbol"), 5)) if len(nb(b)) == 1 else nb(a)[0]
+            (xa, ya), (xb, yb) = (G.nodes[a]["x"], G.nodes[a]["y"]), (G.nodes[b]["x"], G.nodes[b]["y"])
+            X2, Y2 = tr.transform([xa, xb], [ya, yb])
+            L = float(math.hypot(X2[1] - X2[0], Y2[1] - Y2[0]))
+            keep = ("highway", "paved", "scan_symbol", "scan_width_px", "road_rank", "source_id", "width_m")
+            base = {k: src.get(k) for k in keep}
+            base.update(bridge=False, tunnel=False, scan_gap=True, scan_link=True, scan_stream=False, scan_p_real=round(p, 3),
+                        length_m=L, name="")
+            for k in ("built_up", "forest", "closed", "level_crossing", "ford", "ferry", "defile"):
+                base[k] = False
+            for k in ("threat", "weather", "centrality", "closed_p", "threat0", "weather0"):
+                base[k] = 0.0
+            for k in ("maxspeed_kmh", "lanes", "max_weight_t", "mlc", "max_height_m", "slope_pct", "lit"):
+                base[k] = None
+            G.add_edge(a, b, **dict(base, coords=((xa, ya), (xb, yb))))
+            G.add_edge(b, a, **dict(base, coords=((xb, yb), (xa, ya))))
+            ch["links added"] = ch.get("links added", 0) + 1
     G.remove_nodes_from([n for n in list(G) if G.degree(n) == 0])
     keep_largest_scc(G)
     out = {k: int(round(v)) for k, v in ch.items()}
@@ -690,10 +1026,11 @@ def save(out: Path, models: dict, P: dict, cv: dict, ds, tif: str, graph_key: st
     meta = {"version": CORRECTOR_VERSION, "trained_on": str(tif), "graph_key": graph_key, "thresholds": THRESH,
             "decisions": cv.get("decisions", {}), "allow_removal": allow_removal,
             "enabled": sorted(k for k, d in cv.get("decisions", {}).items() if d["enabled"] and (allow_removal or k not in REMOVALS)),
-            "features_roads": list(ds["X"].columns), "features_crossings": list(ds["Xc"].columns)}
+            "features_roads": list(ds["X"].columns), "features_crossings": list(ds["Xc"].columns),
+            "features_links": list(ds["Xl"].columns) if "Xl" in ds else []}
     (out / "corrector.json").write_text(json.dumps(meta, indent=1), encoding="utf-8")
     Pj = {"roads": P["roads"], "crossings": {str(k): v for k, v in (P.get("crossings") or {}).items()},
-          "crossing_nodes": [str(n) for n in P.get("crossing_nodes") or []]}
+          "crossing_nodes": [str(n) for n in P.get("crossing_nodes") or []], "links": P.get("links") or []}
     (out / "oof_predictions.json").write_text(json.dumps(Pj), encoding="utf-8")
 
 
@@ -734,7 +1071,7 @@ def correct_graph(G: nx.DiGraph, tif: str, corrector: str | Path, graph_key: str
         Pj = json.loads((Path(corrector) / "oof_predictions.json").read_text(encoding="utf-8"))
         node_type = type(next(iter(G.nodes)))
         P = {"roads": Pj["roads"], "crossings": {int(k): v for k, v in Pj["crossings"].items()},
-             "crossing_nodes": [node_type(n) for n in Pj["crossing_nodes"]]}
+             "crossing_nodes": [node_type(n) for n in Pj["crossing_nodes"]], "links": Pj.get("links") or []}
         mode = "out-of-fold (sheet the corrector was trained on: each block corrected by a model that never saw it)"
     else:
         P = predictions_from_models(G, tif, models)
@@ -817,7 +1154,9 @@ def route_checks(G: nx.DiGraph, nodes: list) -> list[dict]:
         kind = None
         p = d.get("scan_p_real")
         if d.get("source_id") == "scan":
-            if d.get("scan_gap"):
+            if d.get("scan_link"):
+                kind = "link added by the corrector: the map cuts the road here (expressway, railway or label), check that it goes through"
+            elif d.get("scan_gap"):
                 kind = "label-gap join: the map is hidden by a label here, check that the road goes through"
             elif p is not None and p < CHECK_P:
                 kind = "doubtful road: the corrector doubts this line is a road"
@@ -865,7 +1204,7 @@ def plan_checks(G: nx.DiGraph, coa, H=None) -> tuple[str, list[dict]]:
         if not ch:
             L += ["Nothing to check on the map.", ""]
             continue
-        first = [c for c in ch if c["p"] < CHECK_P or c["kind"].startswith("bridge")]
+        first = [c for c in ch if c["p"] < CHECK_P or c["kind"].startswith(("bridge", "link"))]
         rest = [c for c in ch if c not in first]
         for c in ch:
             rows.append(dict(c, route=name, role=role, group=gid, priority="first" if c in first else "if time allows"))

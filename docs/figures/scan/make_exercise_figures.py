@@ -18,7 +18,7 @@ import json
 from pathlib import Path
 
 IT_COLOURS = {"IT-1": "#d62728", "IT-2": "#1f77b4", "IT-3": "#2ca02c"}
-NET_COLOURS = ["#e6550d", "#756bb1", "#31a354", "#3182bd"]
+NET_COLOURS = ["#e6550d", "#756bb1", "#d62728", "#31a354", "#3182bd", "#636363"]
 
 
 def _load(folder: Path) -> dict:
@@ -133,11 +133,11 @@ def main(argv=None) -> None:
     fig, ax = plt.subplots(figsize=(9, 10.5))
     lon0, lat0, lon1, lat1 = bounds
     ax.imshow(img, extent=(lon0, lon1, lat0, lat1), alpha=0.5, interpolation="lanczos")
-    styles = ["-", "--", "-.", ":"]
+    styles = ["-", "--", "-", "-.", ":", "--"]
     for i, (lab, r) in enumerate(runs.items()):
         for j, f in enumerate(r["its"]):
             xs_, ys_ = zip(*f["geometry"]["coordinates"])
-            ax.plot(xs_, ys_, color=NET_COLOURS[i % 4], lw=3.2 - 0.5 * i, ls=styles[i % 4], label=lab if j == 0 else None, alpha=0.9)
+            ax.plot(xs_, ys_, color=NET_COLOURS[i % len(NET_COLOURS)], lw=max(1.2, 3.4 - 0.45 * i), ls=styles[i % len(styles)], label=lab if j == 0 else None, alpha=0.9)
     _draw(ax, img, bounds, {"zones": next(iter(runs.values()))["zones"], "towns": next(iter(runs.values()))["towns"], "its": []},
           "Exercise 1: the itineraries of every network on one map")
     ax.legend(loc="lower right", fontsize=9, framealpha=0.9)
@@ -153,8 +153,8 @@ def main(argv=None) -> None:
     for i, lab in enumerate(labs):
         its = sorted(runs[lab]["its"], key=lambda f: f["properties"]["length_km"])
         x = np.arange(len(its)) + i * width
-        a1.bar(x, [f["properties"]["length_km"] for f in its], width, color=NET_COLOURS[i % 4], label=lab)
-        a2.bar(x, [f["properties"]["time_min"] for f in its], width, color=NET_COLOURS[i % 4], label=lab)
+        a1.bar(x, [f["properties"]["length_km"] for f in its], width, color=NET_COLOURS[i % len(NET_COLOURS)], label=lab)
+        a2.bar(x, [f["properties"]["time_min"] for f in its], width, color=NET_COLOURS[i % len(NET_COLOURS)], label=lab)
     for ax_, yl in ((a1, "length (km)"), (a2, "time (min)")):
         ax_.set_xticks(np.arange(3) + width * (len(labs) - 1) / 2, ["shortest", "middle", "longest"])
         ax_.set_ylabel(yl)

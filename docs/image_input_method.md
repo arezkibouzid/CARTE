@@ -221,6 +221,11 @@ The reader takes a few uncertain decisions by fixed rules: a label gap is joined
 | bridge to culvert if p(bridge) < 0.3 | 446 | 75% | 72% | no (no better than the base rate) |
 | split a crossing into a flyover if p >= 0.5 | 2 | 0% | 2% | no |
 
+**Third version (10 Nov): missing links and graph features** (details in `docs/corrector_closer_to_bdtopo.md`).
+- A fifth task, `link_real`, adds the links the map cuts: roads passing under or over an expressway or a railway, or cut by labels. It scores 1,828 candidate links between facing dead ends (AUC 0.74) and adds 1,222 of them, 74% of them real on unseen blocks.
+- Graph features (sampled betweenness, road continuity) raise the AUC of the white-road importance from 0.63 to 0.70. 748 roads move to rank 4 at 68% precision.
+- MSRs on the 100 seeds go from 12% to 5% slower than BD TOPO, and valid plans from 84% to 90%.
+
 **Doubtful roads are priced, not deleted.** Removing roads cut 26 small pieces off the network (about 18% of the removed roads are real), so removals are off unless `scan-learn --allow-removal` is given. Instead, every road keeps its probability p of being real, and that probability prices it, in the exercise solver and in the planner alike:
 
 - a label-gap join costs 1 + 3 (1 - p) times its time (the cautious price: 1.3 for a typical join at p = 0.9, 2.5 for a join at p = 0.5);
