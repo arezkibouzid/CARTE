@@ -596,7 +596,7 @@ def itinerary_facts(R: RoadArrays, it: Itinerary, evals: dict, towns_small, spec
     for e in it.edge_idx:
         a, b = R.edges[e]
         d = G[a][b]
-        nm = d.get("name") or ""
+        nm = (d.get("name") or "").split(";")[0].replace(" ", "")  # OSM writes "D 766" (and "N 24;E 50")
         if re.match(r"^[ADNCRE]\d", nm) and (not names or names[-1] != nm):
             names.append(nm)
         if d.get("bridge"):

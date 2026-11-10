@@ -172,6 +172,14 @@ The 1:250 000 is read with the same rules (parameters scaled by `ScanParams.for_
 
 Every itinerary drives on real roads: 98-100% of each lies within 50 m of BD TOPO, which is the map's own displacement. IT-1 and IT-2 follow the matching BD TOPO itineraries for 62% and 70% of their length (within 200 m), IT-3 for 43%: it takes a longer corridor because the image network does not have the lanes BD TOPO uses. The few hundred metres with no BD TOPO road within 50 m are crossings and junctions that the map displaces (a crossing of a red road can also be a flyover in reality: grade separation is only known for expressways). Total 205 km against 181 km on BD TOPO.
 
+The same exercise on four road networks (image only, image with the corrector, BD TOPO and OSM; every run passes its 19 checks): the OSM network, run with `coa-net exercise --network osm`, gives 182 km, close to BD TOPO.
+
+![Exercise 1 on each network](figures/scan/exercise1-networks.jpg)
+
+![The itineraries of every network on one map](figures/scan/exercise1-overlay.jpg)
+
+The figures are made by `docs/figures/scan/make_exercise_figures.py` from the four `coa-net exercise` output folders.
+
 ### 6.2 The full planner with incidents
 
 `coa-net plan --scan "data/Scenario1 100K.tif"` on the Scenario 1 order (three convoys: C1 Vannes to Dinan with fuel, C2 Questembert to Broons, C3 Redon to Caulnes) with the four test incidents, roads of rank 5 and better:

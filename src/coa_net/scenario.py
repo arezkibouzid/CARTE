@@ -121,6 +121,10 @@ def load_graph_cached(path: str, cache: Path | None, kind: str = "bdtopo"):
         if kind == "scan":
             G, rep, _ = load_scenario_scan(path)
             return G, rep
+        if kind == "osm":
+            from .realdata import load_scenario_osm
+
+            return load_scenario_osm(path)
         return load_scenario_bdtopo(path)
 
     if cache is None:
@@ -217,6 +221,14 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
             run.facts["network"]["corrector"] = correct_graph(G, tif, corrector)
             t = run.tick("learned corrector of the image network", t)
         max_rank = 5 if max_rank is None else max_rank
+    elif network == "osm":
+        if not paths.osm:
+            raise ValueError("network 'osm' needs the OSM shapefile (*OSM*.shp)")
+        G, rep_bd, cached = load_graph_cached(paths.osm, cache, kind="osm")
+        run.facts["network"] = {"source": f"shapefile: {Path(paths.osm).name}"}
+        run.facts["load_osm"] = rep_bd.__dict__
+        t = run.tick("load OSM graph" + (" (from the cache)" if cached else ""), t)
+        max_rank = 4 if max_rank is None else max_rank
     else:
         G, rep_bd, cached = load_graph_cached(paths.bdtopo, cache)
         run.facts["network"] = {"source": f"shapefile: {Path(paths.bdtopo).name}"}
@@ -226,9 +238,9 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
     run.facts["network"]["max_rank"] = max_rank
     # turn radius: chord of +-10 m on BD TOPO centre lines; a 1:100 000 scan (7 m pixels, generalised symbols) cannot
     # resolve such a short chord, so +-20 m (about three pixels) is used there and the radii are indicative only
-    half_chord = 10.0 if network == "bdtopo" else 20.0
+    half_chord = 10.0 if network in ("bdtopo", "osm") else 20.0
     run.facts["network"]["turn_half_chord_m"] = half_chord
-    if network != "bdtopo":
+    if network not in ("bdtopo", "osm"):
         spec.assumptions[:] = [
             (f"difficult turn: centreline radius below {spec.turn_radius_warn_m:g} m, critical below {spec.turn_radius_crit_m:g} m "
              "(path length / heading change over a 40 m window of the centre line read on the scan; the map generalises roads "
@@ -464,7 +476,7 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
         run.facts["bdtopo_agreement_50m"] = agree50
         run.facts["bdtopo_longest_unmatched_m"] = worst
         t = run.tick("cross-check with BD TOPO (sanity check of the image network)", t)
-    if paths.scan100 and res.itineraries and network == "bdtopo":
+    if paths.scan100 and res.itineraries and network in ("bdtopo", "osm"):
         from shapely import affinity
 
         from .audit import scan_agreement
@@ -648,6 +660,11 @@ def decision_text(run: ScenarioRun, res, spec, checks) -> str:
                  f"network ({sc['largest_scc_share']:.0%} of the junctions). The map gives no width, load class or slope: they stay "
                  f"unknown. White roads are one symbol for minor and secondary roads, so roads of class 5 and better are searched.")
         L.append("   - BD TOPO and OSM are used only to check the result (section 5).")
+    elif "load_osm" in F:
+        om = F["load_osm"]
+        L.append(f"   - Road graph: OSM shapefile (Geofabrik), {om['kept']} of {om['features']} ways kept (drivable classes), {om['nodes']} "
+                 f"junctions, {om['km']:.0f} km of road. Lon/lat EPSG:4326 assumed, lengths and distances computed in Lambert-93.")
+        L.append("   - BD TOPO is used only to check the result (section 5).")
     else:
         bd = F["load_bdtopo"]
         L.append(f"   - Road graph: IGN BD TOPO v2 shapefile, {bd['kept']} of {bd['features']} sections kept (footpaths, steps, cycle tracks "

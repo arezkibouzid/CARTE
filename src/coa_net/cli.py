@@ -641,9 +641,9 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--requirements", help="requirement base JSON (default: seed base; e.g. the base compiled from the doctrine)")
     x.add_argument("--provisional", action="store_true", help="use draft instances (doctrine not signed off yet), flagged")
     x.add_argument("--llm", action="store_true", help="name the sketch's marks with the model (L9, needs a vision-language model)")
-    x.add_argument("--network", choices=("scan", "scan250", "bdtopo"), default="scan",
+    x.add_argument("--network", choices=("scan", "scan250", "bdtopo", "osm"), default="scan",
                    help="road graph source: scan = read from the 1:100 000 image (default; BD TOPO and OSM only check it), "
-                        "scan250 = from the 1:250 000 image, bdtopo = the BD TOPO shapefile (the pipeline on main)")
+                        "scan250 = from the 1:250 000 image, bdtopo = the BD TOPO shapefile (the pipeline on main), osm = the OSM shapefile")
     x.add_argument("--corrector", help="learned corrector folder (coa-net scan-learn) applied to the image network")
     for k in ("bdtopo", "osm", "scan100", "scan250"):
         x.add_argument(f"--{k}", help=f"explicit path for {k}")
