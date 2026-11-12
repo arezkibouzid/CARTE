@@ -735,8 +735,11 @@ def cmd_pdf_exercises(args) -> None:
          "OSM: " + ("used for the speed-limit check only" if osm is not None else "not used") + ".",
          f"Built-up areas: {net['builtup']}.",
          f"Speed: legal limit of each section (built-up {px.URBAN_KMH:.0f}, expressway {px.EXPRESSWAY_KMH:.0f}, other roads {px.ROAD_KMH:.0f} km/h), "
-         "capped at the convoy speed given in the PDF. " + ("BD TOPO and OSM are used only as checks." if osm is not None else
-         "BD TOPO is used only as a check."), "",
+         "capped at the convoy speed given in the PDF. " + (
+             "BD TOPO and OSM are used only as checks." if osm is not None and ref_net is not None else
+             "BD TOPO is used only as a check (no OSM)." if ref_net is not None else
+             "OSM is used only as a check (no BD TOPO)." if osm is not None else
+             "No BD TOPO and no OSM: the routes come from the scan and the PDF alone, without checks."), "",
          "| exercise | objective | route | waypoints | length | duration | inside area | continuous | within 25 m of BD TOPO | BD TOPO check (length / duration) | notes |",
          "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
     for ex, res, ref in rows:
@@ -749,7 +752,7 @@ def cmd_pdf_exercises(args) -> None:
         L.append(f"| [{ex.number}](exercise_{ex.number:02d}/decision.md) | {'shortest' if ex.objective == 'length' else 'fastest'} | {route} | {wp} | "
                  f"{res['total']['length_km']:.1f} km | {res['total']['duration_min']:.0f} min | "
                  f"{'yes' if all(l['inside_area'] for l in res['legs']) else 'NO'} | {'yes' if all(l['continuous'] for l in res['legs']) else 'NO'} | "
-                 f"{b25:.0%} | " + (f"{ref['total']['length_km']:.1f} km / {ref['total']['duration_min']:.0f} min" if ref else "-") +
+                 + (f"{b25:.0%} | " if b25 == b25 else "- | ") + (f"{ref['total']['length_km']:.1f} km / {ref['total']['duration_min']:.0f} min" if ref else "-") +
                  f" | {'; '.join(ex.notes)} |")
     (out / "summary.md").write_text("\n".join(L) + "\n", encoding="utf-8")
     print("\n".join(L))

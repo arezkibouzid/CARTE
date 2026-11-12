@@ -92,8 +92,8 @@ One H100 per fold.
 
 Baseline (the model behind every number above): 6,000 steps, batch 16, learning rate 3e-4 (head 3e-3), about 450 s per
 fold on one H100; final losses 0.72-0.89, still falling. A longer-training sweep (12,000 and 24,000 steps, learning
-rate 1e-4, batch 32; held-out fold scored every 3,000 steps with `--eval-every`, two GPUs per configuration) is
-running; its results will be added here.
+rate 1e-4, batch 32; held-out fold scored every 3,000 steps with `--eval-every`, two GPUs per configuration) ran
+unattended; results in [prc_sweep_results.md](prc_sweep_results.md) (best: **finetuned**, road IoU 0.418).
 
 ## 7. Commands
 

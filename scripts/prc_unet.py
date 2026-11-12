@@ -177,8 +177,9 @@ def finetune(a):
     rgb, road, imp, struct, fold = (d[k] for k in ("rgb", "road", "imp", "struct", "fold"))
     f = a.fold
     train_mask = fold != f  # f = -1: every block (final model, nothing held out)
-    torch.manual_seed(f)
-    rng = np.random.default_rng(f)
+    seed = f if f >= 0 else 99  # final model (fold -1): its own seed
+    torch.manual_seed(seed)
+    rng = np.random.default_rng(seed)
     net = build(a.prc_repo, a.weights).cuda()
     opt = torch.optim.AdamW([{"params": net.base.parameters(), "lr": a.lr},
                              {"params": net.head6.parameters(), "lr": a.lr * 10}], weight_decay=1e-4)
