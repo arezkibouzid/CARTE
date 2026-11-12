@@ -10,6 +10,7 @@ Design and reference documents for COA-Net, and the figures they use. This folde
 - `image_input_method.md`: the image-input method (9 Nov 2026): the road network read from the scanned IGN maps, with the shapefiles kept for sanity checks; method, parameters, measured results on Scenario 1 and limits.
 - `corrector_route_impact.md`: what the learned corrector of the image network changes in the routes (planner, exercise 1, 405 origin-destination pairs).
 - `real_bench_results.md`: the Scenario 1 order and the 100-seed benchmark run on BD TOPO, the image network and the image network with the corrector (`coa-net real-bench`).
+- `prc_unet_and_pdf_exercises.md`, `prc_sweep_results.md`, `prc_mismatch.md`: the PRC U-Net (fine-tuning, sweep, final model), the PDF route exercises (with and without BD TOPO / OSM), and where the PRC routes differ from BD TOPO and OSM.
 - `real_data_validation.md`: inspection of the organisers' Scenario 1 data, the changes it required, and the measured results of exercise 1 and of a full plan with incidents on that map.
 
 ## Subdirectories & Boundaries
