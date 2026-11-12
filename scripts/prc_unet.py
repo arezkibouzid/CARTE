@@ -8,6 +8,10 @@ so it can be used by `scan-learn --unet DIR` and by `coa_net.scanunet.network_fr
     python scripts/prc_unet.py zeroshot  --out OUT --weights prc_binary.pt --prc-repo ProbRoadClass-DeepLearning   (GPU)
     python scripts/prc_unet.py finetune  --out OUT --weights prc_binary.pt --prc-repo ... --fold F               (GPU)
     python scripts/prc_unet.py merge     --out OUT --name finetuned
+    python scripts/prc_unet.py finetune  ... --fold -1 --tag T          (every block: the model for sheets without labels)
+    python scripts/prc_unet.py infer     --tif SHEET.tif --model OUT/prc_T_final.pt --prc-repo ... --dest DIR   (GPU, no labels)
+
+``--tag`` names a fine-tuning run (``--steps``, ``--lr``, ``--batch``), so several runs can share OUT.
 """
 from __future__ import annotations
 
@@ -97,6 +101,22 @@ def loss_fn(out, road, imp, struct, mask):
     return base + dice
 
 
+def fold_scores(P, road, imp, m, n=2_000_000, seed=0) -> dict:
+    """Pixel scores of one held-out fold: road AUC (sample), road IoU, importance accuracy on road pixels."""
+    from sklearn.metrics import roc_auc_score
+
+    rng = np.random.default_rng(seed)
+    idx = np.flatnonzero(m.ravel())
+    sub = idx[rng.integers(0, len(idx), min(n, len(idx)))]
+    pr, yr = P[..., 0].ravel()[sub] / 255.0, road.ravel()[sub]
+    pred, y = P[..., 0][m] >= 128, road[m] > 0
+    iv = imp[m]
+    k = iv > 0
+    acc = float((np.argmax(P[..., 1:6][m][k], axis=1) + 1 == iv[k]).mean()) if k.any() else float("nan")
+    return {"road_auc": round(float(roc_auc_score(yr, pr)), 4), "road_iou": round(float((pred & y).sum() / max((pred | y).sum(), 1)), 4),
+            "importance_accuracy": round(acc, 4), "road_pixels_pred": int(pred.sum()), "road_pixels_true": int(y.sum())}
+
+
 def predict(net, rgb, where=None, batch=16):
     """(H, W, 7) uint8, tiles of 512 with a 64 px margin."""
     import torch
@@ -156,7 +176,7 @@ def finetune(a):
     d = load(out, mmap=False)
     rgb, road, imp, struct, fold = (d[k] for k in ("rgb", "road", "imp", "struct", "fold"))
     f = a.fold
-    train_mask = fold != f
+    train_mask = fold != f  # f = -1: every block (final model, nothing held out)
     torch.manual_seed(f)
     rng = np.random.default_rng(f)
     net = build(a.prc_repo, a.weights).cuda()
@@ -186,10 +206,43 @@ def finetune(a):
         sched.step()
         if (step + 1) % 250 == 0:
             print(f"fold {f} step {step + 1}/{a.steps}: loss {loss.item():.3f}, {time.perf_counter() - t0:.0f} s", flush=True)
-    torch.save(net.state_dict(), out / f"prc_fold{f}.pt")
-    P = predict(net, rgb, where=fold == f)
-    np.save(out / f"pred_finetuned_fold{f}.npy", P)
-    print(f"fold {f} done in {time.perf_counter() - t0:.0f} s", flush=True)
+        if f >= 0 and a.eval_every and (step + 1) % a.eval_every == 0:
+            P = predict(net, rgb, where=fold == f)
+            sc = fold_scores(P, road, imp, fold == f)
+            sc.update(tag=a.tag, fold=f, step=step + 1, seconds=round(time.perf_counter() - t0))
+            with open(out / f"checkpoints_{a.tag}.jsonl", "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(sc) + "\n")
+            print(f"fold {f} checkpoint {step + 1}: {sc}", flush=True)
+            if step + 1 == a.steps:
+                np.save(out / f"pred_{a.tag}_fold{f}.npy", P)
+            net.train()
+    name = "final" if f < 0 else f"fold{f}"
+    torch.save(net.state_dict(), out / f"prc_{a.tag}_{name}.pt")
+    (out / f"prc_{a.tag}_config.json").write_text(json.dumps({"steps": a.steps, "lr": a.lr, "batch": a.batch, "tile": TILE,
+                                                               "dropout": 0.1, "weights": a.weights}, indent=1), encoding="utf-8")
+    if f >= 0 and not (out / f"pred_{a.tag}_fold{f}.npy").exists():
+        P = predict(net, rgb, where=fold == f)
+        np.save(out / f"pred_{a.tag}_fold{f}.npy", P)
+    print(f"{name} done in {time.perf_counter() - t0:.0f} s", flush=True)
+
+
+def infer(a):
+    """A fine-tuned model on any sheet, without labels: unet_oof.tif-format raster (for --network prc-alone)."""
+    import torch
+
+    from coa_net.scanunet import save_raster, scan_rgb
+
+    rgb, transform, _, crs = scan_rgb(a.tif)
+    net = build(a.prc_repo, a.weights).cuda()
+    net.load_state_dict(torch.load(a.model, map_location="cuda"))
+    t = time.perf_counter()
+    P = predict(net, rgb)
+    dest = Path(a.dest)
+    dest.mkdir(parents=True, exist_ok=True)
+    save_raster(dest / "unet_oof.tif", P, transform, crs)
+    (dest / "inference.json").write_text(json.dumps({"tif": str(a.tif), "model": str(a.model), "note": "inference without labels: "
+                                                     "not out of fold if the model was trained on this sheet"}, indent=1), encoding="utf-8")
+    print(f"inference on {a.tif}: {time.perf_counter() - t:.0f} s, road pixels >= 0.5: {(P[..., 0] >= 128).mean():.1%}")
 
 
 def merge(a):
@@ -201,11 +254,11 @@ def merge(a):
     out = Path(a.out)
     d = load(out)
     meta = json.loads((out / "meta.json").read_text(encoding="utf-8"))
-    if a.name == "finetuned":
+    if (out / f"pred_{a.name}_fold0.npy").exists():
         P = np.zeros(d["road"].shape + (7,), np.uint8)
         fold = np.asarray(d["fold"])
         for f in range(4):
-            Pf = np.load(out / f"pred_finetuned_fold{f}.npy", mmap_mode="r")
+            Pf = np.load(out / f"pred_{a.name}_fold{f}.npy", mmap_mode="r")
             m = fold == f
             P[m] = Pf[m]
     else:
@@ -220,7 +273,7 @@ def merge(a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=("prep", "zeroshot", "finetune", "merge"))
+    ap.add_argument("cmd", choices=("prep", "zeroshot", "finetune", "merge", "infer"))
     ap.add_argument("--data")
     ap.add_argument("--out", required=True)
     ap.add_argument("--grid", type=int, default=4)
@@ -231,8 +284,13 @@ def main():
     ap.add_argument("--batch", type=int, default=16)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--name", default="finetuned")
+    ap.add_argument("--eval-every", type=int, default=0, help="finetune: score the held-out fold every N steps (checkpoints_TAG.jsonl)")
+    ap.add_argument("--tag", default="finetuned", help="name of the fine-tuning run")
+    ap.add_argument("--tif", help="infer: the sheet")
+    ap.add_argument("--model", help="infer: a fine-tuned model (.pt)")
+    ap.add_argument("--dest", help="infer: output folder")
     a = ap.parse_args()
-    {"prep": prep, "zeroshot": zeroshot, "finetune": finetune, "merge": merge}[a.cmd](a)
+    {"prep": prep, "zeroshot": zeroshot, "finetune": finetune, "merge": merge, "infer": infer}[a.cmd](a)
 
 
 if __name__ == "__main__":

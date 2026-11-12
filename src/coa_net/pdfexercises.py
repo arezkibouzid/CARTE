@@ -609,7 +609,7 @@ def decision_markdown(ex: PdfExercise, res: dict, ref: dict | None, net_facts: d
     if ex.notes:
         L += ["", "**Interpretation notes:**", ""] + [f"- {n}" for n in ex.notes]
     L += ["", "## Constraints applied", "",
-          f"- **Road network**: {net_facts['source']}; roads of rank 5 or better (expressways, main, departmental and white roads; tracks and paths excluded); "
+          f"- **Road network**: {net_facts['source']}; roads of rank 5 or better (tracks and paths excluded); "
           f"{res['allowed_sections']:,} sections inside the deployment area, {res['sections_outside_area_excluded']:,} outside excluded.",
           f"- **Learned corrector**: {net_facts['corrector']}",
           f"- **Continuity**: one connected chain of road sections (checked: {'yes' if all(l['continuous'] for l in res['legs']) else 'NO'}); "
@@ -641,8 +641,9 @@ def decision_markdown(ex: PdfExercise, res: dict, ref: dict | None, net_facts: d
         L.append(f"| {l['name']} | **{l['length_km']:.2f} km** | **{l['duration_min']:.1f} min** | {l['mean_speed_kmh']:.0f} km/h | "
                  f"{', '.join(f'{v:.1f} km at {k}' for k, v in l['km_by_speed_limit'].items())} | {l['km_built_up']:.1f} | "
                  f"{l['doubtful_sections']['count']} ({l['doubtful_sections']['km']:.1f} km) | {l['links_added_by_corrector_used']} | "
-                 f"{l.get('share_within_25m_of_bdtopo', float('nan')):.0%} | {l['osm_speed_check']['duration_min']:.1f} min "
-                 f"({l['osm_speed_check']['share_of_route_with_osm_maxspeed']:.0%} of the route tagged) |")
+                 f"{l.get('share_within_25m_of_bdtopo', float('nan')):.0%} | " +
+                 (f"{l['osm_speed_check']['duration_min']:.1f} min ({l['osm_speed_check']['share_of_route_with_osm_maxspeed']:.0%} of the route tagged) |"
+                  if "osm_speed_check" in l else "not checked (no OSM) |"))
     if len(res["legs"]) > 1:
         L.append(f"| **total** | **{res['total']['length_km']:.2f} km** | **{res['total']['duration_min']:.1f} min** | | | | | | | |")
     L += ["", "Map symbols used (km): " + "; ".join(f"{l['name']}: " + ", ".join(f"{k} {v:.1f}" for k, v in l["km_by_map_symbol"].items()) for l in res["legs"])]

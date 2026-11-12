@@ -18,6 +18,7 @@ coa-net scan-learn --data DATA --out outputs/scan_learn          # learned corre
 coa-net scan-unet --data DATA --out outputs/scan_unet            # optional U-Net (PyTorch); then scan-learn --unet outputs/scan_unet
 coa-net exercise --data DATA --pdf exercise.pdf --corrector outputs/scan_learn --out outputs/ex1  # image network (--network bdtopo: as on main)
 coa-net plan --order ORDER --scan "DATA/Scenario1 100K.tif" --corrector outputs/scan_learn --max-rank 5 --out outputs/plan_scan
+coa-net pdf-exercises --data DATA --pdf exercises.pdf --network prc-alone --unet OUT/prc/T --out outputs/ex  # route exercises of a PDF (docs/prc_unet_and_pdf_exercises.md)
 ```
 
 ## Quick start

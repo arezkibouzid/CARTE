@@ -638,9 +638,21 @@ def cmd_pdf_exercises(args) -> None:
                                                         ensure_ascii=False), encoding="utf-8")
     print(f"{args.pdf}: {meta.get('pages')} pages, {len(exs)} exercises read ({time.perf_counter() - t0:.0f} s)", flush=True)
 
-    # image network + corrector; built-up areas from the scan tint (legal 50 km/h)
-    G, _, _ = load_graph_cached(tif, cache, kind="scan")
-    net = {"source": f"road network read from the scan {Path(tif).name} ({G.number_of_edges() // 2:,} sections)"}
+    # road network: the map reader (+ corrector), or the segmentation network's own graph (prc-alone)
+    if args.network == "prc-alone":
+        from . import scanunet
+
+        if not args.unet:
+            sys.exit("--network prc-alone needs --unet DIR (a folder with unet_oof.tif, e.g. from scripts/prc_unet.py merge)")
+        P, tr = scanunet.load_raster(Path(args.unet) / "unet_oof.tif")
+        G = scanunet.network_from_unet(P, tr)
+        net = {"source": (f"road network traced from the fine-tuned PRC U-Net probabilities `{args.unet}` ({G.number_of_edges() // 2:,} "
+                          "sections; road where p >= 0.5, thinned to centre lines; no map reader; the U-Net was trained on BD TOPO "
+                          "labels only, out of fold)"), "corrector": "none (the U-Net network has no map symbols to correct)"}
+        args.corrector = None
+    else:
+        G, _, _ = load_graph_cached(tif, cache, kind="scan")
+        net = {"source": f"road network read from the scan {Path(tif).name} ({G.number_of_edges() // 2:,} sections)"}
     if args.corrector:
         from .scanlearn import correct_graph
 
@@ -672,7 +684,8 @@ def cmd_pdf_exercises(args) -> None:
     net["builtup"] = (f"{len(builtup):,} built-up polygons ({builtup.to_crs(px.L93).area.sum() / 1e6:.0f} km2) read from the scan tint "
                       f"RGB {args.builtup_rgb} (palette indices {', '.join(map(str, classes))})")
     builtup.to_file(out / "builtup_areas.geojson", driver="GeoJSON")
-    N = px.Network(G, "image network + corrector" if args.corrector else "image network", builtup=builtup)
+    N = px.Network(G, "PRC U-Net network" if args.network == "prc-alone" else
+                   "image network + corrector" if args.corrector else "image network", builtup=builtup)
     print(f"image network ready: {len(N.edges):,} directed sections of rank <= 5 ({time.perf_counter() - t0:.0f} s)", flush=True)
 
     ref_net = bd_kd = osm = None
@@ -681,7 +694,9 @@ def cmd_pdf_exercises(args) -> None:
         Lb = edge_lines(Gb, list(Gb.edges))
         ref_net = px.Network(Gb, "BD TOPO", priced=False, builtup=builtup)
         bd_kd = cKDTree(px._sample(Lb, 10.0))
-    if paths.osm and not args.no_check:
+    if args.no_osm and paths.osm:
+        print("OSM ignored (--no-osm)", flush=True)
+    if paths.osm and not args.no_check and not args.no_osm:
         from .realdata import read_lines
 
         o, _ = read_lines(paths.osm, "utf-8", ["maxspeed"])
@@ -717,9 +732,11 @@ def cmd_pdf_exercises(args) -> None:
     L = [f"# Route exercises of `{Path(args.pdf).name}`", "",
          f"PDF: {meta.get('pages')} pages, author {meta.get('Author', '?')}, created {meta.get('CreationDate', '?')}, {meta.get('Producer', '')}.",
          f"Network: {net['source']}. Corrector: {net['corrector']}.",
+         "OSM: " + ("used for the speed-limit check only" if osm is not None else "not used") + ".",
          f"Built-up areas: {net['builtup']}.",
          f"Speed: legal limit of each section (built-up {px.URBAN_KMH:.0f}, expressway {px.EXPRESSWAY_KMH:.0f}, other roads {px.ROAD_KMH:.0f} km/h), "
-         "capped at the convoy speed given in the PDF. BD TOPO and OSM are used only as checks.", "",
+         "capped at the convoy speed given in the PDF. " + ("BD TOPO and OSM are used only as checks." if osm is not None else
+         "BD TOPO is used only as a check."), "",
          "| exercise | objective | route | waypoints | length | duration | inside area | continuous | within 25 m of BD TOPO | BD TOPO check (length / duration) | notes |",
          "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
     for ex, res, ref in rows:
@@ -916,6 +933,11 @@ def main(argv: list[str] | None = None) -> None:
     pe.add_argument("--cache", help="cache folder (default: OUT/cache)")
     pe.add_argument("--only", type=int, nargs="*", help="exercise numbers to solve (default: all)")
     pe.add_argument("--no-check", action="store_true", help="skip the BD TOPO / OSM checks")
+    pe.add_argument("--network", choices=("scan", "prc-alone"), default="scan",
+                    help="scan: road network read from the map (+ --corrector); prc-alone: the network traced from a fine-tuned "
+                         "PRC U-Net (--unet), the closest to BD TOPO and OSM on the exercise file")
+    pe.add_argument("--unet", help="with --network prc-alone: folder with unet_oof.tif (scripts/prc_unet.py merge)")
+    pe.add_argument("--no-osm", action="store_true", help="do not use OSM at all, even if the data folder has it")
     pe.add_argument("--builtup-rgb", default="204,206,184", help="colour of the built-up tint on the scan (IGN 1:100 000: grey-beige)")
     pe.add_argument("--builtup-tol", type=int, default=6, help="max difference per channel for a palette colour to count as the tint")
     pe.set_defaults(fn=cmd_pdf_exercises)
