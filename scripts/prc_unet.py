@@ -48,6 +48,23 @@ def prep(a):
     print(f"prep: {rgb.shape}, road pixels {road.mean():.1%}, {time.perf_counter() - t:.0f} s")
 
 
+def prep_extra(a):
+    """Another labelled sheet for training only (every block): extra_NAME_{rgb,road,imp,struct}.npy in OUT."""
+    from coa_net.scanunet import label_rasters, scan_rgb
+    from coa_net.scenario import ScenarioPaths
+
+    out = Path(a.out)
+    paths = ScenarioPaths.from_dir(a.data)
+    t = time.perf_counter()
+    rgb, transform, _, _ = scan_rgb(paths.scan100)
+    road, imp, struct = label_rasters(paths.bdtopo, rgb.shape[:2], transform)
+    for k, v in dict(rgb=rgb, road=road, imp=imp, struct=struct).items():
+        np.save(out / f"extra_{a.name}_{k}.npy", v)
+    (out / f"extra_{a.name}.json").write_text(json.dumps({"tif": paths.scan100, "bdtopo": paths.bdtopo, "shape": list(road.shape)}),
+                                              encoding="utf-8")
+    print(f"prep-extra {a.name}: {rgb.shape}, road pixels {road.mean():.1%}, {time.perf_counter() - t:.0f} s")
+
+
 def load(out: Path, mmap=True):
     m = "r" if mmap else None
     return {k: np.load(out / f"{k}.npy", mmap_mode=m) for k in ("rgb", "road", "imp", "struct", "fold")}
@@ -187,13 +204,25 @@ def finetune(a):
     H, W = road.shape
     rr, cc = np.nonzero(train_mask[TILE // 2:H - TILE // 2:32, TILE // 2:W - TILE // 2:32])
     corners = np.column_stack([rr * 32, cc * 32])
+    # sources of training tiles: the sheet (training blocks only) and, with --extra, other labelled sheets (every block)
+    sources = [(rgb, road, imp, struct, train_mask, corners)]
+    for name in a.extra or []:
+        e = {k: np.load(out / f"extra_{name}_{k}.npy") for k in ("rgb", "road", "imp", "struct")}
+        eh, ew = e["road"].shape
+        er, ec = np.mgrid[0:eh - TILE:32, 0:ew - TILE:32]
+        sources.append((e["rgb"], e["road"], e["imp"], e["struct"], np.ones((eh, ew), bool), np.column_stack([er.ravel(), ec.ravel()])))
+        print(f"extra sheet {name}: {e['road'].shape}, road pixels {e['road'].mean():.1%}", flush=True)
     t0 = time.perf_counter()
     net.train()
     for step in range(a.steps):
-        pick = corners[rng.integers(0, len(corners), a.batch)]
-        sl = [(slice(r0, r0 + TILE), slice(c0, c0 + TILE)) for r0, c0 in pick]
-        x = torch.from_numpy(np.stack([rgb[s] for s in sl])).cuda().permute(0, 3, 1, 2).float() / 255.0
-        ys = [torch.from_numpy(np.stack([arr[s] for s in sl])).cuda() for arr in (road, imp, struct, train_mask)]
+        tiles = []
+        for _ in range(a.batch):
+            src = sources[0] if len(sources) == 1 or rng.random() >= a.extra_share else sources[1 + int(rng.integers(len(sources) - 1))]
+            r0, c0 = src[5][rng.integers(0, len(src[5]))]
+            sl_ = (slice(r0, r0 + TILE), slice(c0, c0 + TILE))
+            tiles.append([arr[sl_] for arr in src[:5]])
+        x = torch.from_numpy(np.stack([t_[0] for t_ in tiles])).cuda().permute(0, 3, 1, 2).float() / 255.0
+        ys = [torch.from_numpy(np.stack([t_[i] for t_ in tiles])).cuda() for i in (1, 2, 3, 4)]
         k = int(rng.integers(8))
         aug = lambda t: (torch.flip(torch.rot90(t, k % 4, (-2, -1)), (-1,)) if k >= 4 else torch.rot90(t, k % 4, (-2, -1)))
         x, ys = aug(x), [aug(y) for y in ys]
@@ -220,7 +249,8 @@ def finetune(a):
     name = "final" if f < 0 else f"fold{f}"
     torch.save(net.state_dict(), out / f"prc_{a.tag}_{name}.pt")
     (out / f"prc_{a.tag}_config.json").write_text(json.dumps({"steps": a.steps, "lr": a.lr, "batch": a.batch, "tile": TILE,
-                                                               "dropout": 0.1, "weights": a.weights}, indent=1), encoding="utf-8")
+                                                               "dropout": 0.1, "weights": a.weights, "extra": a.extra or [],
+                                                               "extra_share": a.extra_share if a.extra else 0.0}, indent=1), encoding="utf-8")
     if f >= 0 and not (out / f"pred_{a.tag}_fold{f}.npy").exists():
         P = predict(net, rgb, where=fold == f)
         np.save(out / f"pred_{a.tag}_fold{f}.npy", P)
@@ -274,7 +304,7 @@ def merge(a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=("prep", "zeroshot", "finetune", "merge", "infer"))
+    ap.add_argument("cmd", choices=("prep", "prep-extra", "zeroshot", "finetune", "merge", "infer"))
     ap.add_argument("--data")
     ap.add_argument("--out", required=True)
     ap.add_argument("--grid", type=int, default=4)
@@ -285,13 +315,15 @@ def main():
     ap.add_argument("--batch", type=int, default=16)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--name", default="finetuned")
+    ap.add_argument("--extra", nargs="*", help="finetune: other labelled sheets (prep-extra names) for training only")
+    ap.add_argument("--extra-share", type=float, default=0.5, help="finetune: share of training tiles drawn from the extra sheets")
     ap.add_argument("--eval-every", type=int, default=0, help="finetune: score the held-out fold every N steps (checkpoints_TAG.jsonl)")
     ap.add_argument("--tag", default="finetuned", help="name of the fine-tuning run")
     ap.add_argument("--tif", help="infer: the sheet")
     ap.add_argument("--model", help="infer: a fine-tuned model (.pt)")
     ap.add_argument("--dest", help="infer: output folder")
     a = ap.parse_args()
-    {"prep": prep, "zeroshot": zeroshot, "finetune": finetune, "merge": merge, "infer": infer}[a.cmd](a)
+    {"prep": prep, "prep-extra": prep_extra, "zeroshot": zeroshot, "finetune": finetune, "merge": merge, "infer": infer}[a.cmd](a)
 
 
 if __name__ == "__main__":
