@@ -51,9 +51,16 @@ def select(a):
 
 
 def table_lines(md: Path, skip_header_rows: int = 0) -> list[str]:
+    import re
+
     if not md.exists():
         return [f"*(missing: `{md}`)*"]
-    return [l for l in md.read_text(encoding="utf-8").splitlines() if l.startswith("|")]
+    out = []
+    for l in md.read_text(encoding="utf-8").splitlines():
+        if l.startswith("|"):
+            l = re.sub(r"\[(\d+)\]\(exercise_\d+/decision\.md\)", r"\1", l)  # links relative to the outputs folder
+            out.append(l.replace(" alone alone", " alone"))
+    return out
 
 
 def report(a):
@@ -84,12 +91,21 @@ def report(a):
     L += ["", f"## 5. The 10 exercises on the best run's network (out of fold, checked against BD TOPO and OSM)", "",
           f"Outputs: `{root / 'pdf_exercises_prc_best'}`.", ""]
     L += table_lines(root / "pdf_exercises_prc_best" / "summary.md")
+    alt = root / "pdf_exercises_prc_s24k" / "summary.md"
+    if alt.exists():
+        L += ["", "## 5b. Alternative: the same exercises on the s24k run's network", "",
+              f"Outputs: `{alt.parent}`. s24k is the worst run by pixel IoU and on the 251 route pairs, but the closest to BD TOPO on the "
+              "10 exercises (section 4); see section 7.", ""]
+        L += table_lines(alt)
     L += ["", "## 6. The 10 exercises from the scan and the PDF alone (no BD TOPO, no OSM)", "",
           f"The final model (`prc/prc_{b['best']['tag']}_final.pt`, every block) applied to the sheet by `prc_unet.py infer`, then "
           f"`pdf-exercises --network prc-alone` on a folder holding only the scan. Outputs: `{root / 'pdf_exercises_tif_only'}`. "
           "No check is possible without references; and since the final model saw this sheet's labels, these routes are not a measure "
           "of accuracy (sections 1-5 are).", ""]
     L += table_lines(root / "pdf_exercises_tif_only" / "summary.md")
+    concl = Path(a.doc).with_suffix(".conclusion.md")
+    if concl.exists():
+        L += ["", concl.read_text(encoding="utf-8").strip()]
     doc = Path(a.doc)
     doc.write_text("\n".join(L) + "\n", encoding="utf-8")
     main = doc.parent / "prc_unet_and_pdf_exercises.md"

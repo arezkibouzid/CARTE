@@ -61,11 +61,11 @@ The learning rate follows a one-cycle schedule, so a mid-run checkpoint is not t
 | full without W | 0 | 0 | +22.5% | +11.6% | +25.4% | +14.3% | 0.393 / 0.405 | 87.0% | 92% |
 | full without G | 0 | 0 | +22.5% | +11.6% | +25.4% | +14.3% | 0.393 / 0.405 | 86.3% | 92% |
 | full + CNN decisions (bridge to culvert, flyovers) | 0 | 0 | +23.7% | +11.6% | +26.6% | +16.3% | 0.411 / 0.430 | 87.1% | 92% |
-| PRC finetuned alone alone: its own network, no reader, no corrector | 0 | 0 | +9.2% | +7.3% | +6.4% | +5.5% | 0.153 / 0.142 | 88.1% | 90% |
-| PRC s12k alone alone: its own network, no reader, no corrector | - | - | not routable | | | | | 88.1% | 87% |
-| PRC s24k alone alone: its own network, no reader, no corrector | - | - | not routable | | | | | 87.2% | 86% |
-| PRC s24k_lr1e-4 alone alone: its own network, no reader, no corrector | - | - | not routable | | | | | 88.1% | 87% |
-| PRC s12k_b32 alone alone: its own network, no reader, no corrector | - | - | not routable | | | | | 87.2% | 86% |
+| PRC finetuned alone: its own network, no reader, no corrector | 0 | 0 | +9.2% | +7.3% | +6.4% | +5.5% | 0.153 / 0.142 | 88.1% | 90% |
+| PRC s12k alone: its own network, no reader, no corrector | - | - | not routable | | | | | 88.1% | 87% |
+| PRC s24k alone: its own network, no reader, no corrector | - | - | not routable | | | | | 87.2% | 86% |
+| PRC s24k_lr1e-4 alone: its own network, no reader, no corrector | - | - | not routable | | | | | 88.1% | 87% |
+| PRC s12k_b32 alone: its own network, no reader, no corrector | - | - | not routable | | | | | 87.2% | 86% |
 
 ## 4. The 10 PDF exercises: each run's network against BD TOPO and OSM
 
@@ -94,16 +94,33 @@ Outputs: `outputs/hackathon100k/pdf_exercises_prc_best`.
 
 | exercise | objective | route | waypoints | length | duration | inside area | continuous | within 25 m of BD TOPO | BD TOPO check (length / duration) | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [1](exercise_01/decision.md) | shortest | PD1 -> PA1 | - | 39.0 km | 31 min | yes | yes | 88% | 37.0 km / 30 min |  |
-| [2](exercise_02/decision.md) | fastest | PD1 -> PA1 | - | 39.0 km | 31 min | yes | yes | 88% | 37.0 km / 30 min |  |
-| [3](exercise_03/decision.md) | shortest | PD2 -> PA2 | - | 102.5 km | 82 min | yes | yes | 91% | 92.4 km / 73 min |  |
-| [4](exercise_04/decision.md) | fastest | PD2 -> PA2 | - | 103.2 km | 81 min | yes | yes | 92% | 93.3 km / 73 min |  |
-| [5](exercise_05/decision.md) | shortest | PD3 -> PA3 (outbound); PA3 -> PD3 (return) | - | 194.5 km | 157 min | yes | yes | 93% | 182.2 km / 147 min |  |
-| [6](exercise_06/decision.md) | fastest | PD3 -> PA3 (outbound); PA3 -> PD3 (return) | - | 194.8 km | 157 min | yes | yes | 92% | 185.4 km / 148 min |  |
-| [7](exercise_07/decision.md) | shortest | PD4 -> WP1 -> WP3 -> WP2 -> WP4 -> PA4 | free order | 196.8 km | 159 min | yes | yes | 95% | 185.0 km / 149 min |  |
-| [8](exercise_08/decision.md) | fastest | PD4 -> WP1 -> WP3 -> WP2 -> WP4 -> PA4 | free order | 198.7 km | 158 min | yes | yes | 96% | 185.9 km / 149 min | objective: the requirement bullets say 'as short as possible' but the description slide asks for the fastest route; the description is followed (fastest) |
-| [9](exercise_09/decision.md) | shortest | PD4 -> WP1 -> WP2 -> WP3 -> WP4 -> PA4 | fixed order | 256.7 km | 207 min | yes | yes | 94% | 238.2 km / 191 min |  |
-| [10](exercise_10/decision.md) | fastest | PD4 -> WP1 -> WP2 -> WP3 -> WP4 -> PA4 | fixed order | 258.8 km | 206 min | yes | yes | 95% | 239.5 km / 191 min | objective: the requirement bullets say 'as short as possible' but the description slide asks for the fastest route; the description is followed (fastest) |
+| 1 | shortest | PD1 -> PA1 | - | 39.0 km | 31 min | yes | yes | 88% | 37.0 km / 30 min |  |
+| 2 | fastest | PD1 -> PA1 | - | 39.0 km | 31 min | yes | yes | 88% | 37.0 km / 30 min |  |
+| 3 | shortest | PD2 -> PA2 | - | 102.5 km | 82 min | yes | yes | 91% | 92.4 km / 73 min |  |
+| 4 | fastest | PD2 -> PA2 | - | 103.2 km | 81 min | yes | yes | 92% | 93.3 km / 73 min |  |
+| 5 | shortest | PD3 -> PA3 (outbound); PA3 -> PD3 (return) | - | 194.5 km | 157 min | yes | yes | 93% | 182.2 km / 147 min |  |
+| 6 | fastest | PD3 -> PA3 (outbound); PA3 -> PD3 (return) | - | 194.8 km | 157 min | yes | yes | 92% | 185.4 km / 148 min |  |
+| 7 | shortest | PD4 -> WP1 -> WP3 -> WP2 -> WP4 -> PA4 | free order | 196.8 km | 159 min | yes | yes | 95% | 185.0 km / 149 min |  |
+| 8 | fastest | PD4 -> WP1 -> WP3 -> WP2 -> WP4 -> PA4 | free order | 198.7 km | 158 min | yes | yes | 96% | 185.9 km / 149 min | objective: the requirement bullets say 'as short as possible' but the description slide asks for the fastest route; the description is followed (fastest) |
+| 9 | shortest | PD4 -> WP1 -> WP2 -> WP3 -> WP4 -> PA4 | fixed order | 256.7 km | 207 min | yes | yes | 94% | 238.2 km / 191 min |  |
+| 10 | fastest | PD4 -> WP1 -> WP2 -> WP3 -> WP4 -> PA4 | fixed order | 258.8 km | 206 min | yes | yes | 95% | 239.5 km / 191 min | objective: the requirement bullets say 'as short as possible' but the description slide asks for the fastest route; the description is followed (fastest) |
+
+## 5b. Alternative: the same exercises on the s24k run's network
+
+Outputs: `outputs/hackathon100k/pdf_exercises_prc_s24k`. s24k is the worst run by pixel IoU and on the 251 route pairs, but the closest to BD TOPO on the 10 exercises (section 4); see section 7.
+
+| exercise | objective | route | waypoints | length | duration | inside area | continuous | within 25 m of BD TOPO | BD TOPO check (length / duration) | notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | shortest | PD1 -> PA1 | - | 39.2 km | 31 min | yes | yes | 89% | 37.0 km / 30 min |  |
+| 2 | fastest | PD1 -> PA1 | - | 39.2 km | 31 min | yes | yes | 89% | 37.0 km / 30 min |  |
+| 3 | shortest | PD2 -> PA2 | - | 103.0 km | 82 min | yes | yes | 91% | 92.4 km / 73 min |  |
+| 4 | fastest | PD2 -> PA2 | - | 103.8 km | 81 min | yes | yes | 90% | 93.3 km / 73 min |  |
+| 5 | shortest | PD3 -> PA3 (outbound); PA3 -> PD3 (return) | - | 195.8 km | 158 min | yes | yes | 92% | 182.2 km / 147 min |  |
+| 6 | fastest | PD3 -> PA3 (outbound); PA3 -> PD3 (return) | - | 196.7 km | 158 min | yes | yes | 90% | 185.4 km / 148 min |  |
+| 7 | shortest | PD4 -> WP1 -> WP3 -> WP2 -> WP4 -> PA4 | free order | 190.5 km | 153 min | yes | yes | 94% | 185.0 km / 149 min |  |
+| 8 | fastest | PD4 -> WP1 -> WP3 -> WP2 -> WP4 -> PA4 | free order | 190.6 km | 153 min | yes | yes | 94% | 185.9 km / 149 min | objective: the requirement bullets say 'as short as possible' but the description slide asks for the fastest route; the description is followed (fastest) |
+| 9 | shortest | PD4 -> WP1 -> WP2 -> WP3 -> WP4 -> PA4 | fixed order | 251.3 km | 202 min | yes | yes | 92% | 238.2 km / 191 min |  |
+| 10 | fastest | PD4 -> WP1 -> WP2 -> WP3 -> WP4 -> PA4 | fixed order | 252.0 km | 201 min | yes | yes | 92% | 239.5 km / 191 min | objective: the requirement bullets say 'as short as possible' but the description slide asks for the fastest route; the description is followed (fastest) |
 
 ## 6. The 10 exercises from the scan and the PDF alone (no BD TOPO, no OSM)
 
@@ -111,13 +128,23 @@ The final model (`prc/prc_finetuned_final.pt`, every block) applied to the sheet
 
 | exercise | objective | route | waypoints | length | duration | inside area | continuous | within 25 m of BD TOPO | BD TOPO check (length / duration) | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [1](exercise_01/decision.md) | shortest | PD1 -> PA1 | - | 40.2 km | 33 min | yes | yes | - | - |  |
-| [2](exercise_02/decision.md) | fastest | PD1 -> PA1 | - | 40.2 km | 33 min | yes | yes | - | - |  |
-| [3](exercise_03/decision.md) | shortest | PD2 -> PA2 | - | 107.1 km | 86 min | yes | yes | - | - |  |
-| [4](exercise_04/decision.md) | fastest | PD2 -> PA2 | - | 108.0 km | 86 min | yes | yes | - | - |  |
-| [5](exercise_05/decision.md) | shortest | PD3 -> PA3 (outbound); PA3 -> PD3 (return) | - | 193.8 km | 156 min | yes | yes | - | - |  |
-| [6](exercise_06/decision.md) | fastest | PD3 -> PA3 (outbound); PA3 -> PD3 (return) | - | 193.8 km | 156 min | yes | yes | - | - |  |
-| [7](exercise_07/decision.md) | shortest | PD4 -> WP1 -> WP3 -> WP2 -> WP4 -> PA4 | free order | 196.0 km | 157 min | yes | yes | - | - |  |
-| [8](exercise_08/decision.md) | fastest | PD4 -> WP1 -> WP3 -> WP2 -> WP4 -> PA4 | free order | 196.6 km | 157 min | yes | yes | - | - | objective: the requirement bullets say 'as short as possible' but the description slide asks for the fastest route; the description is followed (fastest) |
-| [9](exercise_09/decision.md) | shortest | PD4 -> WP1 -> WP2 -> WP3 -> WP4 -> PA4 | fixed order | 258.4 km | 207 min | yes | yes | - | - |  |
-| [10](exercise_10/decision.md) | fastest | PD4 -> WP1 -> WP2 -> WP3 -> WP4 -> PA4 | fixed order | 259.2 km | 206 min | yes | yes | - | - | objective: the requirement bullets say 'as short as possible' but the description slide asks for the fastest route; the description is followed (fastest) |
+| 1 | shortest | PD1 -> PA1 | - | 40.2 km | 33 min | yes | yes | - | - |  |
+| 2 | fastest | PD1 -> PA1 | - | 40.2 km | 33 min | yes | yes | - | - |  |
+| 3 | shortest | PD2 -> PA2 | - | 107.1 km | 86 min | yes | yes | - | - |  |
+| 4 | fastest | PD2 -> PA2 | - | 108.0 km | 86 min | yes | yes | - | - |  |
+| 5 | shortest | PD3 -> PA3 (outbound); PA3 -> PD3 (return) | - | 193.8 km | 156 min | yes | yes | - | - |  |
+| 6 | fastest | PD3 -> PA3 (outbound); PA3 -> PD3 (return) | - | 193.8 km | 156 min | yes | yes | - | - |  |
+| 7 | shortest | PD4 -> WP1 -> WP3 -> WP2 -> WP4 -> PA4 | free order | 196.0 km | 157 min | yes | yes | - | - |  |
+| 8 | fastest | PD4 -> WP1 -> WP3 -> WP2 -> WP4 -> PA4 | free order | 196.6 km | 157 min | yes | yes | - | - | objective: the requirement bullets say 'as short as possible' but the description slide asks for the fastest route; the description is followed (fastest) |
+| 9 | shortest | PD4 -> WP1 -> WP2 -> WP3 -> WP4 -> PA4 | fixed order | 258.4 km | 207 min | yes | yes | - | - |  |
+| 10 | fastest | PD4 -> WP1 -> WP2 -> WP3 -> WP4 -> PA4 | fixed order | 259.2 km | 206 min | yes | yes | - | - | objective: the requirement bullets say 'as short as possible' but the description slide asks for the fastest route; the description is followed (fastest) |
+
+## 7. Conclusions
+
+- **Longer training does not help on this sheet.** The 6,000-step run stays the best by out-of-fold road IoU (0.418 against 0.391-0.415), road AUC (0.960) and importance accuracy (80.3%). The held-out curves (section 2) peak at 6,000-9,000 steps for every run.
+- **A learning rate of 3e-4 overfits beyond that**: s24k falls from 0.418 (6k) to about 0.40 (24k), and batch 32 behaves the same at half the steps. At 1e-4 (s24k_lr1e-4) the score holds steady but never passes the 6k run.
+- **Only the structure output (bridges, overpasses) gains from long training** (AUC 0.655 -> 0.735 for s24k); it does not steer routes.
+- **Routes agree with the pixels on the 251 independent pairs** (section 3): the 6k network has the best route score (0.153 / 0.142 against 0.156-0.180) and is the only one that reaches 90% of the pairs; the longer runs' networks are more fragmented (86-87%).
+- **On the 10 exercises, s24k is about one point closer to BD TOPO** (length gap 6.5% against 7.4%, overlap 74% against 70%). The 10 exercises are 4 distinct trips, so this is within their noise, and choosing the model on the exercises we report would bias them; the 6k model is kept, and the s24k routes are given as an alternative (section 5b).
+- **Without BD TOPO or OSM** the final model (6k configuration, every block) gives routes within 1-5% of the out-of-fold ones (section 6), as expected since it saw this sheet's labels. Their accuracy on a new sheet is not measured: that needs a second labelled IGN sheet.
+- **Fix made during the run**: the final model's seed was the fold number (-1), which NumPy refuses; it is now 99 for the final model, and the final training and the inference were rerun.

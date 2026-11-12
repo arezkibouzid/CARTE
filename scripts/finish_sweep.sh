@@ -32,7 +32,7 @@ step "inference of the final model on the sheet (1 GPU, no labels)"
 run sbatch --wait -J prc_infer -o $P/logs/infer_$BEST.log scripts/prc_slurm.sh infer $P --tif examples/Hackathon_100K.tif \
     --model $P/prc_${BEST}_final.pt --dest $O/prc_final_infer
 
-ALONE=(); for t in $TAGS; do [ -f $P/$t/unet_oof.tif ] && ALONE+=(--alone "PRC $t alone=$P/$t"); done
+ALONE=(); for t in $TAGS; do [ -f $P/$t/unet_oof.tif ] && ALONE+=(--alone "PRC $t=$P/$t"); done
 step "route ablation of every run"
 run $PY -u scripts/scan_ablation.py --data examples --cache $O/cache --learn $O/learn_full "${ALONE[@]}" --out $O/ablation_sweep
 step "exercise ablation of every run (BD TOPO and OSM)"
