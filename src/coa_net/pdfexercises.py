@@ -435,29 +435,47 @@ def solve(ex: PdfExercise, N: Network, bd_lines=None, osm=None) -> dict:
     nd = lambda k: snapped[k]["node"]
     if ex.round_trip_distinct:
         best = None
-        for first in ("out", "back"):
-            a, b = (ex.start, ex.end) if first == "out" else (ex.end, ex.start)
-            r1 = S.route([nd(a), nd(b)])
-            if r1 is None:
-                continue
-            forbid = S.overlap_mask(r1[0])
-            r2 = S.route([nd(b), nd(a)], forbid=forbid)
-            if r2 is None:
-                log.append(f"{first} leg first: no return without a common section")
-                continue
-            tot = r1[1] + r2[1]
-            log.append(f"{'outbound' if first == 'out' else 'return'} leg first, then the other leg with its sections forbidden: "
-                       f"total cost {tot:.1f} {'m' if ex.objective == 'length' else 'min'} (priced)")
-            if best is None or tot < best[0]:
-                legs = [(f"{ex.start} -> {ex.end} (outbound)", r1[0]), (f"{ex.end} -> {ex.start} (return)", r2[0])] if first == "out" \
-                    else [(f"{ex.start} -> {ex.end} (outbound)", r2[0]), (f"{ex.end} -> {ex.start} (return)", r1[0])]
-                best = (tot, legs, first)
+        # strictly different first; if a point is reached by a single road, the two legs may share sections only within
+        # `relax` m of the departure and arrival points (reported)
+        ends = N.xy[[nd(ex.start), nd(ex.end)]]
+        near_end = lambda r: (np.minimum(np.hypot(*(N.xy[N.u] - ends[0]).T), np.hypot(*(N.xy[N.u] - ends[1]).T)) <= r) & \
+                             (np.minimum(np.hypot(*(N.xy[N.v] - ends[0]).T), np.hypot(*(N.xy[N.v] - ends[1]).T)) <= r)
+        relax_used = 0
+        for relax in (0, 500, 1000, 2000, 5000):
+            for first in ("out", "back"):
+                a, b = (ex.start, ex.end) if first == "out" else (ex.end, ex.start)
+                r1 = S.route([nd(a), nd(b)])
+                if r1 is None:
+                    continue
+                forbid = S.overlap_mask(r1[0])
+                if relax:
+                    forbid &= ~near_end(relax)
+                r2 = S.route([nd(b), nd(a)], forbid=forbid)
+                if r2 is None:
+                    log.append(f"{first} leg first: no return without a common section"
+                               + (f" outside {relax} m of the departure and arrival points" if relax else ""))
+                    continue
+                tot = r1[1] + r2[1]
+                log.append(f"{'outbound' if first == 'out' else 'return'} leg first, then the other leg with its sections forbidden: "
+                           f"total cost {tot:.1f} {'m' if ex.objective == 'length' else 'min'} (priced)")
+                if best is None or tot < best[0]:
+                    legs = [(f"{ex.start} -> {ex.end} (outbound)", r1[0]), (f"{ex.end} -> {ex.start} (return)", r2[0])] if first == "out" \
+                        else [(f"{ex.start} -> {ex.end} (outbound)", r2[0]), (f"{ex.end} -> {ex.start} (return)", r1[0])]
+                    best = (tot, legs, first)
+            if best is not None:
+                relax_used = relax
+                break
         if best is None:
-            raise RuntimeError("no pair of strictly different routes")
+            raise RuntimeError("no pair of different routes, even sharing up to 5 km around the departure and arrival points")
+        res["shared_allowed_near_points_m"] = relax_used
+        if relax_used:
+            log.append(f"WARNING: no strictly different pair on this network: the legs may share sections within {relax_used} m of "
+                       f"{ex.start} and {ex.end} (a point reached by a single road)")
         log.append(f"kept: {'outbound' if best[2] == 'out' else 'return'} leg solved first (cheaper total)")
         legs = best[1]
         shared = S.overlap_mask(legs[0][1])[legs[1][1]]
         res["common_sections_between_legs"] = int(shared.sum())
+        res["common_km_between_legs"] = round(float(N.length_m[np.array(legs[1][1])][shared].sum()) / 1000, 2)
         ref_out, ref_back = S0.route([nd(ex.start), nd(ex.end)]), S0.route([nd(ex.end), nd(ex.start)])
         res["unconstrained_reference"] = {"outbound_" + ("km" if ex.objective == "length" else "min"): round(ref_out[1] / (1000 if ex.objective == "length" else 1), 2),
                                           "return_" + ("km" if ex.objective == "length" else "min"): round(ref_back[1] / (1000 if ex.objective == "length" else 1), 2)}
@@ -625,7 +643,9 @@ def decision_markdown(ex: PdfExercise, res: dict, ref: dict | None, net_facts: d
     if ex.round_trip_distinct:
         L.append("- **Strictly different routes**: the second leg may not use any section of the first leg (either direction) nor any "
                  "section running within 20 m of it on more than half of its length; both leg orders are solved and the cheaper pair is kept "
-                 f"(common sections between the two legs: {res['common_sections_between_legs']}).")
+                 f"(common sections between the two legs: {res['common_sections_between_legs']}, {res.get('common_km_between_legs', 0):.1f} km"
+                 + (f"; RELAXED: sharing allowed within {res['shared_allowed_near_points_m']} m of the departure and arrival points, "
+                    "because one of them is reached by a single road on this network" if res.get("shared_allowed_near_points_m") else "") + ").")
     if ex.waypoint_order == "free":
         L.append(f"- **Waypoints in any order**: all {res['orders_tried']} orders are compared on a matrix of point-to-point costs.")
     if ex.waypoint_order == "fixed":

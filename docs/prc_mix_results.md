@@ -136,9 +136,18 @@ Maps and GeoJSON: `../outputs/hackathon100k/mismatch_prc_mix_best` (method: `prc
 | 2 | fastest | PD1 -> PA1 | - | 40.7 km | 32 min | yes | yes | - | - |  |
 | 3 | shortest | PD2 -> PA2 | - | 104.1 km | 83 min | yes | yes | - | - |  |
 | 4 | fastest | PD2 -> PA2 | - | 104.3 km | 82 min | yes | yes | - | - |  |
-| 5 | | no solution | | | | | | | | |
-| 6 | | no solution | | | | | | | | |
+| 5 | shortest | PD3 -> PA3 (outbound); PA3 -> PD3 (return) | - | 197.3 km | 159 min | yes | yes | - | - |  |
+| 6 | fastest | PD3 -> PA3 (outbound); PA3 -> PD3 (return) | - | 197.4 km | 159 min | yes | yes | - | - |  |
 | 7 | shortest | PD4 -> WP1 -> WP3 -> WP2 -> WP4 -> PA4 | free order | 187.1 km | 150 min | yes | yes | - | - |  |
 | 8 | fastest | PD4 -> WP1 -> WP3 -> WP2 -> WP4 -> PA4 | free order | 187.4 km | 150 min | yes | yes | - | - | objective: the requirement bullets say 'as short as possible' but the description slide asks for the fastest route; the description is followed (fastest) |
 | 9 | shortest | PD4 -> WP1 -> WP2 -> WP3 -> WP4 -> PA4 | fixed order | 246.9 km | 199 min | yes | yes | - | - |  |
 | 10 | fastest | PD4 -> WP1 -> WP2 -> WP3 -> WP4 -> PA4 | fixed order | 247.8 km | 197 min | yes | yes | - | - | objective: the requirement bullets say 'as short as possible' but the description slide asks for the fastest route; the description is followed (fastest) |
+
+## 8. Conclusions
+
+- **Scenario 1 helps, and mostly where it counts: on routes.** Out of fold on the Hackathon sheet, mix12k against the Hackathon-only 6k run: road AUC 0.960 -> 0.966, road IoU 0.418 -> 0.420, importance 80.3% -> 81.7% (4 vs 5: 77.1% -> 79.1%), structure AUC 0.655 -> 0.740.
+- **Routes**: route score on the 101 town pairs 0.153 -> 0.119 (-22%); time gap to BD TOPO +9.2% -> +7.1% (town pairs) and +6.4% -> +5.5% (random pairs).
+- **The 10 exercises**: length gap to BD TOPO 7.4% -> 5.1%, to OSM 8.5% -> 6.2%; route overlap 70% -> 74% (BD TOPO) and 70% -> 73% (OSM). The long waypoint exercises gain most (7-8: +6-7% -> +2%; 9-10: +8% -> +4-5%).
+- **With a second sheet, longer training no longer overfits**: 12,000 steps beat 6,000 (without Scenario 1 they did not). mix6k and mix12k are within noise on the exercises; mix12k is kept for its pixel and route-pair scores (larger samples).
+- **The traced network is still the limit**: gap points on the reference roads not followed fall only from 130 to 125 km, and broken corridors from 333 to 302 km. Scenario 1 closed some of the gaps that decided the routes; most breaks (minor roads, interchanges, junctions) remain. Next step: repair the traced network (bridge short gaps, hysteresis threshold).
+- **Without BD TOPO or OSM** (final model: every Hackathon block + Scenario 1), all 10 exercises are solved. In exercises 5-6 the final model's network reaches one point by a single road, so the two legs share 0.1 km within 500 m of PD3 / PA3 (`pdf-exercises` now relaxes the "strictly different" rule only near the points, and says so in the decision log). These routes are not an accuracy measure: the final model saw this sheet's labels.
