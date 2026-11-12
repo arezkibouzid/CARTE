@@ -612,6 +612,133 @@ def cmd_scan_unet(args) -> None:
     print(f"U-Net in {args.out} ({time.perf_counter() - t0:.0f} s): use scan-learn --unet {args.out}")
 
 
+def cmd_pdf_exercises(args) -> None:
+    """Solve every route exercise of a PDF exercise file on the image network (+ corrector); BD TOPO / OSM check only."""
+    import geopandas as gpd
+    import numpy as np
+    import shapely
+    from scipy.spatial import cKDTree
+
+    from . import pdfexercises as px
+    from .exercise import edge_lines
+    from .scenario import ScenarioPaths, annotate_areas, file_key, load_graph_cached
+
+    paths = ScenarioPaths.from_dir(args.data)
+    tif = paths.scan100
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    cache = Path(args.cache) if args.cache else out / "cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    t0 = time.perf_counter()
+    meta, exs = px.read_pdf(args.pdf, figures_dir=out)
+    if args.only:
+        exs = [e for e in exs if e.number in set(args.only)]
+    (out / "pdf_metadata.json").write_text(json.dumps(meta, indent=1, ensure_ascii=False), encoding="utf-8")
+    (out / "exercises_read.json").write_text(json.dumps([{k: v for k, v in e.__dict__.items()} for e in exs], indent=1,
+                                                        ensure_ascii=False), encoding="utf-8")
+    print(f"{args.pdf}: {meta.get('pages')} pages, {len(exs)} exercises read ({time.perf_counter() - t0:.0f} s)", flush=True)
+
+    # image network + corrector; built-up areas from the scan tint (legal 50 km/h)
+    G, _, _ = load_graph_cached(tif, cache, kind="scan")
+    net = {"source": f"road network read from the scan {Path(tif).name} ({G.number_of_edges() // 2:,} sections)"}
+    if args.corrector:
+        from .scanlearn import correct_graph
+
+        ch = correct_graph(G, tif, args.corrector)
+        meta_c = json.loads((Path(args.corrector) / "corrector.json").read_text(encoding="utf-8"))
+        net["corrector"] = (f"`{args.corrector}` ({ch.get('mode', '')}); corrections switched on: {', '.join(meta_c.get('enabled', [])) or 'none'}; "
+                            f"{ch.get('links added', 0)} missing links added, {ch.get('white roads to rank 4', 0)} white roads moved to rank 4, "
+                            f"{ch.get('roads priced as doubtful (p < 0.7)', 0)} roads priced as doubtful, {ch.get('label gaps priced', 0)} label gaps priced"
+                            + (f", lines moved by the learned displacement" if "move_lines" in meta_c.get("enabled", []) else ""))
+    else:
+        net["corrector"] = "none"
+    # built-up tint: palette indices chosen by colour (each IGN sheet has its own palette order)
+    import rasterio
+
+    rgb = np.array([int(v) for v in args.builtup_rgb.split(",")])
+    with rasterio.open(tif) as src:
+        cm = src.colormap(1)
+    classes = tuple(sorted(k for k, v in cm.items() if np.abs(np.array(v[:3]) - rgb).max() <= args.builtup_tol))
+    if not classes:
+        sys.exit(f"no palette colour within {args.builtup_tol} of {args.builtup_rgb}: give --builtup-rgb")
+    bu_path = cache / f"builtup_{file_key(tif)}_{'-'.join(map(str, classes))}.geojson"
+    if bu_path.exists():
+        builtup = gpd.read_file(bu_path)
+    else:
+        from .scanmap import builtup_polygons
+
+        builtup = builtup_polygons(tif, classes=classes)
+        builtup.to_file(bu_path, driver="GeoJSON")
+    net["builtup"] = (f"{len(builtup):,} built-up polygons ({builtup.to_crs(px.L93).area.sum() / 1e6:.0f} km2) read from the scan tint "
+                      f"RGB {args.builtup_rgb} (palette indices {', '.join(map(str, classes))})")
+    builtup.to_file(out / "builtup_areas.geojson", driver="GeoJSON")
+    N = px.Network(G, "image network + corrector" if args.corrector else "image network", builtup=builtup)
+    print(f"image network ready: {len(N.edges):,} directed sections of rank <= 5 ({time.perf_counter() - t0:.0f} s)", flush=True)
+
+    ref_net = bd_kd = osm = None
+    if paths.bdtopo and not args.no_check:
+        Gb, _, _ = load_graph_cached(paths.bdtopo, cache)
+        Lb = edge_lines(Gb, list(Gb.edges))
+        ref_net = px.Network(Gb, "BD TOPO", priced=False, builtup=builtup)
+        bd_kd = cKDTree(px._sample(Lb, 10.0))
+    if paths.osm and not args.no_check:
+        from .realdata import read_lines
+
+        o, _ = read_lines(paths.osm, "utf-8", ["maxspeed"])
+        o = o.to_crs(px.L93)
+        osm = (shapely.STRtree(o.geometry.values), o["maxspeed"].fillna(0).astype(float).values)
+    print(f"checks ready ({time.perf_counter() - t0:.0f} s)", flush=True)
+
+    rows = []
+    for ex in exs:
+        t = time.perf_counter()
+        d = out / f"exercise_{ex.number:02d}"
+        d.mkdir(parents=True, exist_ok=True)
+        try:
+            res = px.solve(ex, N, bd_kd, osm)
+        except RuntimeError as e:
+            (d / "decision.md").write_text(f"# Exercise {ex.number}\n\nNo solution: {e}\n", encoding="utf-8")
+            print(f"exercise {ex.number}: no solution ({e})", flush=True)
+            rows.append((ex, None, None))
+            continue
+        ref = px.solve(ex, ref_net) if ref_net is not None else None
+        px.write_geojson(d / "route.geojson", ex, res)
+        if ref:
+            px.write_geojson(d / "route_bdtopo_check.geojson", ex, ref)
+        px.render_layout(d / "layout.png", tif, ex, res, ref)
+        (d / "decision.md").write_text(px.decision_markdown(ex, res, ref, net), encoding="utf-8")
+        (d / "metrics.json").write_text(json.dumps({"exercise": ex.number, "result": px.jsonable(res),
+                                                    "bdtopo_check": px.jsonable(ref) if ref else None}, indent=1), encoding="utf-8")
+        rows.append((ex, res, ref))
+        print(f"exercise {ex.number}: {res['total']['length_km']:.1f} km, {res['total']['duration_min']:.0f} min"
+              + (f" (BD TOPO {ref['total']['length_km']:.1f} km, {ref['total']['duration_min']:.0f} min)" if ref else "")
+              + f", {time.perf_counter() - t:.0f} s", flush=True)
+
+    L = [f"# Route exercises of `{Path(args.pdf).name}`", "",
+         f"PDF: {meta.get('pages')} pages, author {meta.get('Author', '?')}, created {meta.get('CreationDate', '?')}, {meta.get('Producer', '')}.",
+         f"Network: {net['source']}. Corrector: {net['corrector']}.",
+         f"Built-up areas: {net['builtup']}.",
+         f"Speed: legal limit of each section (built-up {px.URBAN_KMH:.0f}, expressway {px.EXPRESSWAY_KMH:.0f}, other roads {px.ROAD_KMH:.0f} km/h), "
+         "capped at the convoy speed given in the PDF. BD TOPO and OSM are used only as checks.", "",
+         "| exercise | objective | route | waypoints | length | duration | inside area | continuous | within 25 m of BD TOPO | BD TOPO check (length / duration) | notes |",
+         "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
+    for ex, res, ref in rows:
+        if res is None:
+            L.append(f"| {ex.number} | | no solution | | | | | | | | |")
+            continue
+        wp = {"fixed": "fixed order", "free": "free order", "none": "-"}[ex.waypoint_order]
+        route = "; ".join(l["name"] for l in res["legs"])
+        b25 = np.mean([l.get("share_within_25m_of_bdtopo", np.nan) for l in res["legs"]])
+        L.append(f"| [{ex.number}](exercise_{ex.number:02d}/decision.md) | {'shortest' if ex.objective == 'length' else 'fastest'} | {route} | {wp} | "
+                 f"{res['total']['length_km']:.1f} km | {res['total']['duration_min']:.0f} min | "
+                 f"{'yes' if all(l['inside_area'] for l in res['legs']) else 'NO'} | {'yes' if all(l['continuous'] for l in res['legs']) else 'NO'} | "
+                 f"{b25:.0%} | " + (f"{ref['total']['length_km']:.1f} km / {ref['total']['duration_min']:.0f} min" if ref else "-") +
+                 f" | {'; '.join(ex.notes)} |")
+    (out / "summary.md").write_text("\n".join(L) + "\n", encoding="utf-8")
+    print("\n".join(L))
+    print(f"outputs in {out} ({time.perf_counter() - t0:.0f} s)")
+
+
 def cmd_audit(args) -> None:
     from .audit import audit
     from .scenario import ScenarioPaths
@@ -779,6 +906,19 @@ def main(argv: list[str] | None = None) -> None:
     su.add_argument("--steps", type=int, default=2000, help="training steps per fold (batches of 8 tiles)")
     su.add_argument("--no-final", action="store_true", help="skip the network trained on every block (for another sheet)")
     su.set_defaults(fn=cmd_scan_unet)
+
+    pe = sub.add_parser("pdf-exercises", help="solve every route exercise of a PDF exercise file (points, deployment area, "
+                        "waypoints, shortest/fastest, distinct round trip) on the image network; layout, GeoJSON, decision log")
+    pe.add_argument("--data", required=True, help="folder with the scan (*100K.tif) and, for the checks, *BDTopo*.shp / *OSM*.shp")
+    pe.add_argument("--pdf", required=True, help="exercise file (PDF)")
+    pe.add_argument("--corrector", help="learned corrector folder (coa-net scan-learn) applied to the image network")
+    pe.add_argument("--out", default="outputs/pdf_exercises")
+    pe.add_argument("--cache", help="cache folder (default: OUT/cache)")
+    pe.add_argument("--only", type=int, nargs="*", help="exercise numbers to solve (default: all)")
+    pe.add_argument("--no-check", action="store_true", help="skip the BD TOPO / OSM checks")
+    pe.add_argument("--builtup-rgb", default="204,206,184", help="colour of the built-up tint on the scan (IGN 1:100 000: grey-beige)")
+    pe.add_argument("--builtup-tol", type=int, default=6, help="max difference per channel for a palette colour to count as the tint")
+    pe.set_defaults(fn=cmd_pdf_exercises)
 
     a = sub.add_parser("audit", help="audit a Scenario delivery: files, CRS, encodings, OSM/BD TOPO agreement, scan alignment")
     a.add_argument("--data", required=True)
