@@ -170,9 +170,11 @@ def annotate_areas(G, lines: np.ndarray, edges: list, builtup, towns_big) -> dic
 def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXERCISE_1, cache: str | Path | None = None,
                  n_seeds: int = 20, max_rank: int | None = None, turn_aware: bool = True, compare: bool = True,
                  osm_check: bool = True, llm=None, requirements: list | None = None, network: str = "scan",
-                 corrector: str | Path | None = None) -> ScenarioRun:
+                 corrector: str | Path | None = None, extra_solvers: dict | None = None) -> ScenarioRun:
     """Solve an itineraries exercise. ``llm``: model for the sketch reader (L9, needs images); ``requirements``: the
-    requirement base (default: the seed base; give the base compiled from the event's doctrine).
+    requirement base (default: the seed base; give the base compiled from the event's doctrine). ``extra_solvers``:
+    name -> ``f(R, src, dst, pen, spec) -> DistinctResult``, other NET.DISTINCT engines run on the same roads and
+    costs and reported in ``router_comparison`` (e.g. ``gh.gh_variant``); the outputs keep the built-in solver.
 
     ``network``: where the road graph comes from - ``"scan"`` (read from the 1:100 000 scan, the image input the
     brief encourages; the shapefiles only check it), ``"scan250"`` (from the 1:250 000 scan) or ``"bdtopo"`` (the
@@ -265,13 +267,13 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
         towns = towns_from_labels(labels)
         tw_path = cache / f"towns_{scan_key}.json"
         if tw_path.exists():
-            data = json.loads(tw_path.read_text())
+            data = json.loads(tw_path.read_text(encoding="utf-8"))
             from .scanmap import Town
 
             towns, unresolved = [Town(**d) for d in data["towns"]], data["unresolved"]
         else:
             towns, unresolved = reread_populations(paths.scan100, labels, towns)
-            tw_path.write_text(json.dumps({"towns": [t_.__dict__ for t_ in towns], "unresolved": unresolved}, ensure_ascii=False, indent=1))
+            tw_path.write_text(json.dumps({"towns": [t_.__dict__ for t_ in towns], "unresolved": unresolved}, ensure_ascii=False, indent=1), encoding="utf-8")
         towns_big = town_areas(builtup, towns, spec.min_town_pop or 10**9) if spec.min_town_pop else None
         run.facts["towns"] = [(t_.name, t_.population) for t_ in towns]
         run.facts["towns_unresolved"] = unresolved
@@ -291,7 +293,7 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
     mpath = cache / f"marks_{sketch_key}.png"
     if zpath.exists() and gpath.exists() and llm is None:
         zones_gdf = gpd.read_file(zpath)
-        geo_facts = json.loads(gpath.read_text())
+        geo_facts = json.loads(gpath.read_text(encoding="utf-8"))
     else:
         geo = georeference_sketch(paths.sketch, labels)
         # marks found by code and georeferenced; named by the sketch reader (L9) when a model is given, else by position words
@@ -302,7 +304,7 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
                      "matches": [(m[0], m[1]) for m in geo.matches], "named_by": named_by, "mark_notes": mark_notes,
                      "marks": [{"id": m.id, "colour": m.colour, "px": m.px, "area_km2": round(float(areas_km2[m.id]), 1), "name": m.name,
                                 "label": m.label, "role": m.role, "named_by": m.named_by} for m in marks]}
-        gpath.write_text(json.dumps(geo_facts, ensure_ascii=False, indent=1))
+        gpath.write_text(json.dumps(geo_facts, ensure_ascii=False, indent=1), encoding="utf-8")
     if mpath.exists():
         shutil.copyfile(mpath, out / "sketch_marks.png")
     missing = [z for z in (spec.origin_zone, spec.destination_zone) if z not in set(zones_gdf["zone"])]
@@ -397,6 +399,9 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
     for name, router in variants.items():
         results[name] = solve_distinct(R, src, dst, spec.k, spec.min_sep_m, n_seeds=n_seeds, penalty=pen, router=router)
         t = run.tick(f"NET.DISTINCT solver, {name}", t)
+    for name, solver in (extra_solvers or {}).items():
+        results[name] = solver(R, src, dst, pen, spec)
+        t = run.tick(f"NET.DISTINCT solver, {name}", t)
     chosen = "turn-aware line graph" if turn_aware else "junction graph (no turn cost)"
     res = results[chosen]
     probe = variants.get("turn-aware line graph") or TurnRouter(R, src, dst, pen)
@@ -410,7 +415,12 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
             sharp += int(np.nansum(probe.turns_of(it.edge_idx) > spec.sharp_turn_deg))
         cmp[name] = {"itineraries": len(r_.itineraries), "total_time_min": round(sum(i.time_min for i in r_.itineraries), 1),
                      "total_km": round(sum(i.length_m for i in r_.itineraries) / 1000, 1), "critical_turns": crit,
-                     "junction_turns_over_sharp_deg": sharp, "seconds": round(r_.seconds, 1), "distinct_sets": r_.feasible_sets}
+                     "junction_turns_over_sharp_deg": sharp, "seconds": round(r_.seconds, 1), "distinct_sets": r_.feasible_sets,
+                     "total_cost_min": round(sum(float((R.time_min * pen)[i.edge_idx].sum()) for i in r_.itineraries), 1),
+                     # the same cost plus the turn-aware router's junction turn costs: the objective of the turn-aware search
+                     "total_cost_with_turns_min": round(sum(float((R.time_min * pen)[i.edge_idx].sum())
+                                                            + float(np.nansum(probe.turn_cost_of(i.edge_idx))) for i in r_.itineraries), 1),
+                     "min_separation_m": _min_sep(r_.itineraries), "log": r_.log}
     run.facts["router_comparison"] = cmp
     # 8. facts, turns, checker
     small = None
@@ -509,8 +519,14 @@ def run_exercise(paths: ScenarioPaths, out: str | Path, exercise_text: str = EXE
     write_outputs(run, res, areas, zones_gdf, towns_big, spec, paths, checks)
     run.tick("outputs", t)
     run.timings["total"] = round(time.perf_counter() - T, 1)
-    (out / "metrics.json").write_text(json.dumps({"timings_s": run.timings, "facts": run.facts}, ensure_ascii=False, indent=1, default=str))
+    (out / "metrics.json").write_text(json.dumps({"timings_s": run.timings, "facts": run.facts}, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
     return run
+
+
+def _min_sep(its) -> float | None:
+    """Smallest distance (m) between two itineraries of a set."""
+    d = [its[i].line.distance(its[j].line) for i in range(len(its)) for j in range(i)]
+    return round(min(d)) if d else None
 
 
 def mark_junctions(G, R, it, tol_m: float = 25.0) -> None:
@@ -557,7 +573,7 @@ def write_outputs(run: ScenarioRun, res, areas, zones_gdf, towns_big, spec, path
                                          "km_from_start": tr["km"]}})
     (out / "itineraries.geojson").write_text(json.dumps({"type": "FeatureCollection", "name": "itineraries",
                                                          "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"}},
-                                                         "features": feats}, ensure_ascii=False))
+                                                         "features": feats}, ensure_ascii=False), encoding="utf-8")
     areas.to_file(out / "difficult_areas.geojson", driver="GeoJSON")
     zones_gdf.to_file(out / "zones.geojson", driver="GeoJSON")
     if towns_big is not None and len(towns_big):

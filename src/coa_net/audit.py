@@ -177,5 +177,5 @@ def audit(paths, out: str | Path | None = None) -> dict:
             rep["scan_alignment"][key] = raster_alignment(path, major12)
     rep["seconds"] = round(time.perf_counter() - t0, 1)
     if out:
-        Path(out).write_text(json.dumps(rep, indent=1, ensure_ascii=False, default=str))
+        Path(out).write_text(json.dumps(rep, indent=1, ensure_ascii=False, default=str), encoding="utf-8")
     return rep
