@@ -104,7 +104,35 @@ def build(prc_repo: str, weights: str):
     return PRC7()
 
 
-def loss_fn(out, road, imp, struct, mask):
+def soft_skeleton(img, iters: int = 10):
+    """Differentiable skeleton (Shit et al. 2021, clDice): iterated soft erosion and opening with min/max pooling."""
+    import torch
+    import torch.nn.functional as F
+
+    def erode(x):
+        return torch.min(-F.max_pool2d(-x, (3, 1), 1, (1, 0)), -F.max_pool2d(-x, (1, 3), 1, (0, 1)))
+
+    def opening(x):
+        return F.max_pool2d(erode(x), 3, 1, 1)
+
+    skel = F.relu(img - opening(img))
+    for _ in range(iters):
+        img = erode(img)
+        delta = F.relu(img - opening(img))
+        skel = skel + F.relu(delta - skel * delta)
+    return skel
+
+
+def cldice_loss(p, y, iters: int = 10):
+    """1 - clDice: topological precision (predicted skeleton inside the label) and sensitivity (label skeleton inside the
+    prediction). A road broken for a few pixels loses much of its skeleton overlap, unlike a plain Dice."""
+    sp, sy = soft_skeleton(p[:, None], iters)[:, 0], soft_skeleton(y[:, None], iters)[:, 0]
+    tprec = ((sp * y).sum() + 1) / (sp.sum() + 1)
+    tsens = ((sy * p).sum() + 1) / (sy.sum() + 1)
+    return 1 - 2 * tprec * tsens / (tprec + tsens)
+
+
+def loss_fn(out, road, imp, struct, mask, cldice: float = 0.0):
     import torch
 
     from coa_net.scanunet import _loss
@@ -115,6 +143,8 @@ def loss_fn(out, road, imp, struct, mask):
     dice = 1 - (2 * (p * y).sum() + 1) / (p.sum() + y.sum() + 1)
     with torch.autocast("cuda", enabled=False):
         base = _loss(out.float(), road, imp, struct, mask)
+        if cldice:
+            base = base + cldice * cldice_loss(p.float(), y.float())
     return base + dice
 
 
@@ -314,13 +344,30 @@ def finetune(a):
         er, ec = np.mgrid[0:eh - TILE:32, 0:ew - TILE:32]
         sources.append((e["rgb"], e["road"], e["imp"], e["struct"], np.ones((eh, ew), bool), np.column_stack([er.ravel(), ec.ravel()])))
         print(f"extra sheet {name}: {e['road'].shape}, road pixels {e['road'].mean():.1%}", flush=True)
+    # uncertainty-guided sampling: a share of the sheet's tiles centred in its most uncertain cells (label-free map of a
+    # previous run, out of fold), training blocks only
+    hard = None
+    if a.hard_cells:
+        import rasterio
+
+        with rasterio.open(a.hard_cells) as src_:
+            U = src_.read(1)
+            cell = int(round(src_.transform.a / (tr_a := json.loads((out / "meta.json").read_text())["transform"][0])))
+        cr = np.clip((corners[:, 0] + TILE // 2) // cell, 0, U.shape[0] - 1)
+        cc_ = np.clip((corners[:, 1] + TILE // 2) // cell, 0, U.shape[1] - 1)
+        u = U[cr, cc_]
+        q = np.nanquantile(u, a.hard_quantile)
+        hard = corners[np.nan_to_num(u, nan=-1) >= q]
+        print(f"uncertainty-guided sampling: {len(hard)} of {len(corners)} training corners in cells with uncertainty >= {q:.3f} "
+              f"(quantile {a.hard_quantile}), {a.hard_share:.0%} of the sheet's tiles drawn from them", flush=True)
     t0 = time.perf_counter()
     net.train()
     for step in range(a.steps):
         tiles = []
         for _ in range(a.batch):
             src = sources[0] if len(sources) == 1 or rng.random() >= a.extra_share else sources[1 + int(rng.integers(len(sources) - 1))]
-            r0, c0 = src[5][rng.integers(0, len(src[5]))]
+            pool = hard if (hard is not None and src is sources[0] and rng.random() < a.hard_share) else src[5]
+            r0, c0 = pool[rng.integers(0, len(pool))]
             sl_ = (slice(r0, r0 + TILE), slice(c0, c0 + TILE))
             tiles.append([arr[sl_] for arr in src[:5]])
         x = torch.from_numpy(np.stack([t_[0] for t_ in tiles])).cuda().permute(0, 3, 1, 2).float() / 255.0
@@ -331,7 +378,7 @@ def finetune(a):
         opt.zero_grad(set_to_none=True)
         with torch.autocast("cuda", dtype=torch.bfloat16):
             o = net(x)
-        loss = loss_fn(o, *ys)
+        loss = loss_fn(o, *ys, cldice=a.cldice)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
         opt.step()
@@ -350,7 +397,8 @@ def finetune(a):
             net.train()
     name = "final" if f < 0 else f"fold{f}"
     torch.save(net.state_dict(), out / f"prc_{a.tag}_{name}.pt")
-    (out / f"prc_{a.tag}_config.json").write_text(json.dumps({"steps": a.steps, "lr": a.lr, "batch": a.batch, "tile": TILE,
+    (out / f"prc_{a.tag}_config.json").write_text(json.dumps({"cldice": a.cldice, "hard_cells": a.hard_cells, "hard_share": a.hard_share if a.hard_cells else 0,
+                                                               "hard_quantile": a.hard_quantile, "steps": a.steps, "lr": a.lr, "batch": a.batch, "tile": TILE,
                                                                "dropout": 0.1, "weights": a.weights, "extra": a.extra or [],
                                                                "extra_share": a.extra_share if a.extra else 0.0}, indent=1), encoding="utf-8")
     if f >= 0 and not (out / f"pred_{a.tag}_fold{f}.npy").exists():
@@ -431,6 +479,10 @@ def main():
     ap.add_argument("--stride", type=int, default=256, help="repredict: tile stride of the overlap methods")
     ap.add_argument("--extra", nargs="*", help="finetune: other labelled sheets (prep-extra names) for training only")
     ap.add_argument("--extra-share", type=float, default=0.5, help="finetune: share of training tiles drawn from the extra sheets")
+    ap.add_argument("--cldice", type=float, default=0.0, help="finetune: weight of the clDice (connectivity) loss on the road output")
+    ap.add_argument("--hard-cells", help="finetune: GeoTIFF of cell uncertainty (uncertainty_map.py, band 1) for uncertainty-guided sampling")
+    ap.add_argument("--hard-share", type=float, default=0.5, help="finetune: share of the sheet's tiles drawn from the uncertain cells")
+    ap.add_argument("--hard-quantile", type=float, default=0.8, help="finetune: cells at or above this uncertainty quantile")
     ap.add_argument("--eval-every", type=int, default=0, help="finetune: score the held-out fold every N steps (checkpoints_TAG.jsonl)")
     ap.add_argument("--tag", default="finetuned", help="name of the fine-tuning run")
     ap.add_argument("--tif", help="infer: the sheet")
