@@ -50,7 +50,8 @@ def main():
         P, tr = scanunet.load_raster(Path(d) / "unet_oof.tif")
         T["load raster (s)"] = time.perf_counter() - t
         t = time.perf_counter()
-        G = scanunet.network_from_unet(P, tr)
+        tj = Path(d) / "tracing.json"
+        G, _ = scanunet.trace_network(P, tr, json.loads(tj.read_text()) if tj.exists() else None)
         T["trace the road network (s)"] = time.perf_counter() - t
         t = time.perf_counter()
         N = px.Network(G, name, builtup=builtup)

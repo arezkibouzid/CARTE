@@ -212,8 +212,7 @@ def main():
         from coa_net import scanunet
 
         name, d = spec.split("=", 1)
-        Pu, tr = scanunet.load_raster(Path(d) / "unet_oof.tif")
-        measure(f"{name} alone: its own network, no reader, no corrector", scanunet.network_from_unet(Pu, tr))
+        measure(f"{name} alone: its own network, no reader, no corrector", scanunet.unet_network(Path(d)))
 
     md = ["# Corrector ablation on " + Path(tif).name, "",
           f"Out-of-fold predictions of `{a.learn}`" + ("".join(f", `{x}`" for x in a.learn_unet)) +

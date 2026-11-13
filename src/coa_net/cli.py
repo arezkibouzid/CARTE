@@ -645,7 +645,7 @@ def cmd_pdf_exercises(args) -> None:
         if not args.unet:
             sys.exit("--network prc-alone needs --unet DIR (a folder with unet_oof.tif, e.g. from scripts/prc_unet.py merge)")
         P, tr = scanunet.load_raster(Path(args.unet) / "unet_oof.tif")
-        G = scanunet.network_from_unet(P, tr)
+        G = scanunet.unet_network(Path(args.unet), args.tracing)
         net = {"source": (f"road network traced from the fine-tuned PRC U-Net probabilities `{args.unet}` ({G.number_of_edges() // 2:,} "
                           "sections; road where p >= 0.5, thinned to centre lines; no map reader; the U-Net was trained on BD TOPO "
                           "labels only, out of fold)"), "corrector": "none (the U-Net network has no map symbols to correct)"}
@@ -948,6 +948,10 @@ def main(argv: list[str] | None = None) -> None:
                     help="scan: road network read from the map (+ --corrector); prc-alone: the network traced from a fine-tuned "
                          "PRC U-Net (--unet), the closest to BD TOPO and OSM on the exercise file")
     pe.add_argument("--unet", help="with --network prc-alone: folder with unet_oof.tif (scripts/prc_unet.py merge)")
+    pe.add_argument("--tracing", help="with --network prc-alone: how the road network is traced from the probabilities, e.g. "
+                    "'low=0.3,bridge=150' (hysteresis: continue a road down to p 0.3; join dead ends to the road they point at "
+                    "within 150 m when the probability along the link stays reasonable). Default: the folder's network.pkl or "
+                    "tracing.json, else p >= 0.5")
     pe.add_argument("--no-osm", action="store_true", help="do not use OSM at all, even if the data folder has it")
     pe.add_argument("--prob-threshold", type=float, help="with --network prc-alone: penalise road sections whose PRC probability is "
                     "below this threshold (operator's choice, e.g. 0.7): routes avoid the stretches the U-Net is unsure of")

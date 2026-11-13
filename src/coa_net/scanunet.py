@@ -394,13 +394,24 @@ def point_unet_features(G, cands, P: np.ndarray, transform, radius_px: int = 6):
 # the U-Net alone: a road network from its probabilities
 
 
-def network_from_unet(P: np.ndarray, transform, threshold: float = 0.5, min_px: int = 30, step_px: int = 4) -> nx.DiGraph:
+def network_from_unet(P: np.ndarray, transform, threshold: float = 0.5, min_px: int = 30, step_px: int = 4,
+                      low: float | None = None) -> nx.DiGraph:
     """Road graph from the road probability alone: threshold, thin to centre lines, trace, rank by the importance
-    output. No reader, no corrector: what the segmentation network gives by itself."""
+    output. No reader, no corrector: what the segmentation network gives by itself.
+
+    ``low`` (hysteresis): road pixels are the connected areas of p >= ``low`` that reach p >= ``threshold`` somewhere,
+    so a weak stretch attached to a confident road is kept and an isolated weak blob is not."""
     from scipy import ndimage
     from skimage.morphology import skeletonize
 
-    m = P[..., 0] >= int(threshold * 255)
+    if low is None or low >= threshold:
+        m = P[..., 0] >= int(threshold * 255)
+    else:
+        ml = P[..., 0] >= int(low * 255)
+        lab, n = ndimage.label(ml, structure=np.ones((3, 3)))
+        peak = ndimage.maximum(P[..., 0], lab, index=np.arange(1, n + 1)) if n else np.zeros(0)
+        keep = np.concatenate([[False], np.asarray(peak) >= int(threshold * 255)])
+        m = keep[lab]
     lab0, _ = ndimage.label(m, structure=np.ones((3, 3)))
     m = m & (np.bincount(lab0.ravel())[lab0] >= min_px)
     sk = skeletonize(m)
@@ -484,3 +495,180 @@ def network_from_unet(P: np.ndarray, transform, threshold: float = 0.5, min_px: 
                 r, c = nxt
     G.remove_nodes_from([n for n in list(G.nodes) if G.degree(n) == 0])
     return G
+
+
+# ---------------------------------------------------------------------------
+# better tracing: gap bridging, tracing options, the network of a U-Net folder
+
+
+def bridge_gaps(G: nx.DiGraph, P: np.ndarray, transform, max_m: float = 150.0, cone_deg: float = 50.0, min_p: float = 0.15,
+                mean_p: float = 0.3, detour: float = 3.0) -> dict:
+    """Join the dead ends of a U-Net network to the road they point at, in place.
+
+    For each dead end, the road points (nodes and edge vertices) within ``max_m`` and within ``cone_deg`` of the direction
+    the road arrives from are candidates; a straight link is accepted when the road probability along it stays at or above
+    ``min_p`` with a mean of at least ``mean_p``, and when the two ends are not already joined nearby (network distance
+    under ``detour`` x the link). The best link (highest mean probability, then shortest) is added; a target inside an
+    edge splits it. Links are marked ``unet_bridge``. Returns counts."""
+    from scipy.spatial import cKDTree
+
+    H, W = P.shape[:2]
+    lat0 = transform.f + H / 2 * transform.e
+    kx, ky = 111_320 * math.cos(math.radians(lat0)), 110_570.0
+
+    def m_xy(lonlat):
+        a = np.asarray(lonlat, float)
+        return np.column_stack([a[:, 0] * kx, a[:, 1] * ky])
+
+    def px_rc(lonlat):
+        a = np.asarray(lonlat, float)
+        return (a[:, 1] - transform.f) / transform.e - 0.5, (a[:, 0] - transform.c) / transform.a - 0.5
+
+    nbrs = {n: set(G.successors(n)) | set(G.predecessors(n)) for n in G}
+    dead = [n for n, s in nbrs.items() if len(s) == 1]
+    # candidate points: every vertex of every edge (one direction per pair)
+    pairs = [(a, b) for a, b in G.edges if a != b and (a < b or not G.has_edge(b, a))]
+    pts, owner, vidx = [], [], []
+    for i, (a, b) in enumerate(pairs):
+        c = G.edges[a, b]["coords"]
+        pts.extend(c)
+        owner.extend([i] * len(c))
+        vidx.extend(range(len(c)))
+    pts_m = m_xy(pts)
+    owner, vidx = np.asarray(owner), np.asarray(vidx)
+    tree = cKDTree(pts_m)
+    Gu = nx.Graph()
+    for a, b, d in G.edges(data=True):
+        Gu.add_edge(a, b, w=d["length_m"])
+    cos_cone = math.cos(math.radians(cone_deg))
+    links = []
+    for d in dead:
+        (nb,) = nbrs[d]
+        e = G.edges[nb, d] if G.has_edge(nb, d) else G.edges[d, nb]
+        coords = e["coords"] if G.has_edge(nb, d) else tuple(reversed(e["coords"]))
+        xy_d = m_xy([coords[-1]])[0]
+        back = m_xy([coords[max(0, len(coords) - 4)]])[0]
+        v = xy_d - back
+        if np.hypot(*v) < 1:
+            continue
+        v = v / np.hypot(*v)
+        idx = tree.query_ball_point(xy_d, max_m)
+        if not idx:
+            continue
+        near = nx.single_source_dijkstra_path_length(Gu, d, cutoff=detour * max_m, weight="w")
+        best = None
+        for j in idx:
+            a, b = pairs[owner[j]]
+            if d in (a, b):
+                continue
+            w = pts_m[j] - xy_d
+            L = float(np.hypot(*w))
+            if L < 5 or (w @ v) / L < cos_cone:
+                continue
+            gd = min(near.get(a, np.inf), near.get(b, np.inf))
+            if gd < detour * L:
+                continue
+            lonlat = np.array([coords[-1], pts[j]])
+            r, c = px_rc(lonlat)
+            n = max(int(np.hypot(r[1] - r[0], c[1] - c[0]) * 2), 2)
+            rr = np.clip(np.round(np.linspace(r[0], r[1], n)).astype(int), 0, H - 1)
+            cc = np.clip(np.round(np.linspace(c[0], c[1], n)).astype(int), 0, W - 1)
+            pv = P[rr, cc, 0] / 255.0
+            if pv.min() < min_p or pv.mean() < mean_p:
+                continue
+            key = (pv.mean(), -L)
+            if best is None or key > best[0]:
+                imp = P[rr, cc, 1:6].astype(np.float32).mean(0)
+                best = (key, owner[j], int(vidx[j]), L, float(pv.mean()), int(np.argmax(imp) + 1))
+        if best:
+            links.append((d, *best[1:]))
+    # split the edges at the target vertices, then add the links
+    by_edge: dict = {}
+    for d, ei, vi, L, pm, rank in links:
+        by_edge.setdefault(ei, set()).add(vi)
+    vertex_node: dict = {}
+    next_id = max((n for n in G if isinstance(n, (int, np.integer))), default=0) + 1
+    split = 0
+    for ei, vis in by_edge.items():
+        a, b = pairs[ei]
+        d0 = dict(G.edges[a, b])
+        c = d0["coords"]
+        cuts = sorted(v for v in vis if 0 < v < len(c) - 1)
+        vertex_node[(ei, 0)], vertex_node[(ei, len(c) - 1)] = a, b
+        if not cuts:
+            continue
+        seg_m = np.hypot(*np.diff(m_xy(c), axis=0).T)
+        total = seg_m.sum() or 1.0
+        bounds = [0] + cuts + [len(c) - 1]
+        nodes = [a]
+        for v in cuts:
+            G.add_node(next_id, x=float(c[v][0]), y=float(c[v][1]))
+            vertex_node[(ei, v)] = next_id
+            nodes.append(next_id)
+            next_id += 1
+        nodes.append(b)
+        G.remove_edge(a, b)
+        if G.has_edge(b, a):
+            G.remove_edge(b, a)
+        for (s0, s1), (n0, n1) in zip(zip(bounds[:-1], bounds[1:]), zip(nodes[:-1], nodes[1:])):
+            part = tuple(c[s0:s1 + 1])
+            dd = dict(d0, coords=part, length_m=float(d0["length_m"] * seg_m[s0:s1].sum() / total))
+            G.add_edge(n0, n1, **dd)
+            G.add_edge(n1, n0, **dict(dd, coords=tuple(reversed(part))))
+        split += 1
+    added, link_m = 0, 0.0
+    for d, ei, vi, L, pm, rank in links:
+        t = vertex_node.get((ei, vi))
+        if t is None or t == d or G.has_edge(d, t):
+            continue
+        cd = ((G.nodes[d]["x"], G.nodes[d]["y"]), (G.nodes[t]["x"], G.nodes[t]["y"]))
+        attrs = dict(source_id="unet", road_rank=rank, length_m=float(L), highway="unclassified", bridge=False,
+                     unet_p_structure=0.0, unet_bridge=True, unet_bridge_p=round(pm, 3))
+        G.add_edge(d, t, coords=cd, **attrs)
+        G.add_edge(t, d, coords=tuple(reversed(cd)), **attrs)
+        added += 1
+        link_m += L
+    return {"dead_ends_before": len(dead), "links": added, "edges_split": split,
+            "link_km": round(link_m / 1000, 1)}
+
+
+def parse_tracing(spec: str | dict | None) -> dict:
+    """``"low=0.3,bridge=150"`` -> {"low": 0.3, "bridge": 150.0}. Keys: threshold, low, bridge (max link m), bridge_min_p,
+    bridge_mean_p, bridge_cone."""
+    if not spec:
+        return {}
+    if isinstance(spec, dict):
+        return dict(spec)
+    out = {}
+    for part in str(spec).split(","):
+        k, v = part.split("=", 1)
+        out[k.strip()] = float(v)
+    return out
+
+
+def trace_network(P: np.ndarray, transform, tracing: str | dict | None = None) -> tuple[nx.DiGraph, dict]:
+    """The U-Net road network with the tracing options of :func:`parse_tracing`; returns the graph and what was done."""
+    t = parse_tracing(tracing)
+    G = network_from_unet(P, transform, threshold=t.get("threshold", 0.5), low=t.get("low"))
+    info = {"tracing": t}
+    if t.get("bridge"):
+        info["bridging"] = bridge_gaps(G, P, transform, max_m=t["bridge"], cone_deg=t.get("bridge_cone", 50.0),
+                                       min_p=t.get("bridge_min_p", 0.15), mean_p=t.get("bridge_mean_p", 0.3))
+    return G, info
+
+
+def unet_network(folder, tracing: str | dict | None = None) -> nx.DiGraph:
+    """The road network of a U-Net folder: ``network.pkl`` when the folder holds one (and no tracing is asked), else traced
+    from ``unet_oof.tif`` with ``tracing`` (or the folder's ``tracing.json``)."""
+    import json
+    import pickle
+    from pathlib import Path
+
+    folder = Path(folder)
+    if tracing is None and (folder / "network.pkl").exists():
+        with open(folder / "network.pkl", "rb") as f:
+            return pickle.load(f)
+    if tracing is None and (folder / "tracing.json").exists():
+        tracing = json.loads((folder / "tracing.json").read_text())
+    P, tr = load_raster(folder / "unet_oof.tif")
+    return trace_network(P, tr, tracing)[0]

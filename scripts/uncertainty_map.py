@@ -184,7 +184,7 @@ def main():
         return
     # ------------------------------------------------------------------ 3. threshold sweep on the exercises
     builtup = gpd.read_file(a.builtup)
-    N = px.Network(scanunet.network_from_unet(P, tr), a.run, builtup=builtup)
+    N = px.Network(scanunet.unet_network(Path(a.prc) / a.run), a.run, builtup=builtup)
     base_price = N.price.copy()
     refs = {"BD TOPO": px.Network(load_graph_cached(paths.bdtopo, Path(a.cache))[0], "BD TOPO", priced=False, builtup=builtup)}
     if paths.osm:

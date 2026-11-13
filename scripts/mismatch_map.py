@@ -211,7 +211,7 @@ def main():
     _, exs = px.read_pdf(a.pdf)
     P, tr = scanunet.load_raster(Path(a.unet) / "unet_oof.tif")
     prob = Prob(P, tr)
-    N = px.Network(scanunet.network_from_unet(P, tr), "PRC", builtup=builtup)
+    N = px.Network(scanunet.unet_network(Path(a.unet)), "PRC", builtup=builtup)
     net_tree = shapely.STRtree(N.lines)
     refs = {"BD TOPO": px.Network(load_graph_cached(paths.bdtopo, cache)[0], "BD TOPO", priced=False, builtup=builtup)}
     if paths.osm:

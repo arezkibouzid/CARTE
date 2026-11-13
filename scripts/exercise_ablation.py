@@ -65,8 +65,7 @@ def main():
         from coa_net import scanunet
 
         name, d = spec.split("=", 1)
-        P, tr = scanunet.load_raster(Path(d) / "unet_oof.tif")
-        nets[name] = px.Network(scanunet.network_from_unet(P, tr), name, builtup=builtup)
+        nets[name] = px.Network(scanunet.unet_network(Path(d)), name, builtup=builtup)
     refs = {}
     Gb, _, _ = load_graph_cached(paths.bdtopo, cache)
     refs["BD TOPO"] = px.Network(Gb, "BD TOPO", priced=False, builtup=builtup)
