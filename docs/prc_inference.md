@@ -60,3 +60,12 @@ Timed with CUDA synchronisation, batch 16, model already loaded (loading the mod
 | mix12k_overlap | 2.6 s | 37.3 s | 2.2 s | 2.6 s | 24,725 | 9,943 |
 | mix12k_tta_overlap | 2.5 s | 51.8 s | 2.1 s | 2.2 s | 16,104 | 9,650 |
 
+
+## 7. Reading
+
+- **Training the best run costs 1.3 GPU-hours on H100s**: about 15.5 min per fold (13 steps/s, 208 tiles of 512 px per second) and 14.5 min for the final model; with 2 GPUs the 4 folds finish in about 31 min.
+- **Inference is fast**: the whole sheet (208 megapixels, about 1,430 tiles) takes 15 s on one H100 with the base method. TTA takes 32 s, overlap 42 s, both 59 s. The overlap methods are limited by the blending on the CPU (NumPy accumulation of every tile), not by the GPU: they run 2.3x fewer forward passes than TTA and still take longer.
+- **TTA improves the pixels**: road IoU 0.420 -> 0.425 (more than the second training sheet gave), AUC 0.966 -> 0.968, importance +0.8 point, structure AUC 0.740 -> 0.753; the traced network lies closer to BD TOPO (88.3% -> 89.6% within 25 m) and is much cleaner (16,100 sections instead of 25,100 for the same 9,650-9,950 km: averaging removes small spurious fragments). The uncertainty points slightly better at the errors (lift x1.6 -> x1.7, 45% -> 48% of the gap points in the most uncertain cells).
+- **TTA does not improve the routes**: the route score on town pairs goes 0.119 -> 0.131 and the exercises' length gap to BD TOPO 5.1% -> 5.7%, with about the same gap length on the reference roads not followed (125 -> 124 km). Overlap blending changes almost nothing alone; with TTA it gives the highest route overlap with BD TOPO and OSM (75% / 76%) and the fewest broken-corridor km (302 -> 260), but routes still 0.7 point longer.
+- **Choice**: keep the base inference for routing (shortest and fastest, best route figures, 15 s per sheet). Use TTA (+17 s) when the road network itself is the product (precision, cleanliness, uncertainty). The remaining gaps come from tracing the network out of the probabilities at a fixed 0.5 threshold, which no inference method removes: the next gain is in the tracing (gap bridging, hysteresis threshold).
+- **CPU part per sheet** (24 Xeon Platinum 8480CL cores): about 40 s to trace the road network (50 s for the TTA rasters: more thin-line work), 2 s to build the routing network and 2-3 s to solve the 10 exercises.
