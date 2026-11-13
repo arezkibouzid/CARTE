@@ -84,6 +84,7 @@ def main():
     ap.add_argument("--taus", type=float, nargs="+", default=[0.6, 0.7, 0.8, 0.9])
     ap.add_argument("--strength", type=float, default=3.0)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--no-sweep", action="store_true", help="maps and uncertainty statistics only")
     a = ap.parse_args()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -178,6 +179,9 @@ def main():
     fig.savefig(out / "uncertainty_whole_sheet.png")
     plt.close(fig)
 
+    (out / "uncertainty_stats.json").write_text(json.dumps(stats, indent=1), encoding="utf-8")
+    if a.no_sweep:
+        return
     # ------------------------------------------------------------------ 3. threshold sweep on the exercises
     builtup = gpd.read_file(a.builtup)
     N = px.Network(scanunet.network_from_unet(P, tr), a.run, builtup=builtup)

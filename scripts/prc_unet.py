@@ -167,6 +167,108 @@ def predict(net, rgb, where=None, batch=16):
     return out
 
 
+def predict_blend(net, rgb, where=None, batch=16, tta: bool = False, stride: int = 256, stats: dict | None = None):
+    """(H, W, 7) uint8 like :func:`predict`, with overlapping 512 px tiles every ``stride`` px blended by a smooth
+    weight (each pixel from several tiles; tile borders weigh little), and with ``tta`` the 8 rotations and mirror images
+    of every tile averaged (the same 8 transforms as in training). ``stats`` receives the tile and forward-pass counts."""
+    import torch
+
+    H, W = rgb.shape[:2]
+    acc = np.zeros((H, W, 7), np.float32)
+    wsum = np.zeros((H, W), np.float32)
+    h = np.hanning(TILE + 2)[1:-1].astype(np.float32)
+    wt = np.outer(h, h) + 1e-3
+    jobs = []
+    for r0 in range(-MARGIN, H, stride):
+        for c0 in range(-MARGIN, W, stride):
+            a0, b0 = max(r0, 0), max(c0, 0)
+            a1, b1 = min(r0 + TILE, H), min(c0 + TILE, W)
+            if a1 > a0 and b1 > b0 and (where is None or where[a0:a1, b0:b1].any()):
+                jobs.append((r0, c0))
+    pad = np.pad(rgb, ((MARGIN, TILE + MARGIN), (MARGIN, TILE + MARGIN), (0, 0)), mode="edge")
+    ks = range(8) if tta else (0,)
+
+    def fwd(t, k):
+        return torch.flip(torch.rot90(t, k % 4, (-2, -1)), (-1,)) if k >= 4 else torch.rot90(t, k % 4, (-2, -1))
+
+    def inv(t, k):
+        return torch.rot90(torch.flip(t, (-1,)) if k >= 4 else t, -(k % 4), (-2, -1))
+
+    net.eval()
+    passes = 0
+    with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
+        for i in range(0, len(jobs), batch):
+            jb = jobs[i:i + batch]
+            x = np.stack([pad[r0 + MARGIN:r0 + MARGIN + TILE, c0 + MARGIN:c0 + MARGIN + TILE] for r0, c0 in jb])
+            x = torch.from_numpy(x).cuda().permute(0, 3, 1, 2).float() / 255.0
+            prob = 0
+            for k in ks:
+                o = inv(net(fwd(x, k)).float(), k)
+                prob = prob + torch.cat([torch.sigmoid(o[:, :1]), torch.softmax(o[:, 1:6], 1), torch.sigmoid(o[:, 6:])], 1)
+                passes += len(jb)
+            prob = (prob / len(ks)).permute(0, 2, 3, 1).cpu().numpy()
+            for (r0, c0), q in zip(jb, prob):
+                a0, b0 = max(r0, 0), max(c0, 0)
+                a1, b1 = min(r0 + TILE, H), min(c0 + TILE, W)
+                qq = q[a0 - r0:a1 - r0, b0 - c0:b1 - c0]
+                ww = wt[a0 - r0:a1 - r0, b0 - c0:b1 - c0]
+                acc[a0:a1, b0:b1] += qq * ww[..., None]
+                wsum[a0:a1, b0:b1] += ww
+    P = (acc / np.maximum(wsum, 1e-6)[..., None] * 255 + 0.5).clip(0, 255).astype(np.uint8)
+    if where is not None:
+        P[~where] = 0
+    if stats is not None:
+        stats.update(tiles=len(jobs), forward_passes=passes)
+    return P
+
+
+def gpu_info() -> dict:
+    import platform
+    import socket
+
+    import torch
+
+    d = {"node": socket.gethostname(), "torch": torch.__version__, "cuda": torch.version.cuda, "python": platform.python_version()}
+    if torch.cuda.is_available():
+        p = torch.cuda.get_device_properties(0)
+        d.update(gpu=p.name, gpu_memory_gb=round(p.total_memory / 2**30, 1))
+    return d
+
+
+def repredict(a):
+    """Predict the held-out fold again with a trained fold model and another inference method (out of fold, timed)."""
+    import torch
+
+    out = Path(a.out)
+    d = load(out, mmap=False)
+    rgb, fold = d["rgb"], d["fold"]
+    f = a.fold
+    net = build(a.prc_repo, a.weights).cuda()
+    net.load_state_dict(torch.load(out / f"prc_{a.tag}_fold{f}.pt", map_location="cuda"))
+    where = fold == f
+    torch.cuda.synchronize()
+    st: dict = {}
+    t = time.perf_counter()
+    if a.method == "base":
+        P = predict(net, rgb, where=where)
+        step = TILE - 2 * MARGIN
+        H, W = rgb.shape[:2]
+        st = {"tiles": sum(1 for r0 in range(0, H, step) for c0 in range(0, W, step)
+                           if where[r0:min(r0 + step, H), c0:min(c0 + step, W)].any())}
+        st["forward_passes"] = st["tiles"]
+    else:
+        P = predict_blend(net, rgb, where=where, tta="tta" in a.method, stride=a.stride if "overlap" in a.method else TILE - 2 * MARGIN, stats=st)
+    torch.cuda.synchronize()
+    sec = time.perf_counter() - t
+    name = f"{a.tag}_{a.method}"
+    np.save(out / f"pred_{name}_fold{f}.npy", P)
+    info = {"run": a.tag, "method": a.method, "fold": f, "seconds": round(sec, 2), "pixels": int(where.sum()),
+            "megapixels_per_s": round(where.sum() / 1e6 / sec, 2), "stride": a.stride if "overlap" in a.method else TILE - 2 * MARGIN,
+            "tta_transforms": 8 if "tta" in a.method else 1, "batch": 16, "tile": TILE, **st, **gpu_info()}
+    (out / f"timing_{name}_fold{f}.json").write_text(json.dumps(info, indent=1), encoding="utf-8")
+    print(f"{name} fold {f}: {sec:.1f} s, {st.get('tiles')} tiles, {st.get('forward_passes')} forward passes", flush=True)
+
+
 # --------------------------------------------------------------------------- commands
 
 def zeroshot(a):
@@ -266,13 +368,23 @@ def infer(a):
     rgb, transform, _, crs = scan_rgb(a.tif)
     net = build(a.prc_repo, a.weights).cuda()
     net.load_state_dict(torch.load(a.model, map_location="cuda"))
+    torch.cuda.synchronize()
     t = time.perf_counter()
-    P = predict(net, rgb)
+    st: dict = {}
+    if a.method == "base":
+        P = predict(net, rgb)
+    else:
+        P = predict_blend(net, rgb, tta="tta" in a.method, stride=a.stride if "overlap" in a.method else TILE - 2 * MARGIN, stats=st)
+    torch.cuda.synchronize()
+    sec = time.perf_counter() - t
     dest = Path(a.dest)
     dest.mkdir(parents=True, exist_ok=True)
     save_raster(dest / "unet_oof.tif", P, transform, crs)
-    (dest / "inference.json").write_text(json.dumps({"tif": str(a.tif), "model": str(a.model), "note": "inference without labels: "
-                                                     "not out of fold if the model was trained on this sheet"}, indent=1), encoding="utf-8")
+    (dest / "inference.json").write_text(json.dumps({"tif": str(a.tif), "model": str(a.model), "method": a.method, "seconds": round(sec, 2),
+                                                     "megapixels": round(rgb.shape[0] * rgb.shape[1] / 1e6, 1),
+                                                     "megapixels_per_s": round(rgb.shape[0] * rgb.shape[1] / 1e6 / sec, 2), **st, **gpu_info(),
+                                                     "note": "inference without labels: not out of fold if the model was trained on this sheet"},
+                                                    indent=1), encoding="utf-8")
     print(f"inference on {a.tif}: {time.perf_counter() - t:.0f} s, road pixels >= 0.5: {(P[..., 0] >= 128).mean():.1%}")
 
 
@@ -304,7 +416,7 @@ def merge(a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=("prep", "prep-extra", "zeroshot", "finetune", "merge", "infer"))
+    ap.add_argument("cmd", choices=("prep", "prep-extra", "zeroshot", "finetune", "merge", "infer", "repredict"))
     ap.add_argument("--data")
     ap.add_argument("--out", required=True)
     ap.add_argument("--grid", type=int, default=4)
@@ -315,6 +427,8 @@ def main():
     ap.add_argument("--batch", type=int, default=16)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--name", default="finetuned")
+    ap.add_argument("--method", default="base", choices=("base", "tta", "overlap", "tta_overlap"), help="repredict: inference method")
+    ap.add_argument("--stride", type=int, default=256, help="repredict: tile stride of the overlap methods")
     ap.add_argument("--extra", nargs="*", help="finetune: other labelled sheets (prep-extra names) for training only")
     ap.add_argument("--extra-share", type=float, default=0.5, help="finetune: share of training tiles drawn from the extra sheets")
     ap.add_argument("--eval-every", type=int, default=0, help="finetune: score the held-out fold every N steps (checkpoints_TAG.jsonl)")
@@ -323,7 +437,8 @@ def main():
     ap.add_argument("--model", help="infer: a fine-tuned model (.pt)")
     ap.add_argument("--dest", help="infer: output folder")
     a = ap.parse_args()
-    {"prep": prep, "prep-extra": prep_extra, "zeroshot": zeroshot, "finetune": finetune, "merge": merge, "infer": infer}[a.cmd](a)
+    {"prep": prep, "prep-extra": prep_extra, "zeroshot": zeroshot, "finetune": finetune, "merge": merge, "infer": infer,
+     "repredict": repredict}[a.cmd](a)
 
 
 if __name__ == "__main__":
