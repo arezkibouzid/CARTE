@@ -1,0 +1,10 @@
+config,group,exercise,feasible,length_km,duration_min,solve_s,explain_s,call_wall_s,call_cpu_s,cpu_energy_j,energy_method,max_snap_m,model_confidence,uncertainty_cost_share,image_confidence,km_low_image_confidence,network,segments,gap_bdtopo,time_gap_bdtopo,overlap_bdtopo,gap_osm,time_gap_osm,overlap_osm
+unet_nodice,network,1,True,38.66,30.2,0.16,0.03,9.0708,9.0685,38.3,estimated,54.8,0.834,0.0,0.8251,0.83,nodice,5,0.0449,0.0237,0.8324,0.0534,0.0378,0.8361
+unet_nodice_tta,network,1,True,39.32,31.0,0.11,0.02,8.5164,8.5144,35.9,estimated,124.2,0.823,0.0,0.8368,0.54,nodice_tta,5,0.0627,0.0508,0.8598,0.0714,0.0653,0.8613
+unet_mix12k_tta,network,1,True,39.28,30.9,0.08,0.01,8.5692,8.5655,36.1,estimated,36.3,0.809,0.0,0.8027,0.44,mix12k_tta,5,0.0616,0.0475,0.8625,0.0703,0.0619,0.8682
+unet_mix12k,network,1,True,39.03,30.5,0.11,0.02,55.8774,55.7938,235.4,estimated,47.6,0.823,0.0,0.8094,0.3,mix12k,4,0.0549,0.0339,0.873,0.0635,0.0481,0.8786
+unet_nodice+osm_fill,network,1,True,38.55,30.3,0.25,0.05,19.3014,19.2972,81.4,estimated,41.4,,,0.8007,,nodice + OSM,6,0.0419,0.0271,0.8681,0.0504,0.0412,0.8662
+no_model_osm,network,1,True,36.7,29.1,0.29,0.04,0.3337,0.3337,1.4,estimated,103.8,,,0.7225,,OSM,4,-0.0081,-0.0136,0.9867,0.0,0.0,1.0
+no_model_bdtopo,network,1,True,37.0,29.5,0.33,0.04,0.3823,0.3822,1.6,estimated,95.7,,,0.7263,,BD TOPO,4,0.0,0.0,1.0,0.0082,0.0137,0.9867
+explain_off,explain,1,True,39.65,31.9,0.16,,0.1781,0.178,0.8,estimated,54.8,0.89,0.105,0.8799,0.6,nodice,,0.0716,0.0814,0.0706,0.0804,0.0962,0.0602
+explain_on,explain,1,True,39.65,31.9,0.15,0.03,0.1929,0.1929,0.8,estimated,54.8,0.89,0.105,0.8799,0.6,nodice,4,0.0716,0.0814,0.0706,0.0804,0.0962,0.0602

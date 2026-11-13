@@ -1,0 +1,27 @@
+{
+ "wall_s": 40.44,
+ "cpu_s": 48.34,
+ "peak_rss_mb": 2025.1,
+ "cpu_energy_j": 204.0,
+ "cpu_energy_method": "estimated",
+ "phases": {
+  "load networks": {
+   "calls": 1,
+   "wall_s": 7.889,
+   "cpu_s": 7.805,
+   "cpu_energy_j": 32.9,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 708.3
+  },
+  "degraded": {
+   "calls": 1,
+   "wall_s": 32.271,
+   "cpu_s": 40.276,
+   "cpu_energy_j": 170.0,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 932.4
+  }
+ },
+ "status": "ok",
+ "error": null
+}

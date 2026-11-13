@@ -1,0 +1,131 @@
+{
+ "summary": {
+  "network": {
+   "nodes": 32475,
+   "sections": 73305,
+   "km": 10330.0
+  }
+ },
+ "records": [
+  {
+   "test": "distance",
+   "straight_km": 4.3,
+   "feasible": true,
+   "length_km": 5.29,
+   "solve_s": 0.19,
+   "explain_s": 0.02,
+   "wall_s": 0.5481,
+   "cpu_energy_j": 22.8,
+   "rss_mb": 931.2,
+   "segments": 4
+  },
+  {
+   "test": "distance",
+   "straight_km": 4.2,
+   "feasible": true,
+   "length_km": 4.91,
+   "solve_s": 0.15,
+   "explain_s": 0.01,
+   "wall_s": 0.1712,
+   "cpu_energy_j": 0.7,
+   "rss_mb": 931.7,
+   "segments": 2
+  },
+  {
+   "test": "distance",
+   "straight_km": 11.6,
+   "feasible": true,
+   "length_km": 14.34,
+   "solve_s": 0.15,
+   "explain_s": 0.02,
+   "wall_s": 0.188,
+   "cpu_energy_j": 0.8,
+   "rss_mb": 931.7,
+   "segments": 7
+  },
+  {
+   "test": "distance",
+   "straight_km": 11.0,
+   "feasible": true,
+   "length_km": 20.5,
+   "solve_s": 0.15,
+   "explain_s": 0.01,
+   "wall_s": 0.1719,
+   "cpu_energy_j": 0.7,
+   "rss_mb": 931.7,
+   "segments": 4
+  },
+  {
+   "test": "distance",
+   "straight_km": 22.2,
+   "feasible": true,
+   "length_km": 25.85,
+   "solve_s": 0.15,
+   "explain_s": 0.01,
+   "wall_s": 0.1749,
+   "cpu_energy_j": 0.7,
+   "rss_mb": 931.7,
+   "segments": 3
+  },
+  {
+   "test": "distance",
+   "straight_km": 29.2,
+   "feasible": true,
+   "length_km": 37.23,
+   "solve_s": 0.15,
+   "explain_s": 0.03,
+   "wall_s": 0.1969,
+   "cpu_energy_j": 0.8,
+   "rss_mb": 931.7,
+   "segments": 8
+  },
+  {
+   "test": "distance",
+   "straight_km": 49.4,
+   "feasible": true,
+   "length_km": 60.3,
+   "solve_s": 0.15,
+   "explain_s": 0.05,
+   "wall_s": 0.215,
+   "cpu_energy_j": 0.9,
+   "rss_mb": 931.9,
+   "segments": 11
+  },
+  {
+   "test": "distance",
+   "straight_km": 53.1,
+   "feasible": true,
+   "length_km": 62.38,
+   "solve_s": 0.15,
+   "explain_s": 0.04,
+   "wall_s": 0.2044,
+   "cpu_energy_j": 0.9,
+   "rss_mb": 931.9,
+   "segments": 6
+  },
+  {
+   "test": "distance",
+   "straight_km": 102.4,
+   "feasible": true,
+   "length_km": 119.35,
+   "solve_s": 0.15,
+   "explain_s": 0.05,
+   "wall_s": 0.2202,
+   "cpu_energy_j": 0.9,
+   "rss_mb": 932.1,
+   "segments": 9
+  },
+  {
+   "test": "distance",
+   "straight_km": 103.9,
+   "feasible": true,
+   "length_km": 127.04,
+   "solve_s": 0.15,
+   "explain_s": 0.06,
+   "wall_s": 0.2262,
+   "cpu_energy_j": 1.0,
+   "rss_mb": 932.3,
+   "segments": 9
+  }
+ ]
+}

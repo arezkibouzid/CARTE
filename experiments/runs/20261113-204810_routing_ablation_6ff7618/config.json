@@ -1,0 +1,234 @@
+{
+ "script": "experiments/routing_ablation.py",
+ "groups": [
+  "cost",
+  "network"
+ ],
+ "exercises": [
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10
+ ],
+ "configs": [
+  {
+   "name": "unet_nodice",
+   "group": "network",
+   "model": "nodice",
+   "uncertainty_strength": 1e-06
+  },
+  {
+   "name": "unet_nodice_tta",
+   "group": "network",
+   "model": "nodice_tta",
+   "uncertainty_strength": 1e-06
+  },
+  {
+   "name": "unet_mix12k_tta",
+   "group": "network",
+   "model": "mix12k_tta",
+   "uncertainty_strength": 1e-06
+  },
+  {
+   "name": "unet_mix12k",
+   "group": "network",
+   "model": "mix12k",
+   "uncertainty_strength": 1e-06
+  },
+  {
+   "name": "unet_nodice+osm_fill",
+   "group": "network",
+   "model": "nodice",
+   "use_osm": true,
+   "osm_mode": "fill"
+  },
+  {
+   "name": "no_model_osm",
+   "group": "network",
+   "model": "none",
+   "use_osm": true
+  },
+  {
+   "name": "no_model_bdtopo",
+   "group": "network",
+   "model": "none",
+   "use_osm": false
+  },
+  {
+   "name": "cost_none",
+   "group": "cost",
+   "model": "nodice",
+   "uncertainty_strength": 1e-06
+  },
+  {
+   "name": "cost_threshold_t0.3_s3",
+   "group": "cost",
+   "model": "nodice",
+   "uncertainty_strength": 1e-06,
+   "prob_threshold": 0.3,
+   "prob_penalty": 3
+  },
+  {
+   "name": "cost_lambda_0.1",
+   "group": "cost",
+   "model": "nodice",
+   "uncertainty_strength": 0.1
+  },
+  {
+   "name": "cost_lambda_0.25",
+   "group": "cost",
+   "model": "nodice",
+   "uncertainty_strength": 0.25
+  },
+  {
+   "name": "cost_lambda_0.5",
+   "group": "cost",
+   "model": "nodice",
+   "uncertainty_strength": 0.5
+  },
+  {
+   "name": "cost_lambda_1",
+   "group": "cost",
+   "model": "nodice",
+   "uncertainty_strength": 1
+  },
+  {
+   "name": "cost_lambda_2",
+   "group": "cost",
+   "model": "nodice",
+   "uncertainty_strength": 2
+  },
+  {
+   "name": "cost_lambda_4",
+   "group": "cost",
+   "model": "nodice",
+   "uncertainty_strength": 4
+  },
+  {
+   "name": "cost_lambda_8",
+   "group": "cost",
+   "model": "nodice",
+   "uncertainty_strength": 8
+  },
+  {
+   "name": "cost_threshold+lambda_1",
+   "group": "cost",
+   "model": "nodice",
+   "uncertainty_strength": 1,
+   "prob_threshold": 0.3,
+   "prob_penalty": 3
+  }
+ ],
+ "sheet": {
+  "id": "hackathon",
+  "label": "Hackathon — IGN 1:100 000 (Châlons, Verdun, Bar-le-Duc)",
+  "tif": "examples/Hackathon_100K.tif",
+  "bdtopo": "examples/Hackathon_BDTopo.shp",
+  "osm": "examples/Hackathon_OSM.shp",
+  "pdf": "examples/exercise_1-to-10-1.pdf",
+  "builtup": "outputs/hackathon100k/pdf_exercises/builtup_areas.geojson",
+  "labels": "outputs/hackathon100k/prc/road.npy",
+  "cache": "outputs/hackathon100k/cache",
+  "default_model": "nodice",
+  "models": [
+   {
+    "id": "nodice",
+    "label": "Couverture maximale",
+    "description": "Trouve le plus de routes ; itinéraires les plus proches de BD TOPO et d'OSM (recommandé).",
+    "raster": "outputs/hackathon100k/prc/mix12k_nodice"
+   },
+   {
+    "id": "nodice_tta",
+    "label": "Compromis",
+    "description": "Bon équilibre couverture / précision (8 orientations moyennées).",
+    "raster": "outputs/hackathon100k/prc/mix12k_nodice_tta"
+   },
+   {
+    "id": "mix12k_tta",
+    "label": "Précision maximale",
+    "description": "Réseau le plus sûr et le plus connecté, un peu moins complet.",
+    "raster": "outputs/hackathon100k/prc/mix12k_tta"
+   },
+   {
+    "id": "mix12k",
+    "label": "Référence",
+    "description": "Modèle de référence (entraînement avec Dice).",
+    "raster": "outputs/hackathon100k/prc/mix12k"
+   }
+  ]
+ },
+ "models": [
+  {
+   "id": "nodice",
+   "label": "Couverture maximale",
+   "description": "Trouve le plus de routes ; itinéraires les plus proches de BD TOPO et d'OSM (recommandé).",
+   "raster": "outputs/hackathon100k/prc/mix12k_nodice"
+  },
+  {
+   "id": "nodice_tta",
+   "label": "Compromis",
+   "description": "Bon équilibre couverture / précision (8 orientations moyennées).",
+   "raster": "outputs/hackathon100k/prc/mix12k_nodice_tta"
+  },
+  {
+   "id": "mix12k_tta",
+   "label": "Précision maximale",
+   "description": "Réseau le plus sûr et le plus connecté, un peu moins complet.",
+   "raster": "outputs/hackathon100k/prc/mix12k_tta"
+  },
+  {
+   "id": "mix12k",
+   "label": "Référence",
+   "description": "Modèle de référence (entraînement avec Dice).",
+   "raster": "outputs/hackathon100k/prc/mix12k"
+  }
+ ],
+ "inputs": [
+  {
+   "path": "examples/Hackathon_100K.tif",
+   "bytes": 83196373,
+   "modified": "2026-11-12 13:34:26"
+  },
+  {
+   "path": "examples/Hackathon_BDTopo.shp",
+   "bytes": 38856188,
+   "modified": "2026-11-12 13:46:30"
+  },
+  {
+   "path": "examples/Hackathon_OSM.shp",
+   "bytes": 24445220,
+   "modified": "2026-11-12 13:45:39"
+  },
+  {
+   "path": "examples/exercise_1-to-10-1.pdf",
+   "bytes": 1469023,
+   "modified": "2026-11-12 14:58:21"
+  },
+  {
+   "path": "outputs/hackathon100k/prc/mix12k_nodice/unet_oof.tif",
+   "bytes": 181895285,
+   "modified": "2026-11-13 07:59:02"
+  },
+  {
+   "path": "outputs/hackathon100k/prc/mix12k_nodice_tta/unet_oof.tif",
+   "bytes": 160797555,
+   "modified": "2026-11-13 09:13:31"
+  },
+  {
+   "path": "outputs/hackathon100k/prc/mix12k_tta/unet_oof.tif",
+   "bytes": 121772509,
+   "modified": "2026-11-13 03:21:38"
+  },
+  {
+   "path": "outputs/hackathon100k/prc/mix12k/unet_oof.tif",
+   "bytes": 139166158,
+   "modified": "2026-11-12 21:12:36"
+  }
+ ]
+}

@@ -1,0 +1,99 @@
+{
+ "script": "experiments/imagery_ablation.py",
+ "folds": [
+  0,
+  1,
+  2,
+  3
+ ],
+ "imagery": [
+  "original",
+  "grayscale",
+  "blur",
+  "half_resolution",
+  "quarter_resolution",
+  "jpeg_q20",
+  "noise_12",
+  "other_palette",
+  "low_contrast"
+ ],
+ "models": [
+  "zeroshot",
+  "finetuned_hack",
+  "mix12k_nodice"
+ ],
+ "checkpoints": {
+  "zeroshot": [
+   {
+    "path": "/home/nouhaila_aitbella/ext/prc_weights/prc_binary.pt",
+    "bytes": 60965036,
+    "modified": "2026-11-12 14:00:08"
+   }
+  ],
+  "finetuned_hack": [
+   {
+    "path": "outputs/hackathon100k/prc/prc_finetuned_fold0.pt",
+    "bytes": 60931659,
+    "modified": "2026-11-12 14:11:45"
+   },
+   {
+    "path": "outputs/hackathon100k/prc/prc_finetuned_fold1.pt",
+    "bytes": 60931659,
+    "modified": "2026-11-12 14:11:44"
+   },
+   {
+    "path": "outputs/hackathon100k/prc/prc_finetuned_fold2.pt",
+    "bytes": 60931659,
+    "modified": "2026-11-12 14:11:47"
+   },
+   {
+    "path": "outputs/hackathon100k/prc/prc_finetuned_fold3.pt",
+    "bytes": 60931659,
+    "modified": "2026-11-12 14:11:40"
+   }
+  ],
+  "mix12k_nodice": [
+   {
+    "path": "outputs/hackathon100k/prc/prc_mix12k_nodice_fold0.pt",
+    "bytes": 60935895,
+    "modified": "2026-11-13 07:41:11"
+   },
+   {
+    "path": "outputs/hackathon100k/prc/prc_mix12k_nodice_fold1.pt",
+    "bytes": 60935895,
+    "modified": "2026-11-13 07:41:18"
+   },
+   {
+    "path": "outputs/hackathon100k/prc/prc_mix12k_nodice_fold2.pt",
+    "bytes": 60935895,
+    "modified": "2026-11-13 07:56:30"
+   },
+   {
+    "path": "outputs/hackathon100k/prc/prc_mix12k_nodice_fold3.pt",
+    "bytes": 60935895,
+    "modified": "2026-11-13 07:57:02"
+   }
+  ]
+ },
+ "data": [
+  {
+   "path": "outputs/hackathon100k/prc/rgb.npy",
+   "bytes": 623633858,
+   "modified": "2026-11-12 14:02:19"
+  },
+  {
+   "path": "outputs/hackathon100k/prc/road.npy",
+   "bytes": 207878038,
+   "modified": "2026-11-12 14:02:19"
+  },
+  {
+   "path": "outputs/hackathon100k/prc/fold.npy",
+   "bytes": 207878038,
+   "modified": "2026-11-12 14:02:20"
+  }
+ ],
+ "threshold": 0.5,
+ "tile": 512,
+ "margin": 64,
+ "auc_sample_per_fold": 1000000
+}

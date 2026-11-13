@@ -1,0 +1,347 @@
+{
+ "summary": {
+  "network": {
+   "nodes": 32475,
+   "sections": 73305,
+   "km": 10330.0
+  },
+  "incomplete": {
+   "runs": 16,
+   "feasible_share": 0.875,
+   "by_kind_and_share": {
+    "random sections 0.02": {
+     "feasible": 1.0,
+     "mean_detour": 0.0077,
+     "mean_overlap_with_full": 0.507
+    },
+    "random sections 0.05": {
+     "feasible": 1.0,
+     "mean_detour": 0.9454,
+     "mean_overlap_with_full": 0.156
+    },
+    "unreadable patches 0.05": {
+     "feasible": 1.0,
+     "mean_detour": 0.0163,
+     "mean_overlap_with_full": 0.77
+    },
+    "unreadable patches 0.2": {
+     "feasible": 0.5,
+     "mean_detour": 0.202,
+     "mean_overlap_with_full": 0.556
+    }
+   }
+  },
+  "uncertain": {
+   "runs": 8,
+   "feasible_share": 1.0,
+   "by_sigma": {
+    "0.1": {
+     "mean_overlap_with_clean": 0.793,
+     "mean_detour": -0.0056
+    },
+    "0.2": {
+     "mean_overlap_with_clean": 0.771,
+     "mean_detour": -0.0067
+    }
+   }
+  }
+ },
+ "records": [
+  {
+   "test": "incomplete",
+   "kind": "random sections",
+   "removed_share": 0.02,
+   "rep": 0,
+   "exercise": 1,
+   "feasible": true,
+   "solve_s": 0.159,
+   "max_snap_m": 54.8,
+   "length_km": 39.6,
+   "detour": -0.0013,
+   "overlap_with_full": 0.135
+  },
+  {
+   "test": "incomplete",
+   "kind": "random sections",
+   "removed_share": 0.02,
+   "rep": 0,
+   "exercise": 2,
+   "feasible": true,
+   "solve_s": 0.158,
+   "max_snap_m": 54.8,
+   "length_km": 39.6,
+   "detour": -0.0065,
+   "overlap_with_full": 0.108
+  },
+  {
+   "test": "incomplete",
+   "kind": "random sections",
+   "removed_share": 0.02,
+   "rep": 0,
+   "exercise": 3,
+   "feasible": true,
+   "solve_s": 0.158,
+   "max_snap_m": 62.7,
+   "length_km": 102.82,
+   "detour": 0.0184,
+   "overlap_with_full": 0.879
+  },
+  {
+   "test": "incomplete",
+   "kind": "random sections",
+   "removed_share": 0.02,
+   "rep": 0,
+   "exercise": 4,
+   "feasible": true,
+   "solve_s": 0.178,
+   "max_snap_m": 62.7,
+   "length_km": 103.32,
+   "detour": 0.0201,
+   "overlap_with_full": 0.908
+  },
+  {
+   "test": "incomplete",
+   "kind": "random sections",
+   "removed_share": 0.05,
+   "rep": 0,
+   "exercise": 1,
+   "feasible": true,
+   "solve_s": 0.16,
+   "max_snap_m": 54.8,
+   "length_km": 87.5,
+   "detour": 1.2068,
+   "overlap_with_full": 0.05
+  },
+  {
+   "test": "incomplete",
+   "kind": "random sections",
+   "removed_share": 0.05,
+   "rep": 0,
+   "exercise": 2,
+   "feasible": true,
+   "solve_s": 0.157,
+   "max_snap_m": 54.8,
+   "length_km": 87.5,
+   "detour": 1.1952,
+   "overlap_with_full": 0.054
+  },
+  {
+   "test": "incomplete",
+   "kind": "random sections",
+   "removed_share": 0.05,
+   "rep": 0,
+   "exercise": 3,
+   "feasible": true,
+   "solve_s": 0.159,
+   "max_snap_m": 62.7,
+   "length_km": 169.3,
+   "detour": 0.6769,
+   "overlap_with_full": 0.269
+  },
+  {
+   "test": "incomplete",
+   "kind": "random sections",
+   "removed_share": 0.05,
+   "rep": 0,
+   "exercise": 4,
+   "feasible": true,
+   "solve_s": 0.163,
+   "max_snap_m": 62.7,
+   "length_km": 172.46,
+   "detour": 0.7028,
+   "overlap_with_full": 0.252
+  },
+  {
+   "test": "incomplete",
+   "kind": "unreadable patches",
+   "removed_share": 0.05,
+   "rep": 0,
+   "exercise": 1,
+   "feasible": true,
+   "sections_removed": 0.049,
+   "solve_s": 0.178,
+   "max_snap_m": 114.4,
+   "length_km": 40.7,
+   "detour": 0.0265,
+   "overlap_with_full": 0.541
+  },
+  {
+   "test": "incomplete",
+   "kind": "unreadable patches",
+   "removed_share": 0.05,
+   "rep": 0,
+   "exercise": 2,
+   "feasible": true,
+   "sections_removed": 0.049,
+   "solve_s": 0.162,
+   "max_snap_m": 114.4,
+   "length_km": 41.4,
+   "detour": 0.0386,
+   "overlap_with_full": 0.538
+  },
+  {
+   "test": "incomplete",
+   "kind": "unreadable patches",
+   "removed_share": 0.05,
+   "rep": 0,
+   "exercise": 3,
+   "feasible": true,
+   "sections_removed": 0.049,
+   "solve_s": 0.16,
+   "max_snap_m": 62.7,
+   "length_km": 100.96,
+   "detour": 0.0,
+   "overlap_with_full": 1.0
+  },
+  {
+   "test": "incomplete",
+   "kind": "unreadable patches",
+   "removed_share": 0.05,
+   "rep": 0,
+   "exercise": 4,
+   "feasible": true,
+   "sections_removed": 0.049,
+   "solve_s": 0.173,
+   "max_snap_m": 62.7,
+   "length_km": 101.28,
+   "detour": 0.0,
+   "overlap_with_full": 1.0
+  },
+  {
+   "test": "incomplete",
+   "kind": "unreadable patches",
+   "removed_share": 0.2,
+   "rep": 0,
+   "exercise": 1,
+   "feasible": true,
+   "sections_removed": 0.156,
+   "solve_s": 0.161,
+   "max_snap_m": 54.8,
+   "length_km": 39.65,
+   "detour": 0.0,
+   "overlap_with_full": 1.0
+  },
+  {
+   "test": "incomplete",
+   "kind": "unreadable patches",
+   "removed_share": 0.2,
+   "rep": 0,
+   "exercise": 2,
+   "feasible": true,
+   "sections_removed": 0.156,
+   "solve_s": 0.158,
+   "max_snap_m": 54.8,
+   "length_km": 39.86,
+   "detour": 0.0,
+   "overlap_with_full": 1.0
+  },
+  {
+   "test": "incomplete",
+   "kind": "unreadable patches",
+   "removed_share": 0.2,
+   "rep": 0,
+   "exercise": 3,
+   "feasible": false,
+   "sections_removed": 0.156,
+   "solve_s": 0.158,
+   "max_snap_m": 2005.7,
+   "length_km": 141.72,
+   "detour": 0.4037,
+   "overlap_with_full": 0.112
+  },
+  {
+   "test": "incomplete",
+   "kind": "unreadable patches",
+   "removed_share": 0.2,
+   "rep": 0,
+   "exercise": 4,
+   "feasible": false,
+   "sections_removed": 0.156,
+   "solve_s": 0.159,
+   "max_snap_m": 2005.7,
+   "length_km": 142.24,
+   "detour": 0.4044,
+   "overlap_with_full": 0.111
+  },
+  {
+   "test": "uncertain",
+   "noise_sigma": 0.1,
+   "exercise": 1,
+   "feasible": true,
+   "max_snap_m": 54.8,
+   "length_km": 39.67,
+   "detour": 0.0005,
+   "overlap_with_clean": 0.983
+  },
+  {
+   "test": "uncertain",
+   "noise_sigma": 0.1,
+   "exercise": 2,
+   "feasible": true,
+   "max_snap_m": 54.8,
+   "length_km": 38.94,
+   "detour": -0.0231,
+   "overlap_with_clean": 0.191
+  },
+  {
+   "test": "uncertain",
+   "noise_sigma": 0.1,
+   "exercise": 3,
+   "feasible": true,
+   "max_snap_m": 62.7,
+   "length_km": 100.97,
+   "detour": 0.0001,
+   "overlap_with_clean": 0.999
+  },
+  {
+   "test": "uncertain",
+   "noise_sigma": 0.1,
+   "exercise": 4,
+   "feasible": true,
+   "max_snap_m": 62.7,
+   "length_km": 101.28,
+   "detour": 0.0,
+   "overlap_with_clean": 1.0
+  },
+  {
+   "test": "uncertain",
+   "noise_sigma": 0.2,
+   "exercise": 1,
+   "feasible": true,
+   "max_snap_m": 54.8,
+   "length_km": 39.61,
+   "detour": -0.001,
+   "overlap_with_clean": 0.975
+  },
+  {
+   "test": "uncertain",
+   "noise_sigma": 0.2,
+   "exercise": 2,
+   "feasible": true,
+   "max_snap_m": 54.8,
+   "length_km": 38.94,
+   "detour": -0.0231,
+   "overlap_with_clean": 0.191
+  },
+  {
+   "test": "uncertain",
+   "noise_sigma": 0.2,
+   "exercise": 3,
+   "feasible": true,
+   "max_snap_m": 62.7,
+   "length_km": 100.69,
+   "detour": -0.0027,
+   "overlap_with_clean": 0.923
+  },
+  {
+   "test": "uncertain",
+   "noise_sigma": 0.2,
+   "exercise": 4,
+   "feasible": true,
+   "max_snap_m": 62.7,
+   "length_km": 101.3,
+   "detour": 0.0002,
+   "overlap_with_clean": 0.996
+  }
+ ]
+}

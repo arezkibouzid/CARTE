@@ -44,11 +44,112 @@ export interface Scenario {
   area?: LonLat[]; // zone de déploiement (DA)
   avoid: LonLat[][]; // zones à éviter (RA)
   requirements?: string[];
-  /** single : un itinéraire (points, étapes) ; distinct : k itinéraires sous contraintes entre deux zones. */
-  mode: 'single' | 'distinct';
+  /** single : un itinéraire (points, étapes) ; distinct : k itinéraires sous contraintes entre deux zones ;
+   *  convoys : plusieurs convois planifiés ensemble (déconfliction des routes). */
+  mode: 'single' | 'distinct' | 'convoys';
+  convoys: ConvoyDef[];
+  deconflict: 'none' | 'penalize' | 'forbid';
+  sharePenalty: number;
   zoneFrom?: LonLat[]; // zone de départ (mode distinct)
   zoneTo?: LonLat[]; // zone d'arrivée (mode distinct)
   distinct: DistinctParams;
+}
+
+export interface ConvoyDef {
+  name: string;
+  start: LonLat;
+  end: LonLat;
+  waypoints: LonLat[];
+  waypoint_order: 'fixed' | 'free';
+  round_trip: boolean;
+  speed_cap_kmh: number;
+  objective: 'length' | 'time';
+  priority: number;
+}
+
+export interface ConvoyResult {
+  name: string;
+  index: number;
+  rank?: number;
+  error?: string;
+  total?: { length_km: number; duration_min: number };
+  route?: FeatureCollection;
+  legs?: Leg[];
+  visit_order?: string[] | null;
+  shared_km_with_earlier?: Record<string, number>;
+  seconds?: number;
+}
+
+export interface ConvoysResult {
+  convoys: (ConvoyResult | null)[];
+  network: string;
+  deconflict: string;
+  share_penalty: number;
+  uncertainty_cost: UncertaintyCost | null;
+  uncertainty_cost_note: string | null;
+  tiff_only: boolean;
+  summary: { convoys: number; routed: number; total_km: number; shared_km: number; max_duration_min: number | null };
+  log: string[];
+  timing_s: Record<string, number>;
+}
+
+export interface UncertaintyCost {
+  strength: number;
+  p_ref: number;
+  floor: number;
+  km_low_confidence: number;
+  network_mean_confidence: number;
+}
+
+export interface RouteSegment {
+  id: string;
+  leg: number;
+  index: number;
+  road_class: string;
+  source: string;
+  km: number;
+  min: number;
+  legal_kmh: number[];
+  km_built_up: number;
+  names: string[];
+  bridges: number;
+  cost_base: number;
+  cost_priced: number;
+  confidence?: number;
+  min_confidence?: number;
+  uncertainty_cost?: number;
+  from: LonLat;
+  to: LonLat;
+  alternative: { km: number; min: number; cost: number; extra_cost: number; extra_cost_pct: number; extra_km: number; extra_min: number; confidence?: number } | null;
+  verdict: 'unavoidable' | 'clearly best' | 'narrow choice';
+  why: string;
+}
+
+export interface RouteTrace {
+  objective: 'length' | 'time';
+  unit: string;
+  uncertainty_strength: number | null;
+  criteria: string[];
+  legs: { leg: number; name: string; segments: RouteSegment[] }[];
+  alternatives: { kind: string; what: string; rejected_because: string; [k: string]: unknown }[];
+  limitations: string[];
+}
+
+export interface RouteChatReply {
+  answer: string;
+  mode: string;
+  cited_segments: string[];
+  cited_rules: string[];
+  sources: { rule_id: string; status: string; group: string; pdf_document: string; pdf_page: number; verification_status: string }[];
+  model: string | null;
+  context: { budget_tokens: number; used_tokens: number; omitted: string[]; shortened: string[] } | null;
+  seconds: number;
+}
+
+export interface SavedScenario {
+  id: string;
+  name: string;
+  saved: string;
 }
 
 export interface DistinctParams {
@@ -109,6 +210,8 @@ export interface Options {
   penalize: boolean;
   strength: number;
   traceThreshold: number;
+  uncertaintyCost: boolean; // coût probabiliste (U-Net), seulement quand l'itinéraire repose sur le seul TIFF
+  lambda: number; // intensité du coût d'incertitude
 }
 
 export interface LayerState {
@@ -134,6 +237,9 @@ export interface Leg {
   continuous: boolean;
   km_by_speed_limit: Record<string, number>;
   doubtful_sections?: { count: number; km: number };
+  mean_confidence?: number;
+  km_low_confidence?: number;
+  uncertainty_cost_share?: number;
 }
 
 export interface RouteResult {
@@ -147,6 +253,10 @@ export interface RouteResult {
   objective: 'length' | 'time';
   network: string;
   probability_penalty: { threshold: number; strength: number; sections_priced: number; km_below_threshold: number } | null;
+  uncertainty_cost: UncertaintyCost | null;
+  uncertainty_cost_note: string | null;
+  tiff_only: boolean;
+  explanation: RouteTrace | null;
   compare: ('bdtopo' | 'osm')[];
   timing_s: Record<string, number>;
 }

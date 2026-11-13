@@ -1,0 +1,100 @@
+{
+ "source_run": "experiments/runs/20261113-202358_stress_test_6ff7618",
+ "criterion": "route found and max snapping distance <= intact-network snapping + 500 m (the run itself used an absolute 1 km criterion)",
+ "intact_max_snap_m": {
+  "1.0": 54.8,
+  "2.0": 54.8,
+  "3.0": 62.7,
+  "4.0": 62.7,
+  "5.0": 571.6,
+  "6.0": 571.6,
+  "7.0": 1076.6,
+  "8.0": 1076.6,
+  "9.0": 1076.6,
+  "10.0": 1076.6
+ },
+ "incomplete": {
+  "random sections 0.01": {
+   "feasible": 1.0,
+   "n": 30,
+   "mean_detour_feasible": 0.0314,
+   "mean_overlap_with_full_feasible": 0.712,
+   "sections_removed": null
+  },
+  "random sections 0.02": {
+   "feasible": 1.0,
+   "n": 30,
+   "mean_detour_feasible": 0.1043,
+   "mean_overlap_with_full_feasible": 0.499,
+   "sections_removed": null
+  },
+  "random sections 0.05": {
+   "feasible": 0.733,
+   "n": 30,
+   "mean_detour_feasible": 0.3307,
+   "mean_overlap_with_full_feasible": 0.198,
+   "sections_removed": null
+  },
+  "random sections 0.1": {
+   "feasible": 0.067,
+   "n": 30,
+   "mean_detour_feasible": 0.4629,
+   "mean_overlap_with_full_feasible": 0.031,
+   "sections_removed": null
+  },
+  "unreadable patches 0.05": {
+   "feasible": 0.933,
+   "n": 30,
+   "mean_detour_feasible": 0.0469,
+   "mean_overlap_with_full_feasible": 0.62,
+   "sections_removed": 0.05
+  },
+  "unreadable patches 0.1": {
+   "feasible": 1.0,
+   "n": 30,
+   "mean_detour_feasible": 0.1785,
+   "mean_overlap_with_full_feasible": 0.472,
+   "sections_removed": 0.129
+  },
+  "unreadable patches 0.2": {
+   "feasible": 0.867,
+   "n": 30,
+   "mean_detour_feasible": 0.4106,
+   "mean_overlap_with_full_feasible": 0.303,
+   "sections_removed": 0.169
+  },
+  "unreadable patches 0.3": {
+   "feasible": 0.4,
+   "n": 30,
+   "mean_detour_feasible": 0.2502,
+   "mean_overlap_with_full_feasible": 0.311,
+   "sections_removed": 0.273
+  }
+ },
+ "uncertain": {
+  "0.05": {
+   "feasible": 1.0,
+   "mean_overlap_with_clean": 0.841,
+   "min_overlap_with_clean": 0.191,
+   "mean_detour": -0.005
+  },
+  "0.1": {
+   "feasible": 1.0,
+   "mean_overlap_with_clean": 0.832,
+   "min_overlap_with_clean": 0.191,
+   "mean_detour": -0.005
+  },
+  "0.2": {
+   "feasible": 1.0,
+   "mean_overlap_with_clean": 0.909,
+   "min_overlap_with_clean": 0.666,
+   "mean_detour": -0.003
+  },
+  "0.3": {
+   "feasible": 1.0,
+   "mean_overlap_with_clean": 0.878,
+   "min_overlap_with_clean": 0.164,
+   "mean_detour": -0.003
+  }
+ }
+}

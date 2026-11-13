@@ -262,3 +262,28 @@ button.chip { cursor: pointer; text-align: left; }
 .msg .bubble { display: inline-block; text-align: left; white-space: pre-wrap; padding: 6px 9px; border-radius: 10px; max-width: 92%; font-size: 13px; }
 .msg.user .bubble { background: #1f6feb; color: #fff; } .msg.assistant .bubble { background: #fff; border: 1px solid #d0d7de; }
 .chat-input { flex: 1; padding: 7px 8px; border: 1px solid #c9ced6; border-radius: 6px; font: inherit; }
+
+/* ---------------------------------------------------------------- v3 : explication, chat d'itinéraire, convois */
+.why { margin: 10px 0; }
+.why .crit { margin: 4px 0 8px; padding-left: 18px; }
+table.segs { width: 100%; border-collapse: collapse; margin: 6px 0; }
+table.segs th, table.segs td { padding: 3px 4px; border-bottom: 1px solid rgba(127, 127, 127, 0.18); text-align: left; }
+table.segs th { font-weight: 600; opacity: 0.75; }
+table.segs tbody tr { cursor: pointer; }
+table.segs tbody tr:hover, table.segs tbody tr.sel { background: rgba(43, 108, 176, 0.10); }
+.verdict { display: inline-block; padding: 0 6px; border-radius: 8px; font-size: 11px; font-weight: 600; }
+.verdict.v-best { background: #d8f0e0; color: #1a6b3a; }
+.verdict.v-must { background: #e3e8f4; color: #2b4a8b; }
+.verdict.v-close { background: #fde7c7; color: #8a5300; }
+.route-chat { margin-top: 14px; margin-bottom: 64px; border-top: 1px solid rgba(127, 127, 127, 0.25); padding-top: 6px; }
+.route-chat .quick { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.route-chat .meta { margin: 2px 0 6px; }
+.route-chat .row .chat-input { flex: 1; }
+.order-pick { max-height: 160px; overflow: auto; border: 1px solid rgba(127, 127, 127, 0.25); border-radius: 6px; padding: 6px; margin: 4px 0; }
+details.saved { margin: 4px 0 10px; }
+details.saved summary { cursor: pointer; font-weight: 600; margin-bottom: 6px; }
+details.saved .row, details.saved select { margin-bottom: 6px; }
+.grow { flex: 1; min-width: 0; }
+.pts input.pt-name { border: 1px solid transparent; background: transparent; font: inherit; padding: 1px 3px; }
+.pts input.pt-name:focus { border-color: rgba(127, 127, 127, 0.4); }
+.seg button { white-space: nowrap; }

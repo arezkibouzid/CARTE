@@ -547,9 +547,33 @@ def chat(order_id: str, messages: list[dict], level: str = "standard", ui: dict 
     if c is not None:
         length = {"concise": "Réponds en 2 phrases au plus.", "standard": "Réponds en un court paragraphe (5 phrases au plus).",
                   "detailed": "Réponds de façon détaillée et structurée (listes si utile), en restant fidèle au contexte."}[level]
-        context = (_order_block(a) + "\n\nRègles retenues par la recherche (avec leur statut) :\n" + "\n".join(_rule_line(r) for r in rules)
-                   + "\n" + _status_block(rules) + "\n\n" + _ui_block(ui))
-        history = "\n".join(f"{'Utilisateur' if m['role'] == 'user' else 'Assistant'} : {_clean(m['content'])[:600]}" for m in messages[-9:-1])
+        # context under a token budget: the order, the rules closest to the question in full and the others by id only,
+        # the latest turns in full and older ones shortened (see route_chat.ContextPacker)
+        from interface.backend.route_chat import BUDGET_TOKENS, ContextPacker, tokens
+
+        P = ContextPacker(BUDGET_TOKENS)
+        ob = _order_block(a)
+        P.add("ordre", ob, "\n".join(ob.split("\n")[:16]) + "\n[… fragments suivants omis faute de place]", required=True)
+        ranked = _retrieve(question, a, k=len(rules)) if rules else []
+        ranked += [r for r in rules if r not in ranked]
+        room = max(BUDGET_TOKENS - P.used - 900, 300)
+        lines, rest = [], []
+        for r in ranked:  # by relevance: full lines while they fit, then ids only
+            ln = _rule_line(r)
+            if not rest and tokens("\n".join(lines + [ln])) <= room:
+                lines.append(ln)
+            else:
+                rest.append(r["rule_id"])
+        P.add("règles", "Règles retenues par la recherche (avec leur statut) :\n" + "\n".join(lines)
+              + (f"\n(non détaillées faute de place : {', '.join(rest)})" if rest else "") + "\n" + _status_block(rules), required=True)
+        hist = messages[:-1]
+        history = "\n".join(f"{'Utilisateur' if m['role'] == 'user' else 'Assistant'} : {_clean(m['content'])[:600]}" for m in hist[-2:])
+        older = "\n".join(f"{'U' if m['role'] == 'user' else 'A'} : {_clean(m['content']).split('.')[0][:120]}" for m in hist[:-2][-8:])
+        if older:
+            history = "(plus tôt) " + older + "\n" + history
+        P.add("carte", _ui_block(ui))
+        context = P.text()
+        packed = P.report
         schema = {"type": "object", "additionalProperties": False, "required": ["answer", "cited_rules", "cited_facts"],
                   "properties": {"answer": {"type": "string"},
                                  "cited_rules": {"type": "array", "maxItems": 10, "items": {"type": "string", "enum": list(by_id) or ["none"]}},
@@ -581,4 +605,4 @@ def chat(order_id: str, messages: list[dict], level: str = "standard", ui: dict 
     return {"answer": out["answer"], "cited_rules": cited, "sources": sources,
             "cited_facts": [{"id": f["id"], "page": f["page"], "text": f["text"][:200]} for f in facts],
             "model": c.model if (c is not None and not problems and out is not None and "sans modèle" not in out["answer"][:40]) else None,
-            "seconds": round(time.perf_counter() - t0, 1)}
+            "context": locals().get("packed"), "seconds": round(time.perf_counter() - t0, 1)}

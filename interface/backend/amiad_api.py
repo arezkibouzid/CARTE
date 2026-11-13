@@ -498,6 +498,10 @@ class RouteRequest(BaseModel):
     use_bdtopo: bool = True
     prob_threshold: float | None = None  # calibrated probability; sections below it are penalised
     prob_penalty: float = 3.0
+    # probabilistic cost from the U-Net confidence, applied only when the route relies on the TIFF alone
+    uncertainty_cost: bool = True
+    uncertainty_strength: float = Field(0.5, ge=0, le=10)  # 0.5: knee of the ablation (experiments/INDEX.md)
+    explain: bool = True  # segment-by-segment trace (local alternatives: about 0.1 s per segment)
 
 
 def make_exercise(req: RouteRequest, sheet_bounds):
@@ -550,15 +554,10 @@ def overlap(a, b, tol=25.0, step=10.0) -> float:
     return (share(a, b) + share(b, a)) / 2
 
 
-@app.post("/api/route")
-def route(req: RouteRequest):
-    import shapely
-
-    from coa_net import pdfexercises as px
-
-    t0 = time.perf_counter()
-    T = {}
+def select_network(req):
+    """(network, no_model, base_ref): the U-Net network (optionally with OSM), or OSM / BD TOPO without a model."""
     no_model = req.model == NO_MODEL
+    base_ref = None
     if no_model:
         if req.use_osm and sheet_cfg(req.sheet).get("osm"):
             base_ref = "osm"
@@ -571,25 +570,51 @@ def route(req: RouteRequest):
             N.base_price = N.price.copy()
     else:
         N = network(req.sheet, req.model, req.use_osm and req.osm_mode == "fill")
+    return N, no_model, base_ref
+
+
+def price_network(req, N, no_model: bool) -> dict:
+    """Set N.price for this request (call under ``_lock``): operator threshold penalty, then the uncertainty-aware cost,
+    which applies only when the route relies on the TIFF alone (a U-Net network, not completed by OSM)."""
+    N.price = N.base_price.copy()
+    N.prob_share_below = None
+    N.risk = N.confidence = None
+    priced = conf_priced = conf_note = None
+    tiff_only = not no_model and not (req.use_osm and req.osm_mode == "fill")
+    if not no_model and req.prob_threshold is not None and req.prob_threshold > 0:
+        owner, pc = calibrated_edge_samples(req.sheet, req.model, N)
+        cnt = np.maximum(np.bincount(owner, minlength=len(N.edges)), 1)
+        share = np.bincount(owner, weights=(pc < req.prob_threshold).astype(float), minlength=len(N.edges)) / cnt
+        if not hasattr(N, "osm_mask"):
+            N.osm_mask = np.array([N.G.edges[e].get("source_id") == "osm" for e in N.edges])
+        share[N.osm_mask] = 0.0  # OSM roads added to the network are not judged by the U-Net
+        N.prob_share_below, N.prob_mean = share, np.bincount(owner, weights=pc, minlength=len(N.edges)) / cnt
+        N.price = N.base_price * (1.0 + req.prob_penalty * share)
+        d = share > 0
+        priced = {"threshold": req.prob_threshold, "strength": req.prob_penalty, "sections_priced": int(d.sum()),
+                  "km_below_threshold": round(float((N.length_m * share).sum()) / 2000, 1)}
+    if tiff_only and req.uncertainty_cost and req.uncertainty_strength > 0:
+        owner, pc = calibrated_edge_samples(req.sheet, req.model, N)
+        conf_priced = N.price_by_confidence(owner, pc, req.uncertainty_strength, p_ref=float(calibration_lut(req.sheet, req.model).max()))
+    elif req.uncertainty_cost and req.uncertainty_strength > 0:
+        conf_note = ("coût d'incertitude non appliqué : " + ("itinéraire calculé sans modèle (OSM / BD TOPO)" if no_model
+                     else "le réseau est complété par OSM, l'itinéraire ne repose plus sur la seule image"))
+    return {"priced": priced, "conf_priced": conf_priced, "conf_note": conf_note, "tiff_only": tiff_only}
+
+
+@app.post("/api/route")
+def route(req: RouteRequest):
+    import shapely
+
+    from coa_net import pdfexercises as px
+
+    t0 = time.perf_counter()
+    T = {}
+    N, no_model, base_ref = select_network(req)
     T["network"] = time.perf_counter() - t0
     with _lock:
-        N.price = N.base_price.copy()
-        N.prob_share_below = None
-        priced = None
-        if not no_model and req.prob_threshold is not None and req.prob_threshold > 0:
-            r = prob_raster(req.sheet, req.model)
-            owner, p = N.edge_probabilities(r.a[..., None], r.tr)  # raw scores along every section, cached
-            pc = calibration_lut(req.sheet, req.model)[np.clip(np.round(p * 255), 0, 255).astype(int)]
-            cnt = np.maximum(np.bincount(owner, minlength=len(N.edges)), 1)
-            share = np.bincount(owner, weights=(pc < req.prob_threshold).astype(float), minlength=len(N.edges)) / cnt
-            if not hasattr(N, "osm_mask"):
-                N.osm_mask = np.array([N.G.edges[e].get("source_id") == "osm" for e in N.edges])
-            share[N.osm_mask] = 0.0  # OSM roads added to the network are not judged by the U-Net
-            N.prob_share_below, N.prob_mean = share, np.bincount(owner, weights=pc, minlength=len(N.edges)) / cnt
-            N.price = N.base_price * (1.0 + req.prob_penalty * share)
-            d = share > 0
-            priced = {"threshold": req.prob_threshold, "strength": req.prob_penalty, "sections_priced": int(d.sum()),
-                      "km_below_threshold": round(float((N.length_m * share).sum()) / 2000, 1)}
+        pr = price_network(req, N, no_model)
+        priced, conf_priced, conf_note, tiff_only = pr["priced"], pr["conf_priced"], pr["conf_note"], pr["tiff_only"]
         ex = make_exercise(req, scan_raster(req.sheet).bounds)
         t = time.perf_counter()
         try:
@@ -597,14 +622,31 @@ def route(req: RouteRequest):
         except RuntimeError as e:
             raise HTTPException(422, f"Aucun itinéraire : {e}")
         T["route"] = time.perf_counter() - t
+        if conf_priced:
+            res["log"].append(f"uncertainty-aware cost (TIFF only): cost x (1 + {req.uncertainty_strength:g} x risk), risk = -ln(calibrated "
+                              f"probability / {conf_priced['p_ref']}) averaged along each section")
+        elif conf_note:
+            res["log"].append(conf_note)
+        trace = None
+        if req.explain:
+            from coa_net.route_explain import explain_route
+
+            t = time.perf_counter()
+            trace = explain_route(N, res, req.objective, req.speed_cap_kmh)
+            T["explain"] = time.perf_counter() - t
     out = {"route": legs_geojson(res), "total": res["total"], "log": res["log"], "points": res["points"],
            "objective": req.objective, "network": N.name, "probability_penalty": priced,
+           "uncertainty_cost": conf_priced, "uncertainty_cost_note": conf_note, "tiff_only": tiff_only, "explanation": trace,
            "legs": [{k: v for k, v in l.items() if k != "_line"} for l in px.jsonable(res)["legs"]], "references": {}}
     if "visit_order" in res:
         out["visit_order"] = res["visit_order"]
     route_id = f"r{int(time.time() * 1000)}"
     with _lock:
         _routes[route_id] = (req, ex, shapely.union_all([l["_line"] for l in res["legs"]]), res["total"])
+        _traces[route_id] = {"request": req.model_dump(), "total": res["total"], "network": N.name, "log": res["log"],
+                             "trace": trace, "uncertainty_cost": conf_priced, "legs": out["legs"], "compare": {}}
+        while len(_traces) > 50:
+            _traces.popitem(last=False)
         while len(_routes) > 50:
             _routes.popitem(last=False)
     out["route_id"] = route_id
@@ -614,6 +656,16 @@ def route(req: RouteRequest):
 
 
 _routes: OrderedDict = OrderedDict()
+_traces: OrderedDict = OrderedDict()  # route_id -> what the route chat may say about it
+
+
+def calibrated_edge_samples(sheet: str, model: str, N):
+    """(owner section, calibrated probability) every 20 m along every section of N, cached on N."""
+    r = prob_raster(sheet, model)
+    owner, p = N.edge_probabilities(r.a[..., None], r.tr)
+    if getattr(N, "_pc", None) is None or N._pc[0] is not p:
+        N._pc = (p, calibration_lut(sheet, model)[np.clip(np.round(p * 255), 0, 255).astype(int)])
+    return owner, N._pc[1]
 
 
 @app.get("/api/route/{route_id}/compare/{which}")
@@ -637,7 +689,181 @@ def compare(route_id: str, which: Literal["bdtopo", "osm"]):
            "length_gap": total["length_km"] / max(rr["total"]["length_km"], 1e-9) - 1,
            "time_gap": total["duration_min"] / max(rr["total"]["duration_min"], 1e-9) - 1,
            "overlap": overlap(ours, ref), "timing_s": round(time.perf_counter() - t, 2)}
+    if route_id in _traces:
+        _traces[route_id]["compare"][which] = {k: (round(v, 4) if isinstance(v, float) else v) for k, v in out.items() if k != "route"}
     return JSONResponse(json.loads(json.dumps(out, default=_clean)))
+
+
+@app.get("/api/route/{route_id}/explanation")
+def route_explanation(route_id: str):
+    if route_id not in _traces:
+        raise HTTPException(404, "itinéraire inconnu (recalculez-le)")
+    return JSONResponse(json.loads(json.dumps(_traces[route_id], default=_clean)))
+
+
+class RouteChatRequest(BaseModel):
+    messages: list[dict] = Field(min_length=1, max_length=60)
+    level: Literal["concise", "standard", "detailed"] = "standard"
+    order_ids: list[str] = Field(default_factory=list, max_length=40)  # operational orders to take into account
+    ui_context: dict | None = None
+    use_llm: bool = True  # False: trace answers only (no model)
+
+
+@app.post("/api/route/{route_id}/chat")
+def route_chat(route_id: str, req: RouteChatRequest):
+    """Questions about a computed route: answered from the solver's trace, or by the local model on a packed context."""
+    from interface.backend import route_chat as RC
+
+    if route_id not in _traces:
+        raise HTTPException(404, "itinéraire inconnu (recalculez-le)")
+    msgs = [m for m in req.messages if m.get("role") in ("user", "assistant") and isinstance(m.get("content"), str)]
+    if not msgs or msgs[-1]["role"] != "user":
+        raise HTTPException(422, "la dernière entrée doit être la question de l’utilisateur")
+    out = _orders_call(RC.chat, _traces[route_id], msgs, req.level, req.order_ids, req.ui_context, req.use_llm)
+    return JSONResponse(json.loads(json.dumps(out, default=_clean)))
+
+
+# ----------------------------------------------------------------------------------------------------------- convoys
+
+class Convoy(BaseModel):
+    name: str = "Convoi"
+    start: LonLat
+    end: LonLat
+    waypoints: list[LonLat] = Field(default_factory=list)
+    waypoint_order: Literal["fixed", "free"] = "fixed"
+    round_trip: bool = False
+    speed_cap_kmh: float = Field(80.0, ge=10, le=130)
+    objective: Literal["length", "time"] = "length"
+    priority: int = 0  # lower first: earlier convoys keep the best roads
+
+
+class ConvoysRequest(BaseModel):
+    sheet: str = "hackathon"
+    model: str = "nodice"
+    convoys: list[Convoy] = Field(min_length=1, max_length=64)
+    area: list[LonLat] | None = None
+    avoid: list[list[LonLat]] = Field(default_factory=list)
+    use_osm: bool = False
+    osm_mode: Literal["reference", "fill"] = "reference"
+    prob_threshold: float | None = None
+    prob_penalty: float = 3.0
+    uncertainty_cost: bool = True
+    uncertainty_strength: float = Field(0.5, ge=0, le=10)  # 0.5: knee of the ablation (experiments/INDEX.md)
+    deconflict: Literal["none", "penalize", "forbid"] = "penalize"
+    share_penalty: float = Field(2.0, ge=0, le=50)  # sections used by an earlier convoy cost (1 + this) times more
+
+
+def plan_convoys(req: ConvoysRequest, explain: bool = False) -> dict:
+    """Convoys planned one after the other (priority order) on the same priced network; with ``deconflict`` the sections
+    an earlier convoy uses (and those running alongside within 20 m) are priced up (``penalize``) or nearly forbidden
+    (``forbid``: x 1000, so a convoy still gets a route when no separate one exists, and the sharing is reported)."""
+    import shapely
+
+    from coa_net import pdfexercises as px
+
+    t0 = time.perf_counter()
+    common = req.model_dump(exclude={"convoys", "deconflict", "share_penalty"})
+    first = RouteRequest(**common, start=req.convoys[0].start, end=req.convoys[0].end)
+    N, no_model, _ = select_network(first)
+    order = sorted(range(len(req.convoys)), key=lambda i: (req.convoys[i].priority, i))
+    out, masks, log = [None] * len(req.convoys), {}, []
+    with _lock:
+        pr = price_network(first, N, no_model)
+        base = N.price.copy()
+        used = np.zeros(len(N.edges), float)
+        factor = {"none": 0.0, "penalize": req.share_penalty, "forbid": 1000.0}[req.deconflict]
+        try:
+            for i in order:
+                c = req.convoys[i]
+                rq = RouteRequest(**(common | c.model_dump(exclude={"name", "priority"})))
+                N.price = base * (1.0 + factor * used)
+                ex = make_exercise(rq, scan_raster(req.sheet).bounds)
+                t = time.perf_counter()
+                try:
+                    res = px.solve(ex, N, avoid=req.avoid)
+                except RuntimeError as e:
+                    out[i] = {"name": c.name, "error": str(e)}
+                    log.append(f"{c.name}: no route ({e})")
+                    continue
+                edges = sorted({e for le in res["_leg_edges"] for e in le})
+                m = res["_solver"].overlap_mask(edges)
+                shared = {req.convoys[j].name: round(float(N.length_m[edges][masks[j][edges]].sum()) / 1000, 2) for j in masks}
+                masks[i] = m
+                used = np.maximum(used, m.astype(float))
+                item = {"name": c.name, "index": i, "rank": len(masks), "total": res["total"], "route": legs_geojson(res),
+                        "legs": [{k: v for k, v in l.items() if k != "_line"} for l in px.jsonable(res)["legs"]],
+                        "visit_order": res.get("visit_order"), "shared_km_with_earlier": shared,
+                        "seconds": round(time.perf_counter() - t, 3)}
+                if explain:
+                    from coa_net.route_explain import explain_route
+
+                    item["explanation"] = explain_route(N, res, rq.objective, rq.speed_cap_kmh)
+                out[i] = item
+                log.append(f"{c.name} (rank {len(masks)}): {res['total']['length_km']} km, {res['total']['duration_min']} min; "
+                           + (f"shares {sum(shared.values()):.1f} km with earlier convoys" if shared else "first convoy"))
+        finally:
+            N.price = base
+    names = [c.name for c in req.convoys]
+    ok = [o for o in out if o and "error" not in o]
+    return {"convoys": out, "network": N.name, "deconflict": req.deconflict, "share_penalty": req.share_penalty,
+            "uncertainty_cost": pr["conf_priced"], "uncertainty_cost_note": pr["conf_note"], "tiff_only": pr["tiff_only"],
+            "summary": {"convoys": len(names), "routed": len(ok), "total_km": round(sum(o["total"]["length_km"] for o in ok), 2),
+                        "shared_km": round(sum(sum(o["shared_km_with_earlier"].values()) for o in ok), 2),
+                        "max_duration_min": max((o["total"]["duration_min"] for o in ok), default=None)},
+            "log": log, "timing_s": {"total": round(time.perf_counter() - t0, 2)}}
+
+
+@app.post("/api/convoys")
+def convoys(req: ConvoysRequest):
+    return JSONResponse(json.loads(json.dumps(plan_convoys(req), default=_clean)))
+
+
+# ----------------------------------------------------------------------------------------------------------- scenarios
+
+SCENARIOS = REPO / "outputs" / "scenarios"
+
+
+class ScenarioDoc(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    scenario: dict  # what the interface holds: points, zones, convoys, options
+
+
+@app.get("/api/scenarios")
+def scenarios_list():
+    SCENARIOS.mkdir(parents=True, exist_ok=True)
+    out = []
+    for f in sorted(SCENARIOS.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True):
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+            out.append({"id": f.stem, "name": d.get("name", f.stem), "saved": d.get("saved")})
+        except (OSError, json.JSONDecodeError):
+            continue
+    return out
+
+
+@app.post("/api/scenarios")
+def scenarios_save(doc: ScenarioDoc):
+    """Saved, never overwritten: every save is a new file (name + time)."""
+    import re as _re
+
+    SCENARIOS.mkdir(parents=True, exist_ok=True)
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    sid = f"{_re.sub(r'[^A-Za-z0-9_-]+', '_', doc.name)[:40]}_{stamp}"
+    f = SCENARIOS / f"{sid}.json"
+    k = 1
+    while f.exists():
+        f = SCENARIOS / f"{sid}_{k}.json"
+        k += 1
+    f.write_text(json.dumps({"name": doc.name, "saved": stamp, "scenario": doc.scenario}, ensure_ascii=False, indent=1), encoding="utf-8")
+    return {"id": f.stem}
+
+
+@app.get("/api/scenarios/{sid}")
+def scenarios_get(sid: str):
+    f = SCENARIOS / f"{sid}.json"
+    if not f.resolve().is_relative_to(SCENARIOS.resolve()) or not f.exists():
+        raise HTTPException(404, "scénario inconnu")
+    return json.loads(f.read_text(encoding="utf-8"))
 
 
 # ----------------------------------------------------------------------------------------------------------- extraction

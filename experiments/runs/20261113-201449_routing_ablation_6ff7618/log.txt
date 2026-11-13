@@ -1,0 +1,149 @@
+20:14:49 run 20261113-201449_routing_ablation_6ff7618
+20:15:03 exercise 1: references ready
+20:15:12 unet_nodice                  ex  1:   38.66 km, gap BD TOPO +0.045, overlap 0.83, image conf 0.825, 9.07 s
+20:15:21 unet_nodice_tta              ex  1:   39.32 km, gap BD TOPO +0.063, overlap 0.86, image conf 0.837, 8.52 s
+20:15:30 unet_mix12k_tta              ex  1:   39.28 km, gap BD TOPO +0.062, overlap 0.86, image conf 0.803, 8.57 s
+20:16:26 unet_mix12k                  ex  1:   39.03 km, gap BD TOPO +0.055, overlap 0.87, image conf 0.809, 55.88 s
+20:16:46 unet_nodice+osm_fill         ex  1:   38.55 km, gap BD TOPO +0.042, overlap 0.87, image conf 0.801, 19.30 s
+20:16:47 no_model_osm                 ex  1:   36.70 km, gap BD TOPO -0.008, overlap 0.99, image conf 0.723, 0.33 s
+20:16:47 no_model_bdtopo              ex  1:   37.00 km, gap BD TOPO +0.000, overlap 1.00, image conf 0.726, 0.38 s
+20:16:48 explain_off                  ex  1:   39.65 km, gap BD TOPO +0.072, overlap 0.07, image conf 0.880, 0.18 s
+20:16:49 explain_on                   ex  1:   39.65 km, gap BD TOPO +0.072, overlap 0.07, image conf 0.880, 0.19 s
+20:16:49 {
+ "unet_nodice": {
+  "group": "network",
+  "feasible": "1/1",
+  "mean_abs_gap_bdtopo": 0.0449,
+  "mean_abs_gap_osm": 0.0534,
+  "mean_gap_bdtopo": 0.0449,
+  "mean_overlap_bdtopo": 0.8324,
+  "mean_overlap_osm": 0.8361,
+  "mean_image_confidence": 0.8251,
+  "mean_length_km": 38.66,
+  "mean_solve_s": 0.16,
+  "mean_explain_s": 0.03,
+  "mean_call_s": 9.0708,
+  "mean_cpu_energy_j": 38.3
+ },
+ "unet_nodice_tta": {
+  "group": "network",
+  "feasible": "1/1",
+  "mean_abs_gap_bdtopo": 0.0627,
+  "mean_abs_gap_osm": 0.0714,
+  "mean_gap_bdtopo": 0.0627,
+  "mean_overlap_bdtopo": 0.8598,
+  "mean_overlap_osm": 0.8613,
+  "mean_image_confidence": 0.8368,
+  "mean_length_km": 39.32,
+  "mean_solve_s": 0.11,
+  "mean_explain_s": 0.02,
+  "mean_call_s": 8.5164,
+  "mean_cpu_energy_j": 35.9
+ },
+ "unet_mix12k_tta": {
+  "group": "network",
+  "feasible": "1/1",
+  "mean_abs_gap_bdtopo": 0.0616,
+  "mean_abs_gap_osm": 0.0703,
+  "mean_gap_bdtopo": 0.0616,
+  "mean_overlap_bdtopo": 0.8625,
+  "mean_overlap_osm": 0.8682,
+  "mean_image_confidence": 0.8027,
+  "mean_length_km": 39.28,
+  "mean_solve_s": 0.08,
+  "mean_explain_s": 0.01,
+  "mean_call_s": 8.5692,
+  "mean_cpu_energy_j": 36.1
+ },
+ "unet_mix12k": {
+  "group": "network",
+  "feasible": "1/1",
+  "mean_abs_gap_bdtopo": 0.0549,
+  "mean_abs_gap_osm": 0.0635,
+  "mean_gap_bdtopo": 0.0549,
+  "mean_overlap_bdtopo": 0.873,
+  "mean_overlap_osm": 0.8786,
+  "mean_image_confidence": 0.8094,
+  "mean_length_km": 39.03,
+  "mean_solve_s": 0.11,
+  "mean_explain_s": 0.02,
+  "mean_call_s": 55.8774,
+  "mean_cpu_energy_j": 235.4
+ },
+ "unet_nodice+osm_fill": {
+  "group": "network",
+  "feasible": "1/1",
+  "mean_abs_gap_bdtopo": 0.0419,
+  "mean_abs_gap_osm": 0.0504,
+  "mean_gap_bdtopo": 0.0419,
+  "mean_overlap_bdtopo": 0.8681,
+  "mean_overlap_osm": 0.8662,
+  "mean_image_confidence": 0.8007,
+  "mean_length_km": 38.55,
+  "mean_solve_s": 0.25,
+  "mean_explain_s": 0.05,
+  "mean_call_s": 19.3014,
+  "mean_cpu_energy_j": 81.4
+ },
+ "no_model_osm": {
+  "group": "network",
+  "feasible": "1/1",
+  "mean_abs_gap_bdtopo": 0.0081,
+  "mean_abs_gap_osm": 0.0,
+  "mean_gap_bdtopo": -0.0081,
+  "mean_overlap_bdtopo": 0.9867,
+  "mean_overlap_osm": 1.0,
+  "mean_image_confidence": 0.7225,
+  "mean_length_km": 36.7,
+  "mean_solve_s": 0.29,
+  "mean_explain_s": 0.04,
+  "mean_call_s": 0.3337,
+  "mean_cpu_energy_j": 1.4
+ },
+ "no_model_bdtopo": {
+  "group": "network",
+  "feasible": "1/1",
+  "mean_abs_gap_bdtopo": 0.0,
+  "mean_abs_gap_osm": 0.0082,
+  "mean_gap_bdtopo": 0.0,
+  "mean_overlap_bdtopo": 1.0,
+  "mean_overlap_osm": 0.9867,
+  "mean_image_confidence": 0.7263,
+  "mean_length_km": 37.0,
+  "mean_solve_s": 0.33,
+  "mean_explain_s": 0.04,
+  "mean_call_s": 0.3823,
+  "mean_cpu_energy_j": 1.6
+ },
+ "explain_off": {
+  "group": "explain",
+  "feasible": "1/1",
+  "mean_abs_gap_bdtopo": 0.0716,
+  "mean_abs_gap_osm": 0.0804,
+  "mean_gap_bdtopo": 0.0716,
+  "mean_overlap_bdtopo": 0.0706,
+  "mean_overlap_osm": 0.0602,
+  "mean_image_confidence": 0.8799,
+  "mean_length_km": 39.65,
+  "mean_solve_s": 0.16,
+  "mean_explain_s": null,
+  "mean_call_s": 0.1781,
+  "mean_cpu_energy_j": 0.8
+ },
+ "explain_on": {
+  "group": "explain",
+  "feasible": "1/1",
+  "mean_abs_gap_bdtopo": 0.0716,
+  "mean_abs_gap_osm": 0.0804,
+  "mean_gap_bdtopo": 0.0716,
+  "mean_overlap_bdtopo": 0.0706,
+  "mean_overlap_osm": 0.0602,
+  "mean_image_confidence": 0.8799,
+  "mean_length_km": 39.65,
+  "mean_solve_s": 0.15,
+  "mean_explain_s": 0.03,
+  "mean_call_s": 0.1929,
+  "mean_cpu_energy_j": 0.8
+ }
+}
+20:16:49 done in 119.9 s (ok): /home/nouhaila_aitbella/bouzid/Hackathon_AMIAD/experiments/runs/20261113-201449_routing_ablation_6ff7618

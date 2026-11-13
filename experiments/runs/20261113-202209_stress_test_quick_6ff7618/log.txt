@@ -1,0 +1,55 @@
+20:22:09 run 20261113-202209_stress_test_quick_6ff7618
+20:22:23 incomplete random 0.02 0 4 / 4
+20:22:30 incomplete random 0.05 0 4 / 4
+20:22:35 incomplete patches 0.05 0 4 / 4
+20:22:40 incomplete patches 0.2 0 2 / 4
+20:22:45 uncertain 0.1 done
+20:22:49 uncertain 0.2 done
+20:22:50 {
+ "network": {
+  "nodes": 32475,
+  "sections": 73305,
+  "km": 10330.0
+ },
+ "incomplete": {
+  "runs": 16,
+  "feasible_share": 0.875,
+  "by_kind_and_share": {
+   "random sections 0.02": {
+    "feasible": 1.0,
+    "mean_detour": 0.0077,
+    "mean_overlap_with_full": 0.507
+   },
+   "random sections 0.05": {
+    "feasible": 1.0,
+    "mean_detour": 0.9454,
+    "mean_overlap_with_full": 0.156
+   },
+   "unreadable patches 0.05": {
+    "feasible": 1.0,
+    "mean_detour": 0.0163,
+    "mean_overlap_with_full": 0.77
+   },
+   "unreadable patches 0.2": {
+    "feasible": 0.5,
+    "mean_detour": 0.202,
+    "mean_overlap_with_full": 0.556
+   }
+  }
+ },
+ "uncertain": {
+  "runs": 8,
+  "feasible_share": 1.0,
+  "by_sigma": {
+   "0.1": {
+    "mean_overlap_with_clean": 0.793,
+    "mean_detour": -0.0056
+   },
+   "0.2": {
+    "mean_overlap_with_clean": 0.771,
+    "mean_detour": -0.0067
+   }
+  }
+ }
+}
+20:22:50 done in 40.4 s (ok): /home/nouhaila_aitbella/bouzid/Hackathon_AMIAD/experiments/runs/20261113-202209_stress_test_quick_6ff7618

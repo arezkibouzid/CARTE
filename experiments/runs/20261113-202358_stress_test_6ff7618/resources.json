@@ -1,0 +1,83 @@
+{
+ "wall_s": 1446.43,
+ "cpu_s": 1369.12,
+ "peak_rss_mb": 5175.4,
+ "cpu_energy_j": 4271.7,
+ "cpu_energy_method": "estimated",
+ "phases": {
+  "load networks": {
+   "calls": 1,
+   "wall_s": 8.213,
+   "cpu_s": 7.371,
+   "cpu_energy_j": 23.0,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 706.6
+  },
+  "distance": {
+   "calls": 1,
+   "wall_s": 5.485,
+   "cpu_s": 7.109,
+   "cpu_energy_j": 22.2,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 924.2
+  },
+  "extraction": {
+   "calls": 1,
+   "wall_s": 9.418,
+   "cpu_s": 9.34,
+   "cpu_energy_j": 29.1,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1065.2
+  },
+  "convoys": {
+   "calls": 1,
+   "wall_s": 79.89,
+   "cpu_s": 79.883,
+   "cpu_energy_j": 249.2,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1073.5
+  },
+  "waypoints": {
+   "calls": 1,
+   "wall_s": 3.044,
+   "cpu_s": 3.044,
+   "cpu_energy_j": 9.5,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1073.6
+  },
+  "avoid": {
+   "calls": 1,
+   "wall_s": 2.451,
+   "cpu_s": 2.451,
+   "cpu_energy_j": 7.6,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1073.7
+  },
+  "combos": {
+   "calls": 1,
+   "wall_s": 69.714,
+   "cpu_s": 69.691,
+   "cpu_energy_j": 217.4,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4854.4
+  },
+  "threads": {
+   "calls": 1,
+   "wall_s": 71.91,
+   "cpu_s": 0.005,
+   "cpu_energy_j": 0.0,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4854.4
+  },
+  "degraded": {
+   "calls": 1,
+   "wall_s": 1189.684,
+   "cpu_s": 1189.543,
+   "cpu_energy_j": 3711.4,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4859.7
+  }
+ },
+ "status": "ok",
+ "error": null
+}

@@ -1,5 +1,5 @@
 import type {
-  ChatReply, ExplainLevel, OrderAnalysis, OrderInfo, OrdersStatus, Capabilities, ItinerariesResult, BackendStatus, BBox, CompareResult, ExtractResult, LonLat, Options, PdfResult, RouteResult, Scenario, SheetInfo,
+  ChatReply, ConvoysResult, RouteChatReply, SavedScenario, ExplainLevel, OrderAnalysis, OrderInfo, OrdersStatus, Capabilities, ItinerariesResult, BackendStatus, BBox, CompareResult, ExtractResult, LonLat, Options, PdfResult, RouteResult, Scenario, SheetInfo,
 } from './types';
 
 /** Le back end est servi par la même origine (FastAPI sert aussi l'interface ; proxy Vite en développement). */
@@ -38,10 +38,36 @@ export function postRoute(sheet: string, sc: Scenario, o: Options, signal?: Abor
     objective: o.objective, round_trip: sc.roundTrip, speed_cap_kmh: o.speedCap, area: sc.area ?? null, avoid: sc.avoid,
     use_osm: o.useOsm, osm_mode: o.osmMode, use_bdtopo: o.useBdtopo,
     prob_threshold: o.penalize && o.model !== 'none' ? o.tau : null, prob_penalty: o.strength,
+    uncertainty_cost: o.uncertaintyCost, uncertainty_strength: o.lambda,
   };
   return fetch(`${API}/api/route`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
     .then((r) => json<RouteResult>(r));
 }
+
+export function postConvoys(sheet: string, sc: Scenario, o: Options, signal?: AbortSignal) {
+  const body = {
+    sheet, model: o.model, convoys: sc.convoys, area: sc.area ?? null, avoid: sc.avoid, use_osm: o.useOsm, osm_mode: o.osmMode,
+    prob_threshold: o.penalize && o.model !== 'none' ? o.tau : null, prob_penalty: o.strength,
+    uncertainty_cost: o.uncertaintyCost, uncertainty_strength: o.lambda, deconflict: sc.deconflict, share_penalty: sc.sharePenalty,
+  };
+  return fetch(`${API}/api/convoys`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
+    .then((r) => json<ConvoysResult>(r));
+}
+
+export function chatRoute(routeId: string, messages: { role: string; content: string }[], level: ExplainLevel, orderIds: string[],
+  ui: Record<string, unknown> | null, useLlm = true) {
+  return fetch(`${API}/api/route/${routeId}/chat`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages, level, order_ids: orderIds, ui_context: ui, use_llm: useLlm }),
+  }).then((r) => json<RouteChatReply>(r));
+}
+
+export const listScenarios = () => fetch(`${API}/api/scenarios`).then((r) => json<SavedScenario[]>(r));
+export const getScenario = (id: string) => fetch(`${API}/api/scenarios/${encodeURIComponent(id)}`)
+  .then((r) => json<{ name: string; saved: string; scenario: { scenario: Scenario; options: Options } }>(r));
+export const saveScenario = (name: string, scenario: Scenario, options: Options) =>
+  fetch(`${API}/api/scenarios`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, scenario: { scenario, options } }) })
+    .then((r) => json<{ id: string }>(r));
 
 export const getCapabilities = () => fetch(`${API}/api/capabilities`).then((r) => json<Capabilities>(r));
 

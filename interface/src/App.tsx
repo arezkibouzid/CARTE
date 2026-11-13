@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { bboxOfPolygon, getCompare, getSheets, getStatus, postExtract, postItineraries, postRoute } from './api';
+import { bboxOfPolygon, getCompare, getSheets, getStatus, postConvoys, postExtract, postItineraries, postRoute } from './api';
 import ConfigPanel from './components/ConfigPanel';
 import ScenarioPanel from './components/ScenarioPanel';
 import ResultsPanel from './components/ResultsPanel';
@@ -7,7 +7,7 @@ import OrdersPanel from './components/OrdersPanel';
 import MapView, { STAGES } from './components/MapView';
 import { ExtractionPlayer, HINTS, LayerControl, Toolbar } from './components/MapOverlays';
 import type {
-  BackendStatus, BBox, CompareResult, ExtractResult, ItinerariesResult, LayerState, LonLat, Options, PdfExercise, RouteResult, Scenario, SheetInfo, ToolId,
+  BackendStatus, BBox, CompareResult, ConvoysResult, ExtractResult, ItinerariesResult, LayerState, LonLat, Options, PdfExercise, RouteResult, Scenario, SheetInfo, ToolId,
 } from './types';
 
 type Tab = 'config' | 'scenario' | 'results' | 'orders';
@@ -21,11 +21,12 @@ const TABS: { id: Tab; label: string }[] = [
 const STORE = 'amiad-ui-v2';
 const EMPTY_SCENARIO: Scenario = {
   waypoints: [], waypointOrder: 'fixed', roundTrip: false, avoid: [], mode: 'single',
+  convoys: [], deconflict: 'penalize', sharePenalty: 2,
   distinct: { k: 3, sepKm: 5, noIntersect: true, vehicle: 'pfm_carrier', turns: true, zoneRadiusKm: 8 },
 };
 const DEFAULT_OPTIONS: Options = {
   model: 'nodice', objective: 'length', speedCap: 80, useBdtopo: true, useOsm: false, osmMode: 'reference',
-  tau: 0.3, penalize: false, strength: 3, traceThreshold: 0.5,
+  tau: 0.3, penalize: false, strength: 3, traceThreshold: 0.5, uncertaintyCost: true, lambda: 0.5,
 };
 const DEFAULT_LAYERS: LayerState = { scan: true, prob: false, uncert: false, network: false, bdtopo: false, osm: false, refs: true, hard: true };
 
@@ -55,6 +56,7 @@ export default function App() {
   const [fitKey, setFitKey] = useState(0);
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [multi, setMulti] = useState<ItinerariesResult | null>(null);
+  const [convoyRes, setConvoyRes] = useState<ConvoysResult | null>(null);
   const [compares, setCompares] = useState<Partial<Record<'bdtopo' | 'osm', CompareResult | 'loading'>>>({});
   const [computing, setComputing] = useState(false);
   const [error, setError] = useState('');
@@ -142,6 +144,32 @@ export default function App() {
   // ------------------------------------------------------------------ calcul d'itinéraire puis contrôles en parallèle
   const compute = useCallback(async () => {
     const distinct = scenario.mode === 'distinct';
+    if (scenario.mode === 'convoys') {
+      if (!sheet || !scenario.convoys.length) return;
+      routeAbort.current?.abort();
+      const ctl = new AbortController();
+      routeAbort.current = ctl;
+      setComputing(true);
+      setError('');
+      setCompares({});
+      try {
+        const r = await postConvoys(sheet.id, scenario, options, ctl.signal);
+        setConvoyRes(r);
+        setRoute(null);
+        setMulti(null);
+        setTab('results');
+      } catch (e) {
+        if (!ctl.signal.aborted) {
+          setError((e as Error).message);
+          setConvoyRes(null);
+          setTab('results');
+        }
+      } finally {
+        if (!ctl.signal.aborted) setComputing(false);
+      }
+      return;
+    }
+    setConvoyRes(null);
     if (!sheet || (distinct ? !(scenario.zoneFrom || scenario.start) || !(scenario.zoneTo || scenario.end) : !scenario.start || !scenario.end)) return;
     routeAbort.current?.abort();
     const ctl = new AbortController();
@@ -263,6 +291,7 @@ export default function App() {
     setScenario((s) => ({ ...EMPTY_SCENARIO, mode: s.mode, distinct: s.distinct }));
     setRoute(null);
     setMulti(null);
+    setConvoyRes(null);
     setCompares({});
     setExtraction(null);
     setPlaying(false);
@@ -285,6 +314,29 @@ export default function App() {
   const totalSteps = status ? Object.keys(status.steps).length : 0;
   const readyCompares: Partial<Record<'bdtopo' | 'osm', CompareResult>> = {};
   for (const [k, v] of Object.entries(compares)) if (v && v !== 'loading') readyCompares[k as 'bdtopo' | 'osm'] = v;
+
+  // les convois s'affichent avec la couche des itinéraires distincts (une couleur par convoi)
+  const convoysAsMulti: ItinerariesResult | null = convoyRes ? {
+    itineraries: { type: 'FeatureCollection', features: convoyRes.convoys.flatMap((c, i) => (c?.route?.features ?? []).map((f) => ({
+      ...f, properties: { ...(f.properties ?? {}), index: i, id: c!.name } }))) } as unknown as ItinerariesResult['itineraries'],
+    turns: { type: 'FeatureCollection', features: [] }, difficult_areas: { type: 'FeatureCollection', features: [] }, zones: { type: 'FeatureCollection', features: [] },
+    checks: [], all_ok: true, log: [], solver: { turn_aware: false, tried: 0, feasible_sets: 0, alternatives: 0 }, timing_s: {}, network: convoyRes.network, vehicle: '',
+  } : null;
+
+  const uiContext = (): Record<string, unknown> => ({
+                sheet: sheet?.label, mode: scenario.mode, start: scenario.start, end: scenario.end, waypoints: scenario.waypoints,
+                waypoint_order: scenario.waypoints.length > 1 ? scenario.waypointOrder : undefined, round_trip: scenario.roundTrip || undefined,
+                deployment_area: scenario.area, zones_to_avoid: scenario.avoid.length ? scenario.avoid : undefined,
+                departure_zone: scenario.zoneFrom, arrival_zone: scenario.zoneTo,
+                options: { reading_model: options.model, objective: options.objective, convoy_max_speed_kmh: options.speedCap },
+                distinct_constraints: scenario.mode === 'distinct' ? scenario.distinct : undefined,
+                route_result: route ? { length_km: route.total.length_km, duration_min: Math.round(route.total.duration_min), network: route.network,
+                  km_built_up: route.legs.reduce((s, l) => s + l.km_built_up, 0) } : undefined,
+                distinct_result: multi ? { network: multi.network, vehicle: multi.vehicle, all_constraints_ok: multi.all_ok,
+                  itineraries: multi.itineraries.features.map((f) => ({ id: f.properties.id, length_km: f.properties.length_km, time_min: f.properties.time_min,
+                    bridges: f.properties.bridges, critical_turns: f.properties.turns_critical, builtup_km: f.properties.builtup_km })) } : undefined,
+    convoys_result: convoyRes ? convoyRes.summary : undefined,
+  });
 
   const rectMenu = rect && (
     <div className="menu">
@@ -313,7 +365,7 @@ export default function App() {
         <nav className="tabs">
           {TABS.map((t) => (
             <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
-              {t.label}{t.id === 'results' && (route || multi || extraction) ? ' •' : ''}
+              {t.label}{t.id === 'results' && (route || multi || convoyRes || extraction) ? ' •' : ''}
             </button>
           ))}
         </nav>
@@ -324,23 +376,14 @@ export default function App() {
           {tab === 'config' && <ConfigPanel sheet={sheet} options={options} onChange={patchOptions} />}
           {tab === 'scenario' && (
             <ScenarioPanel sheet={sheet} scenario={scenario} tool={tool} setTool={changeTool} onChange={patchScenario}
-              onLoadExercise={loadExercise} onCompute={compute} computing={computing} />
+              onLoadExercise={loadExercise} onCompute={compute} computing={computing} options={options}
+              onReplace={(sc, o) => { setScenario({ ...EMPTY_SCENARIO, ...sc }); setOptions({ ...DEFAULT_OPTIONS, ...o }); setRoute(null); setMulti(null); setConvoyRes(null);
+                const pts = [sc.start, sc.end, ...(sc.waypoints ?? []), ...(sc.convoys ?? []).flatMap((c) => [c.start, c.end])].filter(Boolean) as LonLat[];
+                if (pts.length) setFocus(bboxOfPolygon(pts)); }} />
           )}
           {tab === 'orders' && (
             <OrdersPanel
-              uiContext={() => ({
-                sheet: sheet?.label, mode: scenario.mode, start: scenario.start, end: scenario.end, waypoints: scenario.waypoints,
-                waypoint_order: scenario.waypoints.length > 1 ? scenario.waypointOrder : undefined, round_trip: scenario.roundTrip || undefined,
-                deployment_area: scenario.area, zones_to_avoid: scenario.avoid.length ? scenario.avoid : undefined,
-                departure_zone: scenario.zoneFrom, arrival_zone: scenario.zoneTo,
-                options: { reading_model: options.model, objective: options.objective, convoy_max_speed_kmh: options.speedCap },
-                distinct_constraints: scenario.mode === 'distinct' ? scenario.distinct : undefined,
-                route_result: route ? { length_km: route.total.length_km, duration_min: Math.round(route.total.duration_min), network: route.network,
-                  km_built_up: route.legs.reduce((s, l) => s + l.km_built_up, 0) } : undefined,
-                distinct_result: multi ? { network: multi.network, vehicle: multi.vehicle, all_constraints_ok: multi.all_ok,
-                  itineraries: multi.itineraries.features.map((f) => ({ id: f.properties.id, length_km: f.properties.length_km, time_min: f.properties.time_min,
-                    bridges: f.properties.bridges, critical_turns: f.properties.turns_critical, builtup_km: f.properties.builtup_km })) } : undefined,
-              })}
+              uiContext={() => uiContext()}
               onApplyToMap={(m) => {
                 setScenario((s) => ({ ...s, start: m.start ?? s.start, end: m.end ?? s.end, waypoints: m.waypoints ?? s.waypoints, area: m.area ?? s.area }));
                 const pts = [m.start, m.end, ...(m.waypoints ?? []), ...(m.area ?? [])].filter(Boolean) as LonLat[];
@@ -348,22 +391,23 @@ export default function App() {
               }}
             />
           )}
-          {tab === 'results' && <ResultsPanel route={route} multi={multi} compares={compares} extraction={extraction?.result ?? null} error={error} />}
-          {tab !== 'scenario' && tab !== 'orders' && (scenario.mode === 'distinct' ? (scenario.zoneFrom || scenario.start) && (scenario.zoneTo || scenario.end) : scenario.start && scenario.end) && (
-            <button className="btn primary big sticky" onClick={compute} disabled={computing}>{computing ? 'Calcul en cours…' : scenario.mode === 'distinct' ? 'Calculer les itinéraires' : 'Calculer l’itinéraire'}</button>
+          {tab === 'results' && <ResultsPanel route={route} multi={multi} compares={compares} extraction={extraction?.result ?? null} error={error}
+            convoys={convoyRes} onFocus={(b) => setFocus(b)} uiContext={uiContext} />}
+          {tab !== 'scenario' && tab !== 'orders' && (scenario.mode === 'convoys' ? scenario.convoys.length > 0 : scenario.mode === 'distinct' ? (scenario.zoneFrom || scenario.start) && (scenario.zoneTo || scenario.end) : scenario.start && scenario.end) && (
+            <button className="btn primary big sticky" onClick={compute} disabled={computing}>{computing ? 'Calcul en cours…' : scenario.mode === 'convoys' ? 'Planifier les convois' : scenario.mode === 'distinct' ? 'Calculer les itinéraires' : 'Calculer l’itinéraire'}</button>
           )}
         </aside>
         <div className="map-wrap">
           <MapView
             sheet={sheet} options={options} layers={layers} scenario={scenario} tool={tool} draftPolygon={draft} rect={rect}
-            rectMenu={rectMenu} route={route} multi={multi} compares={readyCompares} extraction={extraction} fitKey={fitKey} focus={focus}
+            rectMenu={rectMenu} route={route} multi={multi ?? convoysAsMulti} compares={readyCompares} extraction={extraction} fitKey={fitKey} focus={focus}
             onPoint={onPoint} onMovePoint={onMovePoint} onPolygonVertex={(p) => setDraft((d) => [...d, p])} onPolygonClose={onPolygonClose}
             onRectangle={(b) => { setRect(b); setTool('pan'); }} onLoading={onLoading}
           />
           <Toolbar tool={tool} setTool={changeTool} onFit={() => setFitKey((k) => k + 1)} onClear={clearAll} />
           <LayerControl layers={layers} setLayers={setLayers} options={options} setTau={(t) => patchOptions({ tau: t })} loading={loadingLayers} />
           <div className="hint">{HINTS[tool]}{draft.length > 0 && ` (${draft.length} sommet${draft.length > 1 ? 's' : ''})`}</div>
-          {(computing || extracting) && <div className="busy">{computing ? (scenario.mode === 'distinct' ? `Recherche de ${scenario.distinct.k} itinéraires distincts… (jusqu’à 1 min la première fois)` : 'Calcul de l’itinéraire…') : 'Extraction du réseau…'}</div>}
+          {(computing || extracting) && <div className="busy">{computing ? (scenario.mode === 'convoys' ? `Planification de ${scenario.convoys.length} convoi(s)…` : scenario.mode === 'distinct' ? `Recherche de ${scenario.distinct.k} itinéraires distincts… (jusqu’à 1 min la première fois)` : 'Calcul de l’itinéraire…') : 'Extraction du réseau…'}</div>}
           {extraction && (
             <ExtractionPlayer result={extraction.result} stage={extraction.stage} progress={extraction.progress} playing={playing}
               onStage={(s) => setExtraction((x) => (x ? { ...x, stage: s, progress: s === STAGES.length - 1 ? 1 : 0 } : x))}

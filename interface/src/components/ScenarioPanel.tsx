@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { getCapabilities, getPdf, uploadPdf } from '../api';
-import type { Capabilities, DistinctParams, LonLat, PdfExercise, PdfResult, Scenario, SheetInfo, ToolId } from '../types';
+import { getCapabilities, getPdf, getScenario, listScenarios, saveScenario, uploadPdf } from '../api';
+import type { Capabilities, ConvoyDef, DistinctParams, LonLat, Options, PdfExercise, PdfResult, SavedScenario, Scenario, SheetInfo, ToolId } from '../types';
+import { IT_COLORS } from './MapView';
 
 interface Props {
   sheet: SheetInfo | null;
@@ -11,11 +12,14 @@ interface Props {
   onLoadExercise: (ex: PdfExercise) => void;
   onCompute: () => void;
   computing: boolean;
+  options: Options;
+  /** Remplace le scénario et les options par un scénario enregistré. */
+  onReplace: (sc: Scenario, o: Options) => void;
 }
 
 const fmt = (p?: LonLat) => (p ? `${p[1].toFixed(5)} N, ${p[0].toFixed(5)} E` : '—');
 
-export default function ScenarioPanel({ sheet, scenario: sc, tool, setTool, onChange, onLoadExercise, onCompute, computing }: Props) {
+export default function ScenarioPanel({ sheet, scenario: sc, tool, setTool, onChange, onLoadExercise, onCompute, computing, options, onReplace }: Props) {
   const [pdf, setPdf] = useState<PdfResult | null>(null);
   const [pdfErr, setPdfErr] = useState('');
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -25,6 +29,36 @@ export default function ScenarioPanel({ sheet, scenario: sc, tool, setTool, onCh
     getCapabilities().then(setCaps).catch(() => setCaps(null));
   }, []);
   const distinct = sc.mode === 'distinct';
+  const convoys = sc.mode === 'convoys';
+  const [saved, setSaved] = useState<SavedScenario[]>([]);
+  const [saveName, setSaveName] = useState('');
+  const [saveMsg, setSaveMsg] = useState('');
+  const refreshSaved = () => listScenarios().then(setSaved).catch(() => setSaved([]));
+  useEffect(() => { refreshSaved(); }, []);
+  const addConvoy = () => {
+    if (!sc.start || !sc.end) return;
+    const c: ConvoyDef = {
+      name: `Convoi ${sc.convoys.length + 1}`, start: sc.start, end: sc.end, waypoints: sc.waypoints, waypoint_order: sc.waypointOrder,
+      round_trip: sc.roundTrip, speed_cap_kmh: options.speedCap, objective: options.objective, priority: sc.convoys.length,
+    };
+    onChange({ convoys: [...sc.convoys, c], start: undefined, end: undefined, waypoints: [] });
+  };
+  const convoysFromPdf = () => {
+    if (!pdf) return;
+    const cs: ConvoyDef[] = pdf.exercises.map((x, i) => ({
+      name: `Ex. ${x.number}`, start: x.points[x.start] as LonLat, end: x.points[x.end] as LonLat, waypoints: x.waypoints.map((w) => x.points[w] as LonLat),
+      waypoint_order: x.waypoint_order === 'free' ? 'free' : 'fixed', round_trip: x.round_trip, speed_cap_kmh: x.speed_cap_kmh, objective: x.objective, priority: i,
+    }));
+    onChange({ convoys: cs, mode: 'convoys' });
+  };
+  const patchConvoy = (i: number, p: Partial<ConvoyDef>) => onChange({ convoys: sc.convoys.map((c, j) => (j === i ? { ...c, ...p } : c)) });
+  const moveConvoy = (i: number, d: -1 | 1) => {
+    const cs = [...sc.convoys];
+    const j = i + d;
+    if (j < 0 || j >= cs.length) return;
+    [cs[i], cs[j]] = [cs[j], cs[i]];
+    onChange({ convoys: cs.map((c, k) => ({ ...c, priority: k })) });
+  };
   const d = sc.distinct;
   const setD = (p: Partial<DistinctParams>) => onChange({ distinct: { ...d, ...p } });
 
@@ -40,20 +74,51 @@ export default function ScenarioPanel({ sheet, scenario: sc, tool, setTool, onCh
     [w[i], w[j]] = [w[j], w[i]];
     onChange({ waypoints: w });
   };
-  const ready = distinct ? (!!sc.zoneFrom || !!sc.start) && (!!sc.zoneTo || !!sc.end) : !!sc.start && !!sc.end;
+  const ready = convoys ? sc.convoys.length > 0 : distinct ? (!!sc.zoneFrom || !!sc.start) && (!!sc.zoneTo || !!sc.end) : !!sc.start && !!sc.end;
 
   return (
     <div className="panel">
       <h3>Type de calcul</h3>
       <div className="seg">
-        <button className={!distinct ? 'on' : ''} onClick={() => onChange({ mode: 'single' })}>Un itinéraire</button>
-        <button className={distinct ? 'on' : ''} onClick={() => onChange({ mode: 'distinct' })}>Itinéraires distincts (contraintes)</button>
+        <button className={sc.mode === 'single' ? 'on' : ''} onClick={() => onChange({ mode: 'single' })}>Un itinéraire</button>
+        <button className={convoys ? 'on' : ''} onClick={() => onChange({ mode: 'convoys' })}>Plusieurs convois</button>
+        <button className={distinct ? 'on' : ''} onClick={() => onChange({ mode: 'distinct' })}>Itinéraires distincts</button>
       </div>
       <p className="muted small">
-        {distinct
+        {convoys
+          ? 'Plusieurs convois planifiés ensemble, chacun avec ses points, sa vitesse et sa priorité ; les routes déjà prises par un convoi prioritaire sont pénalisées ou interdites aux suivants.'
+          : distinct
           ? 'Plusieurs itinéraires d’une zone de départ à une zone d’arrivée, éloignés les uns des autres, sur les seules routes praticables par le véhicule choisi ; virages difficiles, zones de manœuvre difficile et contrôle de chaque contrainte.'
           : 'Le meilleur itinéraire entre un départ et une arrivée, avec étapes, aller-retour et zones.'}
       </p>
+
+      <details className="saved">
+        <summary>Scénarios enregistrés ({saved.length})</summary>
+        <div className="row">
+          <input className="grow" placeholder="Nom du scénario" value={saveName} onChange={(e) => setSaveName(e.target.value)} />
+          <button className="btn" disabled={!saveName.trim()} onClick={async () => {
+            try {
+              const r = await saveScenario(saveName.trim(), sc, options);
+              setSaveMsg(`Enregistré (${r.id})`);
+              setSaveName('');
+              refreshSaved();
+            } catch (e) { setSaveMsg((e as Error).message); }
+          }}>Enregistrer</button>
+        </div>
+        <select value="" style={{ width: '100%' }} disabled={!saved.length} onChange={async (e) => {
+          if (!e.target.value) return;
+          try {
+            const d = await getScenario(e.target.value);
+            onReplace(d.scenario.scenario, d.scenario.options);
+            setSaveMsg(`Chargé : ${d.name}`);
+          } catch (err) { setSaveMsg((err as Error).message); }
+        }}>
+          <option value="">{saved.length ? 'Charger un scénario…' : 'Aucun scénario enregistré'}</option>
+          {saved.map((x) => <option key={x.id} value={x.id}>{x.name} — {x.saved}</option>)}
+        </select>
+        <p className="muted small">Un scénario garde les points, zones, convois et options. Chaque enregistrement est un nouveau fichier (outputs/scenarios), jamais écrasé.</p>
+        {saveMsg && <p className="small">{saveMsg}</p>}
+      </details>
 
       <h3>Exercice du PDF</h3>
       <div className="row">
@@ -149,6 +214,43 @@ export default function ScenarioPanel({ sheet, scenario: sc, tool, setTool, onCh
         </>
       )}
 
+      {convoys && (
+        <>
+          <h3>Convois ({sc.convoys.length})</h3>
+          {sc.convoys.length === 0 && <p className="muted small">Placez D, A (et des étapes) ci-dessous puis « Ajouter comme convoi », ou chargez les exercices du PDF.</p>}
+          <ul className="pts">
+            {sc.convoys.map((c, i) => (
+              <li key={i}>
+                <span className="it-sw" style={{ background: IT_COLORS[i % IT_COLORS.length] }} />
+                <input className="pt-name grow" value={c.name} onChange={(e) => patchConvoy(i, { name: e.target.value })} />
+                <span className="coords">{c.waypoints.length ? `${c.waypoints.length} ét. · ` : ''}{c.speed_cap_kmh} km/h</span>
+                <button className="btn small" onClick={() => moveConvoy(i, -1)} disabled={i === 0} title="Plus prioritaire">↑</button>
+                <button className="btn small" onClick={() => moveConvoy(i, 1)} disabled={i === sc.convoys.length - 1} title="Moins prioritaire">↓</button>
+                <button className="btn small danger" onClick={() => onChange({ convoys: sc.convoys.filter((_, j) => j !== i) })} title="Retirer">✕</button>
+              </li>
+            ))}
+          </ul>
+          <div className="row">
+            <button className="btn" disabled={!sc.start || !sc.end} onClick={addConvoy} title="Les points D, A et les étapes actuels deviennent un convoi">+ Ajouter comme convoi</button>
+            <button className="btn" disabled={!pdf?.exercises.length} onClick={convoysFromPdf}>Exercices du PDF → convois</button>
+            {sc.convoys.length > 0 && <button className="btn danger" onClick={() => onChange({ convoys: [] })}>Vider</button>}
+          </div>
+          <h3>Déconfliction</h3>
+          <div className="seg small">
+            <button className={sc.deconflict === 'none' ? 'on' : ''} onClick={() => onChange({ deconflict: 'none' })} title="Chaque convoi prend son meilleur itinéraire">Aucune</button>
+            <button className={sc.deconflict === 'penalize' ? 'on' : ''} onClick={() => onChange({ deconflict: 'penalize' })} title="Routes déjà prises : plus chères">Pénaliser</button>
+            <button className={sc.deconflict === 'forbid' ? 'on' : ''} onClick={() => onChange({ deconflict: 'forbid' })} title="Routes déjà prises : interdites sauf s’il n’y a pas d’autre passage">Interdire</button>
+          </div>
+          {sc.deconflict === 'penalize' && (
+            <label className="slider">
+              <span>Surcoût d’une route déjà prise : <b>×{(1 + sc.sharePenalty).toFixed(1)}</b></span>
+              <input type="range" min={0.5} max={10} step={0.5} value={sc.sharePenalty} onChange={(e) => onChange({ sharePenalty: Number(e.target.value) })} />
+            </label>
+          )}
+          <p className="muted small">Les convois sont planifiés dans l’ordre de la liste (le premier est prioritaire). Les zones et options sont communes.</p>
+        </>
+      )}
+
       <h3>Points</h3>
       <ul className="pts">
         <li>
@@ -212,9 +314,9 @@ export default function ScenarioPanel({ sheet, scenario: sc, tool, setTool, onCh
       <p className="muted small">Polygone : un clic par sommet, double-clic pour fermer. Vous pouvez aussi tracer un rectangle avec l’outil ▭ de la carte.</p>
 
       <button className="btn primary big" disabled={!ready || computing} onClick={onCompute}>
-        {computing ? 'Calcul en cours…' : distinct ? 'Calculer les itinéraires' : 'Calculer l’itinéraire'}
+        {computing ? 'Calcul en cours…' : convoys ? `Planifier ${sc.convoys.length} convoi(s)` : distinct ? 'Calculer les itinéraires' : 'Calculer l’itinéraire'}
       </button>
-      {!ready && <p className="muted small center">{distinct ? 'Dessinez les zones de départ et d’arrivée, ou placez D et A.' : 'Placez au moins un départ et une arrivée.'}</p>}
+      {!ready && <p className="muted small center">{convoys ? 'Ajoutez au moins un convoi.' : distinct ? 'Dessinez les zones de départ et d’arrivée, ou placez D et A.' : 'Placez au moins un départ et une arrivée.'}</p>}
     </div>
   );
 }

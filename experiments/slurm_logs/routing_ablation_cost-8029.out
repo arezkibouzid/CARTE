@@ -1,0 +1,474 @@
+node par2dc5-ai-prd-cl01dgx01, job 8029, 16 CPUs
+run 20261113-204810_routing_ablation_6ff7618
+exercise 1: references ready
+exercise 2: references ready
+exercise 3: references ready
+exercise 4: references ready
+exercise 5: references ready
+exercise 6: references ready
+exercise 7: references ready
+exercise 8: references ready
+exercise 9: references ready
+exercise 10: references ready
+unet_nodice                  ex  1:   38.66 km, gap BD TOPO +0.045, overlap 0.83, image conf 0.825, 0.19 s
+unet_nodice                  ex  2:   38.68 km, gap BD TOPO +0.045, overlap 0.83, image conf 0.827, 0.19 s
+unet_nodice                  ex  3:  100.61 km, gap BD TOPO +0.089, overlap 0.72, image conf 0.824, 0.20 s
+unet_nodice                  ex  4:  100.82 km, gap BD TOPO +0.081, overlap 0.67, image conf 0.829, 0.20 s
+unet_nodice                  ex  5:  189.49 km, gap BD TOPO +0.040, overlap 0.83, image conf 0.861, 1.65 s
+unet_nodice                  ex  6:  193.18 km, gap BD TOPO +0.042, overlap 0.46, image conf 0.861, 1.23 s
+unet_nodice                  ex  7:  185.98 km, gap BD TOPO +0.005, overlap 0.82, image conf 0.859, 0.31 s
+unet_nodice                  ex  8:  186.32 km, gap BD TOPO +0.002, overlap 0.79, image conf 0.856, 0.31 s
+unet_nodice                  ex  9:  244.36 km, gap BD TOPO +0.026, overlap 0.54, image conf 0.869, 0.30 s
+unet_nodice                  ex 10:  245.22 km, gap BD TOPO +0.024, overlap 0.73, image conf 0.860, 0.30 s
+unet_nodice_tta              ex  1:   39.32 km, gap BD TOPO +0.063, overlap 0.86, image conf 0.837, 0.13 s
+unet_nodice_tta              ex  2:   39.32 km, gap BD TOPO +0.063, overlap 0.87, image conf 0.836, 0.12 s
+unet_nodice_tta              ex  3:  101.93 km, gap BD TOPO +0.104, overlap 0.72, image conf 0.825, 0.13 s
+unet_nodice_tta              ex  4:  102.07 km, gap BD TOPO +0.094, overlap 0.69, image conf 0.825, 0.14 s
+unet_nodice_tta              ex  5:  190.57 km, gap BD TOPO +0.046, overlap 0.83, image conf 0.865, 1.58 s
+unet_nodice_tta              ex  6:  190.57 km, gap BD TOPO +0.028, overlap 0.47, image conf 0.865, 1.42 s
+unet_nodice_tta              ex  7:  188.95 km, gap BD TOPO +0.022, overlap 0.82, image conf 0.862, 0.21 s
+unet_nodice_tta              ex  8:  189.12 km, gap BD TOPO +0.017, overlap 0.79, image conf 0.863, 0.22 s
+unet_nodice_tta              ex  9:  248.00 km, gap BD TOPO +0.041, overlap 0.73, image conf 0.865, 0.20 s
+unet_nodice_tta              ex 10:  248.37 km, gap BD TOPO +0.037, overlap 0.74, image conf 0.864, 0.21 s
+unet_mix12k_tta              ex  1:   39.28 km, gap BD TOPO +0.062, overlap 0.86, image conf 0.803, 0.10 s
+unet_mix12k_tta              ex  2:   39.32 km, gap BD TOPO +0.063, overlap 0.87, image conf 0.802, 0.10 s
+unet_mix12k_tta              ex  3:  102.72 km, gap BD TOPO +0.112, overlap 0.71, image conf 0.785, 0.10 s
+unet_mix12k_tta              ex  4:  103.25 km, gap BD TOPO +0.107, overlap 0.70, image conf 0.792, 0.11 s
+unet_mix12k_tta              ex  5:  191.32 km, gap BD TOPO +0.050, overlap 0.83, image conf 0.861, 0.88 s
+unet_mix12k_tta              ex  6:  191.32 km, gap BD TOPO +0.032, overlap 0.47, image conf 0.861, 1.00 s
+unet_mix12k_tta              ex  7:  189.82 km, gap BD TOPO +0.026, overlap 0.82, image conf 0.854, 0.17 s
+unet_mix12k_tta              ex  8:  190.02 km, gap BD TOPO +0.022, overlap 0.81, image conf 0.855, 0.17 s
+unet_mix12k_tta              ex  9:  249.61 km, gap BD TOPO +0.048, overlap 0.54, image conf 0.865, 0.17 s
+unet_mix12k_tta              ex 10:  250.17 km, gap BD TOPO +0.045, overlap 0.74, image conf 0.856, 0.17 s
+unet_mix12k                  ex  1:   39.03 km, gap BD TOPO +0.055, overlap 0.87, image conf 0.809, 0.14 s
+unet_mix12k                  ex  2:   39.03 km, gap BD TOPO +0.055, overlap 0.87, image conf 0.809, 0.13 s
+unet_mix12k                  ex  3:  101.87 km, gap BD TOPO +0.103, overlap 0.72, image conf 0.788, 0.14 s
+unet_mix12k                  ex  4:  101.98 km, gap BD TOPO +0.093, overlap 0.67, image conf 0.783, 0.15 s
+unet_mix12k                  ex  5:  191.06 km, gap BD TOPO +0.049, overlap 0.82, image conf 0.857, 0.97 s
+unet_mix12k                  ex  6:  191.22 km, gap BD TOPO +0.031, overlap 0.47, image conf 0.857, 1.03 s
+unet_mix12k                  ex  7:  188.89 km, gap BD TOPO +0.021, overlap 0.83, image conf 0.850, 0.23 s
+unet_mix12k                  ex  8:  189.28 km, gap BD TOPO +0.018, overlap 0.80, image conf 0.848, 0.24 s
+unet_mix12k                  ex  9:  248.76 km, gap BD TOPO +0.044, overlap 0.58, image conf 0.856, 0.22 s
+unet_mix12k                  ex 10:  249.61 km, gap BD TOPO +0.042, overlap 0.73, image conf 0.851, 0.22 s
+unet_nodice+osm_fill         ex  1:   38.55 km, gap BD TOPO +0.042, overlap 0.87, image conf 0.801, 0.28 s
+unet_nodice+osm_fill         ex  2:   38.87 km, gap BD TOPO +0.051, overlap 0.86, image conf 0.801, 0.27 s
+unet_nodice+osm_fill         ex  3:  101.13 km, gap BD TOPO +0.095, overlap 0.73, image conf 0.809, 0.30 s
+unet_nodice+osm_fill         ex  4:  101.42 km, gap BD TOPO +0.087, overlap 0.67, image conf 0.818, 0.31 s
+unet_nodice+osm_fill         ex  5:  189.25 km, gap BD TOPO +0.039, overlap 0.86, image conf 0.839, 2.78 s
+unet_nodice+osm_fill         ex  6:  192.94 km, gap BD TOPO +0.041, overlap 0.46, image conf 0.841, 2.88 s
+unet_nodice+osm_fill         ex  7:  186.22 km, gap BD TOPO +0.007, overlap 0.81, image conf 0.858, 0.46 s
+unet_nodice+osm_fill         ex  8:  186.56 km, gap BD TOPO +0.004, overlap 0.78, image conf 0.856, 0.47 s
+unet_nodice+osm_fill         ex  9:  244.27 km, gap BD TOPO +0.025, overlap 0.56, image conf 0.836, 0.44 s
+unet_nodice+osm_fill         ex 10:  245.13 km, gap BD TOPO +0.024, overlap 0.74, image conf 0.834, 0.44 s
+no_model_osm                 ex  1:   36.70 km, gap BD TOPO -0.008, overlap 0.99, image conf 0.723, 0.31 s
+no_model_osm                 ex  2:   36.70 km, gap BD TOPO -0.008, overlap 0.99, image conf 0.723, 0.31 s
+no_model_osm                 ex  3:   94.79 km, gap BD TOPO +0.026, overlap 0.84, image conf 0.733, 0.31 s
+no_model_osm                 ex  4:   95.40 km, gap BD TOPO +0.023, overlap 0.81, image conf 0.719, 0.31 s
+no_model_osm                 ex  5:  179.57 km, gap BD TOPO -0.014, overlap 0.86, image conf 0.758, 2.42 s
+no_model_osm                 ex  6:  183.23 km, gap BD TOPO -0.012, overlap 0.46, image conf 0.735, 2.24 s
+no_model_osm                 ex  7:  176.61 km, gap BD TOPO -0.045, overlap 0.85, image conf 0.692, 0.58 s
+no_model_osm                 ex  8:  177.62 km, gap BD TOPO -0.044, overlap 0.85, image conf 0.709, 0.58 s
+no_model_osm                 ex  9:  234.41 km, gap BD TOPO -0.016, overlap 0.65, image conf 0.719, 0.53 s
+no_model_osm                 ex 10:  237.96 km, gap BD TOPO -0.006, overlap 0.80, image conf 0.733, 0.53 s
+no_model_bdtopo              ex  1:   37.00 km, gap BD TOPO +0.000, overlap 1.00, image conf 0.726, 0.35 s
+no_model_bdtopo              ex  2:   37.00 km, gap BD TOPO +0.000, overlap 1.00, image conf 0.726, 0.35 s
+no_model_bdtopo              ex  3:   92.36 km, gap BD TOPO +0.000, overlap 1.00, image conf 0.656, 0.36 s
+no_model_bdtopo              ex  4:   93.28 km, gap BD TOPO +0.000, overlap 1.00, image conf 0.625, 0.36 s
+no_model_bdtopo              ex  5:  182.15 km, gap BD TOPO +0.000, overlap 1.00, image conf 0.745, 2.68 s
+no_model_bdtopo              ex  6:  185.43 km, gap BD TOPO +0.000, overlap 1.00, image conf 0.814, 2.63 s
+no_model_bdtopo              ex  7:  184.96 km, gap BD TOPO +0.000, overlap 1.00, image conf 0.767, 0.63 s
+no_model_bdtopo              ex  8:  185.89 km, gap BD TOPO +0.000, overlap 1.00, image conf 0.784, 0.64 s
+no_model_bdtopo              ex  9:  238.23 km, gap BD TOPO +0.000, overlap 1.00, image conf 0.751, 0.61 s
+no_model_bdtopo              ex 10:  239.47 km, gap BD TOPO +0.000, overlap 1.00, image conf 0.763, 0.62 s
+cost_none                    ex  1:   38.66 km, gap BD TOPO +0.045, overlap 0.83, image conf 0.825, 0.19 s
+cost_none                    ex  2:   38.68 km, gap BD TOPO +0.045, overlap 0.83, image conf 0.827, 0.18 s
+cost_none                    ex  3:  100.61 km, gap BD TOPO +0.089, overlap 0.72, image conf 0.824, 0.20 s
+cost_none                    ex  4:  100.82 km, gap BD TOPO +0.081, overlap 0.67, image conf 0.829, 0.19 s
+cost_none                    ex  5:  189.49 km, gap BD TOPO +0.040, overlap 0.83, image conf 0.861, 1.65 s
+cost_none                    ex  6:  193.18 km, gap BD TOPO +0.042, overlap 0.46, image conf 0.861, 1.24 s
+cost_none                    ex  7:  185.98 km, gap BD TOPO +0.005, overlap 0.82, image conf 0.859, 0.31 s
+cost_none                    ex  8:  186.32 km, gap BD TOPO +0.002, overlap 0.79, image conf 0.856, 0.32 s
+cost_none                    ex  9:  244.36 km, gap BD TOPO +0.026, overlap 0.54, image conf 0.869, 1.16 s
+cost_none                    ex 10:  245.22 km, gap BD TOPO +0.024, overlap 0.73, image conf 0.860, 0.30 s
+cost_threshold_t0.3_s3       ex  1:   39.02 km, gap BD TOPO +0.055, overlap 0.83, image conf 0.834, 0.23 s
+cost_threshold_t0.3_s3       ex  2:   39.06 km, gap BD TOPO +0.056, overlap 0.84, image conf 0.835, 0.19 s
+cost_threshold_t0.3_s3       ex  3:  100.97 km, gap BD TOPO +0.093, overlap 0.71, image conf 0.833, 0.20 s
+cost_threshold_t0.3_s3       ex  4:  101.29 km, gap BD TOPO +0.086, overlap 0.68, image conf 0.835, 0.21 s
+cost_threshold_t0.3_s3       ex  5:  189.52 km, gap BD TOPO +0.041, overlap 0.83, image conf 0.863, 1.66 s
+cost_threshold_t0.3_s3       ex  6:  189.58 km, gap BD TOPO +0.022, overlap 0.47, image conf 0.863, 1.19 s
+cost_threshold_t0.3_s3       ex  7:  186.26 km, gap BD TOPO +0.007, overlap 0.82, image conf 0.862, 1.19 s
+cost_threshold_t0.3_s3       ex  8:  186.35 km, gap BD TOPO +0.003, overlap 0.78, image conf 0.862, 0.36 s
+cost_threshold_t0.3_s3       ex  9:  244.70 km, gap BD TOPO +0.027, overlap 0.54, image conf 0.873, 0.33 s
+cost_threshold_t0.3_s3       ex 10:  245.26 km, gap BD TOPO +0.024, overlap 0.73, image conf 0.865, 0.34 s
+cost_lambda_0.1              ex  1:   38.66 km, gap BD TOPO +0.045, overlap 0.83, image conf 0.825, 0.18 s
+cost_lambda_0.1              ex  2:   38.68 km, gap BD TOPO +0.045, overlap 0.83, image conf 0.827, 0.18 s
+cost_lambda_0.1              ex  3:  100.61 km, gap BD TOPO +0.089, overlap 0.72, image conf 0.824, 0.20 s
+cost_lambda_0.1              ex  4:  100.82 km, gap BD TOPO +0.081, overlap 0.67, image conf 0.829, 0.19 s
+cost_lambda_0.1              ex  5:  189.49 km, gap BD TOPO +0.040, overlap 0.83, image conf 0.861, 1.65 s
+cost_lambda_0.1              ex  6:  189.51 km, gap BD TOPO +0.022, overlap 0.47, image conf 0.861, 1.69 s
+cost_lambda_0.1              ex  7:  185.98 km, gap BD TOPO +0.005, overlap 0.82, image conf 0.860, 0.34 s
+cost_lambda_0.1              ex  8:  186.08 km, gap BD TOPO +0.001, overlap 0.79, image conf 0.858, 0.34 s
+cost_lambda_0.1              ex  9:  244.36 km, gap BD TOPO +0.026, overlap 0.54, image conf 0.869, 0.32 s
+cost_lambda_0.1              ex 10:  244.98 km, gap BD TOPO +0.023, overlap 0.73, image conf 0.862, 1.18 s
+cost_lambda_0.25             ex  1:   38.66 km, gap BD TOPO +0.045, overlap 0.83, image conf 0.825, 0.18 s
+cost_lambda_0.25             ex  2:   38.68 km, gap BD TOPO +0.045, overlap 0.83, image conf 0.827, 0.18 s
+cost_lambda_0.25             ex  3:  100.65 km, gap BD TOPO +0.090, overlap 0.72, image conf 0.826, 0.20 s
+cost_lambda_0.25             ex  4:  101.26 km, gap BD TOPO +0.086, overlap 0.68, image conf 0.833, 0.20 s
+cost_lambda_0.25             ex  5:  189.52 km, gap BD TOPO +0.041, overlap 0.83, image conf 0.863, 1.65 s
+cost_lambda_0.25             ex  6:  189.52 km, gap BD TOPO +0.022, overlap 0.47, image conf 0.863, 1.24 s
+cost_lambda_0.25             ex  7:  185.98 km, gap BD TOPO +0.005, overlap 0.82, image conf 0.860, 0.33 s
+cost_lambda_0.25             ex  8:  186.06 km, gap BD TOPO +0.001, overlap 0.79, image conf 0.859, 0.34 s
+cost_lambda_0.25             ex  9:  244.41 km, gap BD TOPO +0.026, overlap 0.54, image conf 0.871, 0.32 s
+cost_lambda_0.25             ex 10:  244.96 km, gap BD TOPO +0.023, overlap 0.73, image conf 0.863, 0.34 s
+cost_lambda_0.5              ex  1:   39.61 km, gap BD TOPO +0.070, overlap 0.06, image conf 0.878, 0.18 s
+cost_lambda_0.5              ex  2:   38.68 km, gap BD TOPO +0.045, overlap 0.83, image conf 0.827, 0.19 s
+cost_lambda_0.5              ex  3:  100.69 km, gap BD TOPO +0.090, overlap 0.72, image conf 0.828, 0.21 s
+cost_lambda_0.5              ex  4:  101.28 km, gap BD TOPO +0.086, overlap 0.68, image conf 0.835, 0.21 s
+cost_lambda_0.5              ex  5:  189.52 km, gap BD TOPO +0.041, overlap 0.83, image conf 0.863, 1.21 s
+cost_lambda_0.5              ex  6:  195.73 km, gap BD TOPO +0.056, overlap 0.90, image conf 0.905, 1.28 s
+cost_lambda_0.5              ex  7:  187.13 km, gap BD TOPO +0.012, overlap 0.79, image conf 0.871, 0.35 s
+cost_lambda_0.5              ex  8:  186.15 km, gap BD TOPO +0.001, overlap 0.78, image conf 0.861, 0.34 s
+cost_lambda_0.5              ex  9:  246.73 km, gap BD TOPO +0.036, overlap 0.44, image conf 0.883, 0.33 s
+cost_lambda_0.5              ex 10:  244.95 km, gap BD TOPO +0.023, overlap 0.73, image conf 0.865, 0.33 s
+cost_lambda_1                ex  1:   39.65 km, gap BD TOPO +0.072, overlap 0.07, image conf 0.880, 0.19 s
+cost_lambda_1                ex  2:   39.86 km, gap BD TOPO +0.077, overlap 0.07, image conf 0.883, 0.18 s
+cost_lambda_1                ex  3:  100.96 km, gap BD TOPO +0.093, overlap 0.71, image conf 0.833, 0.20 s
+cost_lambda_1                ex  4:  101.28 km, gap BD TOPO +0.086, overlap 0.68, image conf 0.835, 0.21 s
+cost_lambda_1                ex  5:  195.71 km, gap BD TOPO +0.074, overlap 0.49, image conf 0.906, 1.22 s
+cost_lambda_1                ex  6:  195.73 km, gap BD TOPO +0.056, overlap 0.90, image conf 0.905, 1.18 s
+cost_lambda_1                ex  7:  187.46 km, gap BD TOPO +0.013, overlap 0.79, image conf 0.874, 0.34 s
+cost_lambda_1                ex  8:  190.79 km, gap BD TOPO +0.026, overlap 0.54, image conf 0.888, 0.35 s
+cost_lambda_1                ex  9:  247.06 km, gap BD TOPO +0.037, overlap 0.44, image conf 0.885, 0.33 s
+cost_lambda_1                ex 10:  249.32 km, gap BD TOPO +0.041, overlap 0.50, image conf 0.876, 0.34 s
+cost_lambda_2                ex  1:   39.65 km, gap BD TOPO +0.072, overlap 0.07, image conf 0.880, 0.18 s
+cost_lambda_2                ex  2:   39.99 km, gap BD TOPO +0.081, overlap 0.07, image conf 0.887, 0.18 s
+cost_lambda_2                ex  3:  105.42 km, gap BD TOPO +0.141, overlap 0.27, image conf 0.867, 0.21 s
+cost_lambda_2                ex  4:  105.73 km, gap BD TOPO +0.134, overlap 0.25, image conf 0.869, 0.22 s
+cost_lambda_2                ex  5:  195.71 km, gap BD TOPO +0.074, overlap 0.49, image conf 0.906, 1.16 s
+cost_lambda_2                ex  6:  198.63 km, gap BD TOPO +0.071, overlap 0.78, image conf 0.912, 1.23 s
+cost_lambda_2                ex  7:  190.86 km, gap BD TOPO +0.032, overlap 0.58, image conf 0.888, 0.34 s
+cost_lambda_2                ex  8:  190.89 km, gap BD TOPO +0.027, overlap 0.54, image conf 0.888, 0.34 s
+cost_lambda_2                ex  9:  250.76 km, gap BD TOPO +0.053, overlap 0.40, image conf 0.891, 0.33 s
+cost_lambda_2                ex 10:  253.79 km, gap BD TOPO +0.060, overlap 0.41, image conf 0.894, 0.33 s
+cost_lambda_4                ex  1:   39.78 km, gap BD TOPO +0.075, overlap 0.07, image conf 0.883, 0.18 s
+cost_lambda_4                ex  2:   39.99 km, gap BD TOPO +0.081, overlap 0.07, image conf 0.887, 0.18 s
+cost_lambda_4                ex  3:  108.58 km, gap BD TOPO +0.176, overlap 0.06, image conf 0.883, 0.21 s
+cost_lambda_4                ex  4:  108.00 km, gap BD TOPO +0.158, overlap 0.10, image conf 0.879, 0.22 s
+cost_lambda_4                ex  5:  198.61 km, gap BD TOPO +0.090, overlap 0.37, image conf 0.912, 1.11 s
+cost_lambda_4                ex  6:  198.63 km, gap BD TOPO +0.071, overlap 0.78, image conf 0.912, 2.10 s
+cost_lambda_4                ex  7:  194.12 km, gap BD TOPO +0.050, overlap 0.51, image conf 0.895, 0.34 s
+cost_lambda_4                ex  8:  193.20 km, gap BD TOPO +0.039, overlap 0.54, image conf 0.890, 0.35 s
+cost_lambda_4                ex  9:  251.24 km, gap BD TOPO +0.055, overlap 0.40, image conf 0.893, 0.34 s
+cost_lambda_4                ex 10:  253.79 km, gap BD TOPO +0.060, overlap 0.41, image conf 0.894, 0.33 s
+cost_lambda_8                ex  1:   40.01 km, gap BD TOPO +0.081, overlap 0.08, image conf 0.887, 0.18 s
+cost_lambda_8                ex  2:   40.16 km, gap BD TOPO +0.085, overlap 0.06, image conf 0.887, 0.18 s
+cost_lambda_8                ex  3:  112.01 km, gap BD TOPO +0.213, overlap 0.13, image conf 0.889, 0.21 s
+cost_lambda_8                ex  4:  108.59 km, gap BD TOPO +0.164, overlap 0.06, image conf 0.883, 0.22 s
+cost_lambda_8                ex  5:  198.61 km, gap BD TOPO +0.090, overlap 0.37, image conf 0.912, 1.11 s
+cost_lambda_8                ex  6:  190.55 km, gap BD TOPO +0.028, overlap 0.29, image conf 0.908, 1.42 s
+cost_lambda_8                ex  7:  196.69 km, gap BD TOPO +0.063, overlap 0.52, image conf 0.898, 0.35 s
+cost_lambda_8                ex  8:  195.91 km, gap BD TOPO +0.054, overlap 0.47, image conf 0.896, 0.35 s
+cost_lambda_8                ex  9:  254.75 km, gap BD TOPO +0.069, overlap 0.38, image conf 0.898, 0.34 s
+cost_lambda_8                ex 10:  255.50 km, gap BD TOPO +0.067, overlap 0.38, image conf 0.897, 0.33 s
+cost_threshold+lambda_1      ex  1:   39.97 km, gap BD TOPO +0.080, overlap 0.08, image conf 0.887, 0.19 s
+cost_threshold+lambda_1      ex  2:   39.06 km, gap BD TOPO +0.056, overlap 0.84, image conf 0.835, 0.20 s
+cost_threshold+lambda_1      ex  3:  101.01 km, gap BD TOPO +0.094, overlap 0.71, image conf 0.834, 0.21 s
+cost_threshold+lambda_1      ex  4:  101.32 km, gap BD TOPO +0.086, overlap 0.68, image conf 0.835, 0.22 s
+cost_threshold+lambda_1      ex  5:  195.71 km, gap BD TOPO +0.074, overlap 0.49, image conf 0.906, 1.19 s
+cost_threshold+lambda_1      ex  6:  195.73 km, gap BD TOPO +0.056, overlap 0.90, image conf 0.905, 1.24 s
+cost_threshold+lambda_1      ex  7:  187.79 km, gap BD TOPO +0.015, overlap 0.79, image conf 0.875, 1.26 s
+cost_threshold+lambda_1      ex  8:  191.06 km, gap BD TOPO +0.028, overlap 0.54, image conf 0.888, 0.37 s
+cost_threshold+lambda_1      ex  9:  247.48 km, gap BD TOPO +0.039, overlap 0.44, image conf 0.887, 0.34 s
+cost_threshold+lambda_1      ex 10:  249.58 km, gap BD TOPO +0.042, overlap 0.50, image conf 0.876, 0.35 s
+{
+ "unet_nodice": {
+  "group": "network",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.04,
+  "mean_abs_gap_osm": 0.051,
+  "mean_gap_bdtopo": 0.04,
+  "mean_overlap_bdtopo": 0.721,
+  "mean_overlap_osm": 0.734,
+  "mean_image_confidence": 0.8471,
+  "mean_on_bdtopo_roads": 0.9077,
+  "total_km_off_bdtopo_roads": 117.64,
+  "mean_length_km": 152.332,
+  "mean_solve_s": 0.399,
+  "mean_explain_s": 0.068,
+  "mean_call_s": 0.4878,
+  "mean_cpu_energy_j": 1.53
+ },
+ "unet_nodice_tta": {
+  "group": "network",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.0514,
+  "mean_abs_gap_osm": 0.0626,
+  "mean_gap_bdtopo": 0.0514,
+  "mean_overlap_bdtopo": 0.7511,
+  "mean_overlap_osm": 0.7527,
+  "mean_image_confidence": 0.8506,
+  "mean_on_bdtopo_roads": 0.9179,
+  "total_km_off_bdtopo_roads": 106.26,
+  "mean_length_km": 153.822,
+  "mean_solve_s": 0.376,
+  "mean_explain_s": 0.04,
+  "mean_call_s": 0.4358,
+  "mean_cpu_energy_j": 1.34
+ },
+ "unet_mix12k_tta": {
+  "group": "network",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.0566,
+  "mean_abs_gap_osm": 0.0678,
+  "mean_gap_bdtopo": 0.0566,
+  "mean_overlap_bdtopo": 0.7359,
+  "mean_overlap_osm": 0.7424,
+  "mean_image_confidence": 0.8332,
+  "mean_on_bdtopo_roads": 0.9222,
+  "total_km_off_bdtopo_roads": 105.84,
+  "mean_length_km": 154.683,
+  "mean_solve_s": 0.245,
+  "mean_explain_s": 0.029,
+  "mean_call_s": 0.2954,
+  "mean_cpu_energy_j": 0.9
+ },
+ "unet_mix12k": {
+  "group": "network",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.0512,
+  "mean_abs_gap_osm": 0.0624,
+  "mean_gap_bdtopo": 0.0512,
+  "mean_overlap_bdtopo": 0.7367,
+  "mean_overlap_osm": 0.7323,
+  "mean_image_confidence": 0.8309,
+  "mean_on_bdtopo_roads": 0.9169,
+  "total_km_off_bdtopo_roads": 112.89,
+  "mean_length_km": 154.073,
+  "mean_solve_s": 0.283,
+  "mean_explain_s": 0.041,
+  "mean_call_s": 0.3467,
+  "mean_cpu_energy_j": 1.08
+ },
+ "unet_nodice+osm_fill": {
+  "group": "network",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.0414,
+  "mean_abs_gap_osm": 0.0523,
+  "mean_gap_bdtopo": 0.0414,
+  "mean_overlap_bdtopo": 0.7343,
+  "mean_overlap_osm": 0.739,
+  "mean_image_confidence": 0.8294,
+  "mean_on_bdtopo_roads": 0.9172,
+  "total_km_off_bdtopo_roads": 107.6,
+  "mean_length_km": 152.434,
+  "mean_solve_s": 0.742,
+  "mean_explain_s": 0.108,
+  "mean_call_s": 0.8631,
+  "mean_cpu_energy_j": 2.71
+ },
+ "no_model_osm": {
+  "group": "network",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.0203,
+  "mean_abs_gap_osm": 0.0,
+  "mean_gap_bdtopo": -0.0105,
+  "mean_overlap_bdtopo": 0.8098,
+  "mean_overlap_osm": 1.0,
+  "mean_image_confidence": 0.7242,
+  "mean_on_bdtopo_roads": 0.9804,
+  "total_km_off_bdtopo_roads": 35.36,
+  "mean_length_km": 145.299,
+  "mean_solve_s": 0.68,
+  "mean_explain_s": 0.122,
+  "mean_call_s": 0.8113,
+  "mean_cpu_energy_j": 2.53
+ },
+ "no_model_bdtopo": {
+  "group": "network",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.0,
+  "mean_abs_gap_osm": 0.0207,
+  "mean_gap_bdtopo": 0.0,
+  "mean_overlap_bdtopo": 1.0,
+  "mean_overlap_osm": 0.8098,
+  "mean_image_confidence": 0.7357,
+  "mean_on_bdtopo_roads": 1.0,
+  "total_km_off_bdtopo_roads": 0,
+  "mean_length_km": 147.577,
+  "mean_solve_s": 0.767,
+  "mean_explain_s": 0.141,
+  "mean_call_s": 0.9225,
+  "mean_cpu_energy_j": 2.88
+ },
+ "cost_none": {
+  "group": "cost",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.04,
+  "mean_abs_gap_osm": 0.051,
+  "mean_gap_bdtopo": 0.04,
+  "mean_overlap_bdtopo": 0.721,
+  "mean_overlap_osm": 0.734,
+  "mean_image_confidence": 0.8471,
+  "mean_on_bdtopo_roads": 0.9077,
+  "total_km_off_bdtopo_roads": 117.64,
+  "mean_length_km": 152.332,
+  "mean_solve_s": 0.398,
+  "mean_explain_s": 0.066,
+  "mean_call_s": 0.5724,
+  "mean_cpu_energy_j": 1.79
+ },
+ "cost_threshold_t0.3_s3": {
+  "group": "cost",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.0413,
+  "mean_abs_gap_osm": 0.0523,
+  "mean_gap_bdtopo": 0.0413,
+  "mean_overlap_bdtopo": 0.7222,
+  "mean_overlap_osm": 0.7306,
+  "mean_image_confidence": 0.8523,
+  "mean_on_bdtopo_roads": 0.908,
+  "total_km_off_bdtopo_roads": 116.46,
+  "mean_length_km": 152.201,
+  "mean_solve_s": 0.395,
+  "mean_explain_s": 0.078,
+  "mean_call_s": 0.5904,
+  "mean_cpu_energy_j": 1.84
+ },
+ "cost_lambda_0.1": {
+  "group": "cost",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.0378,
+  "mean_abs_gap_osm": 0.0488,
+  "mean_gap_bdtopo": 0.0378,
+  "mean_overlap_bdtopo": 0.7224,
+  "mean_overlap_osm": 0.7313,
+  "mean_image_confidence": 0.8475,
+  "mean_on_bdtopo_roads": 0.9079,
+  "total_km_off_bdtopo_roads": 117.01,
+  "mean_length_km": 151.917,
+  "mean_solve_s": 0.443,
+  "mean_explain_s": 0.076,
+  "mean_call_s": 0.6272,
+  "mean_cpu_energy_j": 1.97
+ },
+ "cost_lambda_0.25": {
+  "group": "cost",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.0383,
+  "mean_abs_gap_osm": 0.0493,
+  "mean_gap_bdtopo": 0.0383,
+  "mean_overlap_bdtopo": 0.7239,
+  "mean_overlap_osm": 0.7329,
+  "mean_image_confidence": 0.8488,
+  "mean_on_bdtopo_roads": 0.9073,
+  "total_km_off_bdtopo_roads": 117.58,
+  "mean_length_km": 151.97,
+  "mean_solve_s": 0.398,
+  "mean_explain_s": 0.078,
+  "mean_call_s": 0.4977,
+  "mean_cpu_energy_j": 1.55
+ },
+ "cost_lambda_0.5": {
+  "group": "cost",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.046,
+  "mean_abs_gap_osm": 0.057,
+  "mean_gap_bdtopo": 0.046,
+  "mean_overlap_bdtopo": 0.676,
+  "mean_overlap_osm": 0.6292,
+  "mean_image_confidence": 0.8615,
+  "mean_on_bdtopo_roads": 0.913,
+  "total_km_off_bdtopo_roads": 107.26,
+  "mean_length_km": 153.047,
+  "mean_solve_s": 0.359,
+  "mean_explain_s": 0.078,
+  "mean_call_s": 0.4618,
+  "mean_cpu_energy_j": 1.45
+ },
+ "cost_lambda_1": {
+  "group": "cost",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.0576,
+  "mean_abs_gap_osm": 0.0688,
+  "mean_gap_bdtopo": 0.0576,
+  "mean_overlap_bdtopo": 0.5194,
+  "mean_overlap_osm": 0.4797,
+  "mean_image_confidence": 0.8764,
+  "mean_on_bdtopo_roads": 0.9147,
+  "total_km_off_bdtopo_roads": 106.83,
+  "mean_length_km": 154.782,
+  "mean_solve_s": 0.354,
+  "mean_explain_s": 0.079,
+  "mean_call_s": 0.4535,
+  "mean_cpu_energy_j": 1.42
+ },
+ "cost_lambda_2": {
+  "group": "cost",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.0744,
+  "mean_abs_gap_osm": 0.0856,
+  "mean_gap_bdtopo": 0.0744,
+  "mean_overlap_bdtopo": 0.3855,
+  "mean_overlap_osm": 0.3588,
+  "mean_image_confidence": 0.8882,
+  "mean_on_bdtopo_roads": 0.9113,
+  "total_km_off_bdtopo_roads": 113.32,
+  "mean_length_km": 157.143,
+  "mean_solve_s": 0.35,
+  "mean_explain_s": 0.08,
+  "mean_call_s": 0.4515,
+  "mean_cpu_energy_j": 1.4
+ },
+ "cost_lambda_4": {
+  "group": "cost",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.0854,
+  "mean_abs_gap_osm": 0.0966,
+  "mean_gap_bdtopo": 0.0854,
+  "mean_overlap_bdtopo": 0.3312,
+  "mean_overlap_osm": 0.2779,
+  "mean_image_confidence": 0.8929,
+  "mean_on_bdtopo_roads": 0.9124,
+  "total_km_off_bdtopo_roads": 112.5,
+  "mean_length_km": 158.594,
+  "mean_solve_s": 0.347,
+  "mean_explain_s": 0.082,
+  "mean_call_s": 0.5374,
+  "mean_cpu_energy_j": 1.68
+ },
+ "cost_lambda_8": {
+  "group": "cost",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.0915,
+  "mean_abs_gap_osm": 0.1028,
+  "mean_gap_bdtopo": 0.0915,
+  "mean_overlap_bdtopo": 0.2739,
+  "mean_overlap_osm": 0.2945,
+  "mean_image_confidence": 0.8955,
+  "mean_on_bdtopo_roads": 0.9064,
+  "total_km_off_bdtopo_roads": 122.74,
+  "mean_length_km": 159.278,
+  "mean_solve_s": 0.369,
+  "mean_explain_s": 0.077,
+  "mean_call_s": 0.4685,
+  "mean_cpu_energy_j": 1.48
+ },
+ "cost_threshold+lambda_1": {
+  "group": "cost",
+  "feasible": "10/10",
+  "mean_abs_gap_bdtopo": 0.057,
+  "mean_abs_gap_osm": 0.0683,
+  "mean_gap_bdtopo": 0.057,
+  "mean_overlap_bdtopo": 0.5972,
+  "mean_overlap_osm": 0.5588,
+  "mean_image_confidence": 0.8729,
+  "mean_on_bdtopo_roads": 0.9145,
+  "total_km_off_bdtopo_roads": 107.43,
+  "mean_length_km": 154.871,
+  "mean_solve_s": 0.351,
+  "mean_explain_s": 0.082,
+  "mean_call_s": 0.5567,
+  "mean_cpu_energy_j": 1.73
+ }
+}
+done in 1338.7 s (ok): /home/nouhaila_aitbella/bouzid/Hackathon_AMIAD/experiments/runs/20261113-204810_routing_ablation_6ff7618

@@ -1,0 +1,163 @@
+{
+ "wall_s": 1338.75,
+ "cpu_s": 1309.63,
+ "peak_rss_mb": 4648.0,
+ "cpu_energy_j": 4086.1,
+ "cpu_energy_method": "estimated",
+ "phases": {
+  "load networks (once, cached afterwards)": {
+   "calls": 1,
+   "wall_s": 55.888,
+   "cpu_s": 57.533,
+   "cpu_energy_j": 179.5,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4317.8
+  },
+  "reference routes (BD TOPO, OSM)": {
+   "calls": 1,
+   "wall_s": 14.661,
+   "cpu_s": 14.641,
+   "cpu_energy_j": 45.7,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4508.8
+  },
+  "unet_nodice": {
+   "calls": 10,
+   "wall_s": 4.88,
+   "cpu_s": 4.879,
+   "cpu_energy_j": 15.3,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.3
+  },
+  "unet_nodice_tta": {
+   "calls": 10,
+   "wall_s": 4.359,
+   "cpu_s": 4.36,
+   "cpu_energy_j": 13.4,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.3
+  },
+  "unet_mix12k_tta": {
+   "calls": 10,
+   "wall_s": 2.955,
+   "cpu_s": 2.953,
+   "cpu_energy_j": 9.0,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.3
+  },
+  "unet_mix12k": {
+   "calls": 10,
+   "wall_s": 3.469,
+   "cpu_s": 3.468,
+   "cpu_energy_j": 10.8,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.3
+  },
+  "unet_nodice+osm_fill": {
+   "calls": 10,
+   "wall_s": 8.631,
+   "cpu_s": 8.631,
+   "cpu_energy_j": 27.1,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.8
+  },
+  "no_model_osm": {
+   "calls": 10,
+   "wall_s": 8.113,
+   "cpu_s": 8.113,
+   "cpu_energy_j": 25.3,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.8
+  },
+  "no_model_bdtopo": {
+   "calls": 10,
+   "wall_s": 9.227,
+   "cpu_s": 9.226,
+   "cpu_energy_j": 28.8,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.8
+  },
+  "cost_none": {
+   "calls": 10,
+   "wall_s": 5.726,
+   "cpu_s": 5.726,
+   "cpu_energy_j": 17.9,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.8
+  },
+  "cost_threshold_t0.3_s3": {
+   "calls": 10,
+   "wall_s": 5.907,
+   "cpu_s": 5.906,
+   "cpu_energy_j": 18.4,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.8
+  },
+  "cost_lambda_0.1": {
+   "calls": 10,
+   "wall_s": 6.272,
+   "cpu_s": 6.271,
+   "cpu_energy_j": 19.7,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.8
+  },
+  "cost_lambda_0.25": {
+   "calls": 10,
+   "wall_s": 4.979,
+   "cpu_s": 4.978,
+   "cpu_energy_j": 15.6,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.8
+  },
+  "cost_lambda_0.5": {
+   "calls": 10,
+   "wall_s": 4.622,
+   "cpu_s": 4.621,
+   "cpu_energy_j": 14.5,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.8
+  },
+  "cost_lambda_1": {
+   "calls": 10,
+   "wall_s": 4.536,
+   "cpu_s": 4.527,
+   "cpu_energy_j": 14.2,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.8
+  },
+  "cost_lambda_2": {
+   "calls": 10,
+   "wall_s": 4.517,
+   "cpu_s": 4.516,
+   "cpu_energy_j": 14.0,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.8
+  },
+  "cost_lambda_4": {
+   "calls": 10,
+   "wall_s": 5.377,
+   "cpu_s": 5.374,
+   "cpu_energy_j": 16.9,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.8
+  },
+  "cost_lambda_8": {
+   "calls": 10,
+   "wall_s": 4.685,
+   "cpu_s": 4.679,
+   "cpu_energy_j": 14.8,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.8
+  },
+  "cost_threshold+lambda_1": {
+   "calls": 10,
+   "wall_s": 5.568,
+   "cpu_s": 5.563,
+   "cpu_energy_j": 17.3,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4509.8
+  }
+ },
+ "status": "ok",
+ "error": null
+}

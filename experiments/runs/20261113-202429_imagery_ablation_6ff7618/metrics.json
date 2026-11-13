@@ -1,0 +1,492 @@
+{
+ "summary": {
+  "zeroshot / original": {
+   "f1": 0.0909,
+   "iou": 0.0476,
+   "auc": 0.526,
+   "f1_change_vs_original": 0.0
+  },
+  "finetuned_hack / original": {
+   "f1": 0.5898,
+   "iou": 0.4182,
+   "auc": 0.9599,
+   "f1_change_vs_original": 0.0
+  },
+  "mix12k_nodice / original": {
+   "f1": 0.5771,
+   "iou": 0.4056,
+   "auc": 0.9668,
+   "f1_change_vs_original": 0.0
+  },
+  "zeroshot / grayscale": {
+   "f1": 0.018,
+   "iou": 0.0091,
+   "auc": 0.5041,
+   "f1_change_vs_original": -0.0729
+  },
+  "finetuned_hack / grayscale": {
+   "f1": 0.4763,
+   "iou": 0.3126,
+   "auc": 0.8682,
+   "f1_change_vs_original": -0.1135
+  },
+  "mix12k_nodice / grayscale": {
+   "f1": 0.4614,
+   "iou": 0.2999,
+   "auc": 0.8758,
+   "f1_change_vs_original": -0.1157
+  },
+  "zeroshot / blur": {
+   "f1": 0.0078,
+   "iou": 0.0039,
+   "auc": 0.5016,
+   "f1_change_vs_original": -0.0831
+  },
+  "finetuned_hack / blur": {
+   "f1": 0.3202,
+   "iou": 0.1906,
+   "auc": 0.7736,
+   "f1_change_vs_original": -0.2696
+  },
+  "mix12k_nodice / blur": {
+   "f1": 0.3352,
+   "iou": 0.2013,
+   "auc": 0.8079,
+   "f1_change_vs_original": -0.2419
+  },
+  "zeroshot / half_resolution": {
+   "f1": 0.0196,
+   "iou": 0.0099,
+   "auc": 0.5046,
+   "f1_change_vs_original": -0.0713
+  },
+  "finetuned_hack / half_resolution": {
+   "f1": 0.3356,
+   "iou": 0.2016,
+   "auc": 0.8356,
+   "f1_change_vs_original": -0.2542
+  },
+  "mix12k_nodice / half_resolution": {
+   "f1": 0.34,
+   "iou": 0.2049,
+   "auc": 0.8285,
+   "f1_change_vs_original": -0.2371
+  },
+  "zeroshot / quarter_resolution": {
+   "f1": 0.0001,
+   "iou": 0.0,
+   "auc": 0.4999,
+   "f1_change_vs_original": -0.0908
+  },
+  "finetuned_hack / quarter_resolution": {
+   "f1": 0.2263,
+   "iou": 0.1276,
+   "auc": 0.779,
+   "f1_change_vs_original": -0.3635
+  },
+  "mix12k_nodice / quarter_resolution": {
+   "f1": 0.2957,
+   "iou": 0.1735,
+   "auc": 0.8015,
+   "f1_change_vs_original": -0.2814
+  },
+  "zeroshot / jpeg_q20": {
+   "f1": 0.1101,
+   "iou": 0.0583,
+   "auc": 0.5335,
+   "f1_change_vs_original": 0.0192
+  },
+  "finetuned_hack / jpeg_q20": {
+   "f1": 0.5861,
+   "iou": 0.4145,
+   "auc": 0.9543,
+   "f1_change_vs_original": -0.0037
+  },
+  "mix12k_nodice / jpeg_q20": {
+   "f1": 0.5753,
+   "iou": 0.4038,
+   "auc": 0.9632,
+   "f1_change_vs_original": -0.0018
+  },
+  "zeroshot / noise_12": {
+   "f1": 0.0609,
+   "iou": 0.0314,
+   "auc": 0.5161,
+   "f1_change_vs_original": -0.03
+  },
+  "finetuned_hack / noise_12": {
+   "f1": 0.5894,
+   "iou": 0.4178,
+   "auc": 0.9529,
+   "f1_change_vs_original": -0.0004
+  },
+  "mix12k_nodice / noise_12": {
+   "f1": 0.5767,
+   "iou": 0.4051,
+   "auc": 0.9618,
+   "f1_change_vs_original": -0.0004
+  },
+  "zeroshot / other_palette": {
+   "f1": 0.0528,
+   "iou": 0.0271,
+   "auc": 0.514,
+   "f1_change_vs_original": -0.0381
+  },
+  "finetuned_hack / other_palette": {
+   "f1": 0.4608,
+   "iou": 0.2994,
+   "auc": 0.8718,
+   "f1_change_vs_original": -0.129
+  },
+  "mix12k_nodice / other_palette": {
+   "f1": 0.4401,
+   "iou": 0.2821,
+   "auc": 0.8172,
+   "f1_change_vs_original": -0.137
+  },
+  "zeroshot / low_contrast": {
+   "f1": 0.0367,
+   "iou": 0.0187,
+   "auc": 0.5087,
+   "f1_change_vs_original": -0.0542
+  },
+  "finetuned_hack / low_contrast": {
+   "f1": 0.23,
+   "iou": 0.13,
+   "auc": 0.5842,
+   "f1_change_vs_original": -0.3598
+  },
+  "mix12k_nodice / low_contrast": {
+   "f1": 0.2154,
+   "iou": 0.1207,
+   "auc": 0.5212,
+   "f1_change_vs_original": -0.3617
+  }
+ },
+ "records": [
+  {
+   "imagery": "original",
+   "model": "zeroshot",
+   "folds": 4,
+   "road_auc": 0.526,
+   "road_iou": 0.0476,
+   "precision": 0.2192,
+   "recall": 0.0573,
+   "f1": 0.0909,
+   "predict_s": 23.55,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "original",
+   "model": "finetuned_hack",
+   "folds": 4,
+   "road_auc": 0.9599,
+   "road_iou": 0.4182,
+   "precision": 0.5068,
+   "recall": 0.7053,
+   "f1": 0.5898,
+   "predict_s": 23.2,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "original",
+   "model": "mix12k_nodice",
+   "folds": 4,
+   "road_auc": 0.9668,
+   "road_iou": 0.4056,
+   "precision": 0.479,
+   "recall": 0.7256,
+   "f1": 0.5771,
+   "predict_s": 23.41,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "grayscale",
+   "model": "zeroshot",
+   "folds": 4,
+   "road_auc": 0.5041,
+   "road_iou": 0.0091,
+   "precision": 0.1677,
+   "recall": 0.0095,
+   "f1": 0.018,
+   "predict_s": 23.27,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "grayscale",
+   "model": "finetuned_hack",
+   "folds": 4,
+   "road_auc": 0.8682,
+   "road_iou": 0.3126,
+   "precision": 0.5044,
+   "recall": 0.4513,
+   "f1": 0.4763,
+   "predict_s": 23.52,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "grayscale",
+   "model": "mix12k_nodice",
+   "folds": 4,
+   "road_auc": 0.8758,
+   "road_iou": 0.2999,
+   "precision": 0.4479,
+   "recall": 0.4756,
+   "f1": 0.4614,
+   "predict_s": 23.63,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "blur",
+   "model": "zeroshot",
+   "folds": 4,
+   "road_auc": 0.5016,
+   "road_iou": 0.0039,
+   "precision": 0.147,
+   "recall": 0.004,
+   "f1": 0.0078,
+   "predict_s": 23.37,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "blur",
+   "model": "finetuned_hack",
+   "folds": 4,
+   "road_auc": 0.7736,
+   "road_iou": 0.1906,
+   "precision": 0.5226,
+   "recall": 0.2308,
+   "f1": 0.3202,
+   "predict_s": 23.36,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "blur",
+   "model": "mix12k_nodice",
+   "folds": 4,
+   "road_auc": 0.8079,
+   "road_iou": 0.2013,
+   "precision": 0.5005,
+   "recall": 0.252,
+   "f1": 0.3352,
+   "predict_s": 23.43,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "half_resolution",
+   "model": "zeroshot",
+   "folds": 4,
+   "road_auc": 0.5046,
+   "road_iou": 0.0099,
+   "precision": 0.1832,
+   "recall": 0.0104,
+   "f1": 0.0196,
+   "predict_s": 23.26,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "half_resolution",
+   "model": "finetuned_hack",
+   "folds": 4,
+   "road_auc": 0.8356,
+   "road_iou": 0.2016,
+   "precision": 0.5216,
+   "recall": 0.2474,
+   "f1": 0.3356,
+   "predict_s": 23.55,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "half_resolution",
+   "model": "mix12k_nodice",
+   "folds": 4,
+   "road_auc": 0.8285,
+   "road_iou": 0.2049,
+   "precision": 0.4961,
+   "recall": 0.2587,
+   "f1": 0.34,
+   "predict_s": 23.58,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "quarter_resolution",
+   "model": "zeroshot",
+   "folds": 4,
+   "road_auc": 0.4999,
+   "road_iou": 0.0,
+   "precision": 0.0084,
+   "recall": 0.0,
+   "f1": 0.0001,
+   "predict_s": 23.42,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "quarter_resolution",
+   "model": "finetuned_hack",
+   "folds": 4,
+   "road_auc": 0.779,
+   "road_iou": 0.1276,
+   "precision": 0.4934,
+   "recall": 0.1468,
+   "f1": 0.2263,
+   "predict_s": 23.32,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "quarter_resolution",
+   "model": "mix12k_nodice",
+   "folds": 4,
+   "road_auc": 0.8015,
+   "road_iou": 0.1735,
+   "precision": 0.4985,
+   "recall": 0.2102,
+   "f1": 0.2957,
+   "predict_s": 23.25,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "jpeg_q20",
+   "model": "zeroshot",
+   "folds": 4,
+   "road_auc": 0.5335,
+   "road_iou": 0.0583,
+   "precision": 0.2074,
+   "recall": 0.0749,
+   "f1": 0.1101,
+   "predict_s": 23.41,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "jpeg_q20",
+   "model": "finetuned_hack",
+   "folds": 4,
+   "road_auc": 0.9543,
+   "road_iou": 0.4145,
+   "precision": 0.5215,
+   "recall": 0.6689,
+   "f1": 0.5861,
+   "predict_s": 23.06,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "jpeg_q20",
+   "model": "mix12k_nodice",
+   "folds": 4,
+   "road_auc": 0.9632,
+   "road_iou": 0.4038,
+   "precision": 0.4911,
+   "recall": 0.6943,
+   "f1": 0.5753,
+   "predict_s": 23.28,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "noise_12",
+   "model": "zeroshot",
+   "folds": 4,
+   "road_auc": 0.5161,
+   "road_iou": 0.0314,
+   "precision": 0.2394,
+   "recall": 0.0349,
+   "f1": 0.0609,
+   "predict_s": 23.18,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "noise_12",
+   "model": "finetuned_hack",
+   "folds": 4,
+   "road_auc": 0.9529,
+   "road_iou": 0.4178,
+   "precision": 0.5212,
+   "recall": 0.6781,
+   "f1": 0.5894,
+   "predict_s": 23.5,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "noise_12",
+   "model": "mix12k_nodice",
+   "folds": 4,
+   "road_auc": 0.9618,
+   "road_iou": 0.4051,
+   "precision": 0.4933,
+   "recall": 0.6939,
+   "f1": 0.5767,
+   "predict_s": 23.27,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "other_palette",
+   "model": "zeroshot",
+   "folds": 4,
+   "road_auc": 0.514,
+   "road_iou": 0.0271,
+   "precision": 0.1649,
+   "recall": 0.0314,
+   "f1": 0.0528,
+   "predict_s": 23.59,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "other_palette",
+   "model": "finetuned_hack",
+   "folds": 4,
+   "road_auc": 0.8718,
+   "road_iou": 0.2994,
+   "precision": 0.507,
+   "recall": 0.4223,
+   "f1": 0.4608,
+   "predict_s": 23.2,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "other_palette",
+   "model": "mix12k_nodice",
+   "folds": 4,
+   "road_auc": 0.8172,
+   "road_iou": 0.2821,
+   "precision": 0.4327,
+   "recall": 0.4477,
+   "f1": 0.4401,
+   "predict_s": 23.26,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "low_contrast",
+   "model": "zeroshot",
+   "folds": 4,
+   "road_auc": 0.5087,
+   "road_iou": 0.0187,
+   "precision": 0.18,
+   "recall": 0.0204,
+   "f1": 0.0367,
+   "predict_s": 23.59,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "low_contrast",
+   "model": "finetuned_hack",
+   "folds": 4,
+   "road_auc": 0.5842,
+   "road_iou": 0.13,
+   "precision": 0.564,
+   "recall": 0.1445,
+   "f1": 0.23,
+   "predict_s": 23.58,
+   "megapixels": 207.9
+  },
+  {
+   "imagery": "low_contrast",
+   "model": "mix12k_nodice",
+   "folds": 4,
+   "road_auc": 0.5212,
+   "road_iou": 0.1207,
+   "precision": 0.54,
+   "recall": 0.1346,
+   "f1": 0.2154,
+   "predict_s": 23.61,
+   "megapixels": 207.9
+  }
+ ]
+}

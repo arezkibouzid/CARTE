@@ -1,0 +1,91 @@
+{
+ "wall_s": 119.86,
+ "cpu_s": 127.69,
+ "peak_rss_mb": 10385.4,
+ "cpu_energy_j": 538.9,
+ "cpu_energy_method": "estimated",
+ "phases": {
+  "reference routes (BD TOPO, OSM)": {
+   "calls": 1,
+   "wall_s": 13.291,
+   "cpu_s": 21.236,
+   "cpu_energy_j": 89.6,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 2458.1
+  },
+  "unet_nodice": {
+   "calls": 1,
+   "wall_s": 9.071,
+   "cpu_s": 9.069,
+   "cpu_energy_j": 38.3,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 2783.1
+  },
+  "unet_nodice_tta": {
+   "calls": 1,
+   "wall_s": 8.517,
+   "cpu_s": 8.515,
+   "cpu_energy_j": 35.9,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 3106.8
+  },
+  "unet_mix12k_tta": {
+   "calls": 1,
+   "wall_s": 8.569,
+   "cpu_s": 8.566,
+   "cpu_energy_j": 36.1,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 3444.3
+  },
+  "unet_mix12k": {
+   "calls": 1,
+   "wall_s": 55.878,
+   "cpu_s": 55.794,
+   "cpu_energy_j": 235.5,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 3813.8
+  },
+  "unet_nodice+osm_fill": {
+   "calls": 1,
+   "wall_s": 19.302,
+   "cpu_s": 19.297,
+   "cpu_energy_j": 81.4,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4901.9
+  },
+  "no_model_osm": {
+   "calls": 1,
+   "wall_s": 0.334,
+   "cpu_s": 0.334,
+   "cpu_energy_j": 1.4,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4901.9
+  },
+  "no_model_bdtopo": {
+   "calls": 1,
+   "wall_s": 0.382,
+   "cpu_s": 0.382,
+   "cpu_energy_j": 1.6,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4901.9
+  },
+  "explain_off": {
+   "calls": 1,
+   "wall_s": 0.178,
+   "cpu_s": 0.178,
+   "cpu_energy_j": 0.8,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4901.9
+  },
+  "explain_on": {
+   "calls": 1,
+   "wall_s": 0.193,
+   "cpu_s": 0.193,
+   "cpu_energy_j": 0.8,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4901.9
+  }
+ },
+ "status": "ok",
+ "error": null
+}

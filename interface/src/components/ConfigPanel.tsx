@@ -91,6 +91,26 @@ export default function ConfigPanel({ sheet, options: o, onChange }: Props) {
 
       {!noModel && (<>
       <h3>4 · Incertitude</h3>
+      <label className="check">
+        <input type="checkbox" checked={o.uncertaintyCost} onChange={(e) => onChange({ uncertaintyCost: e.target.checked })} />
+        <span><b>Coût d’incertitude</b> — préférer les routes dont le modèle est sûr</span>
+      </label>
+      {o.uncertaintyCost && (
+        <div className="sub">
+          <label className="slider">
+            <span>Intensité : <b>{o.lambda.toFixed(2)}</b> {o.lambda === 0 ? '(aucun effet)' : o.lambda < 0.5 ? '(très léger)' : o.lambda === 0.5 ? '(recommandé)' : o.lambda <= 1 ? '(marqué)' : '(fort)'}</span>
+            <input type="range" min={0} max={4} step={0.25} value={o.lambda} onChange={(e) => onChange({ lambda: Number(e.target.value) })} />
+          </label>
+          <p className="muted small">
+            Chaque mètre coûte (1 + intensité × risque), avec risque = −ln(confiance du modèle) : 0 sur une route sûre, 0,7 si le modèle est
+            deux fois moins sûr. Un détour est accepté s’il évite assez de routes douteuses.
+            Mesuré sur les 10 exercices : à 0,5, 9 % de kilomètres en moins hors des routes réelles pour +0,5 % de distance ; au-delà de 1, plus de détours sans gain.
+          </p>
+          {o.useOsm && o.osmMode === 'fill'
+            ? <p className="small txt-doubt">Inactif ici : le réseau est complété par OSM, l’itinéraire ne repose plus sur la seule image.</p>
+            : <p className="small muted">Actif : l’itinéraire repose uniquement sur la carte scannée (TIFF).</p>}
+        </div>
+      )}
       <label className="slider">
         <span>Seuil d’incertitude : <b>{Math.round(o.tau * 100)} %</b></span>
         <input type="range" min={0.05} max={0.7} step={0.05} value={o.tau} onChange={(e) => onChange({ tau: Number(e.target.value) })} />

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import type { CompareResult, ExtractResult, ItinerariesResult, RouteResult } from '../types';
+import type { BBox, CompareResult, ConvoysResult, ExtractResult, ItinerariesResult, RouteResult } from '../types';
 import { IT_COLORS } from './MapView';
+import { ConvoysView, RouteChat, WhyPanel } from './RouteExplain';
 
 interface Props {
   route: RouteResult | null;
@@ -8,6 +9,9 @@ interface Props {
   compares: Partial<Record<'bdtopo' | 'osm', CompareResult | 'loading'>>;
   extraction: ExtractResult | null;
   error: string;
+  convoys: ConvoysResult | null;
+  onFocus: (b: BBox) => void;
+  uiContext: () => Record<string, unknown>;
 }
 
 const pct = (v?: number) => (v === undefined || v === null ? '—' : `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)} %`);
@@ -22,13 +26,14 @@ function download(name: string, data: unknown) {
   URL.revokeObjectURL(url);
 }
 
-export default function ResultsPanel({ route, multi, compares, extraction, error }: Props) {
+export default function ResultsPanel({ route, multi, compares, extraction, error, convoys, onFocus, uiContext }: Props) {
   const [showLog, setShowLog] = useState(false);
   return (
     <div className="panel">
       {error && <div className="card errcard" style={{ whiteSpace: 'pre-line' }}>{error}</div>}
       {multi && <MultiResult m={multi} />}
-      {!route && !multi && !extraction && !error && (
+      {convoys && <ConvoysView r={convoys} />}
+      {!route && !multi && !convoys && !extraction && !error && (
         <p className="muted">Aucun résultat pour l’instant. Calculez un itinéraire (onglet Scénario) ou tracez un rectangle sur la carte pour voir l’extraction du réseau.</p>
       )}
 
@@ -49,6 +54,7 @@ export default function ResultsPanel({ route, multi, compares, extraction, error
               <div className="small muted">
                 Vitesse moyenne {Math.round(l.mean_speed_kmh)} km/h · {l.km_built_up.toFixed(1)} km en agglomération
                 {l.km_below_prob_threshold !== undefined && <> · <span className="txt-doubt">{l.km_below_prob_threshold.toFixed(1)} km incertains</span></>}
+                {l.mean_confidence !== undefined && <> · confiance du modèle {l.mean_confidence.toFixed(2)}{l.km_low_confidence ? <span className="txt-doubt"> ({l.km_low_confidence} km peu sûrs)</span> : null}</>}
               </div>
               <div className="small">
                 {Object.entries(l.km_by_speed_limit).map(([k, v]) => {
@@ -78,6 +84,12 @@ export default function ResultsPanel({ route, multi, compares, extraction, error
             );
           })}
 
+          {route.uncertainty_cost && (
+            <p className="small muted">Coût d’incertitude (TIFF seul) d’intensité {route.uncertainty_cost.strength} : chaque mètre coûte (1 + {route.uncertainty_cost.strength} × risque).
+              {route.legs[0]?.uncertainty_cost_share !== undefined && <> Il représente {Math.round((route.legs[0].uncertainty_cost_share ?? 0) * 100)} % du coût du trajet.</>}</p>
+          )}
+          {route.uncertainty_cost_note && <p className="small muted">{route.uncertainty_cost_note[0].toUpperCase() + route.uncertainty_cost_note.slice(1)}.</p>}
+          <WhyPanel route={route} onFocus={onFocus} />
           {route.probability_penalty && (
             <p className="small muted">Routes incertaines pénalisées : {route.probability_penalty.km_below_threshold} km du réseau sous le seuil de {Math.round(route.probability_penalty.threshold * 100)} %.</p>
           )}
@@ -86,6 +98,7 @@ export default function ResultsPanel({ route, multi, compares, extraction, error
             <button className="link" onClick={() => setShowLog((s) => !s)}>{showLog ? '▾' : '▸'} Décisions du calcul</button>
           </div>
           {showLog && <ul className="log small">{route.log.map((l, i) => <li key={i}>{l}</li>)}</ul>}
+          <RouteChat route={route} uiContext={uiContext} />
         </>
       )}
 

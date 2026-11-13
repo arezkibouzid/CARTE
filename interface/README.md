@@ -24,11 +24,19 @@ Développement de l’interface : `cd interface && npm run dev` (port 5173, `/ap
 
 1. **Configurer** — données (TIFF seul / TIFF + OSM / TIFF sans OSM ; OSM en contrôle ou en complément ; BD TOPO en
    contrôle), modèle de lecture de la carte, itinéraire le plus court ou le plus rapide, vitesse du convoi, **seuil
-   d’incertitude** et option « éviter les routes incertaines ».
-2. **Scénario** — charger un exercice du PDF (ou importer un PDF), ou placer départ, étapes (ordre imposé ou libre)
-   et arrivée ; aller-retour ; zone de déploiement et zones à éviter. Puis **Calculer l’itinéraire**.
-3. **Résultats** — distance, durée, kilomètres incertains, comparaison avec la BD TOPO et OSM, décisions du calcul,
+   d’incertitude** et option « éviter les routes incertaines », **coût d’incertitude** probabiliste (intensité λ,
+   0,5 par défaut ; actif seulement quand l’itinéraire repose sur le seul TIFF).
+2. **Scénario** — un itinéraire, **plusieurs convois** (priorités, déconfliction : aucune / pénaliser / interdire les
+   routes déjà prises ; « Exercices du PDF → convois ») ou des itinéraires distincts sous contraintes. Charger un
+   exercice du PDF (ou importer un PDF), ou placer départ, étapes (ordre imposé ou libre) et arrivée ; aller-retour ;
+   zone de déploiement et zones à éviter. **Scénarios enregistrés** : enregistrer / recharger (jamais écrasés).
+3. **Résultats** — distance, durée, confiance du modèle, comparaison avec la BD TOPO et OSM, **« Pourquoi ce tracé ? »**
+   (segments, verdicts, contournements rejetés, limites des données), **questions sur l’itinéraire** (réponses tirées de
+   la trace du solveur, ou du modèle local avec les ordres choisis, sous budget de contexte), décisions du calcul,
    export GeoJSON.
+4. **Ordres** — extraction des ordres d’opération, règles applicables, explications et chatbot.
+
+Détails, mesures et expériences : `docs/technical_overview.md` et `experiments/INDEX.md`.
 
 **Carte** : barre d’outils (naviguer, départ, arrivée, étape, rectangle, zone de déploiement, zone à éviter,
 recentrer, tout effacer) ; les points se déplacent à la souris ; clic sur une route = ses informations. Un

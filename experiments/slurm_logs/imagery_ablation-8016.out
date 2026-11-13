@@ -1,0 +1,2 @@
+node par2dc5-ai-prd-cl01dgx01, driver CUDA 12, python .venv128/bin/python, job 8016
+/var/spool/slurmd/job08016/slurm_script: line 16: .venv128/bin/python: No such file or directory

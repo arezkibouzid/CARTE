@@ -1,0 +1,75 @@
+{
+ "wall_s": 145.0,
+ "cpu_s": 112.66,
+ "peak_rss_mb": 4490.8,
+ "cpu_energy_j": 475.4,
+ "cpu_energy_method": "estimated",
+ "phases": {
+  "load networks": {
+   "calls": 1,
+   "wall_s": 7.793,
+   "cpu_s": 7.74,
+   "cpu_energy_j": 32.7,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 707.2
+  },
+  "extraction": {
+   "calls": 1,
+   "wall_s": 4.742,
+   "cpu_s": 12.774,
+   "cpu_energy_j": 53.9,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1077.7
+  },
+  "convoys": {
+   "calls": 1,
+   "wall_s": 39.246,
+   "cpu_s": 39.245,
+   "cpu_energy_j": 165.6,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1079.3
+  },
+  "waypoints": {
+   "calls": 1,
+   "wall_s": 1.586,
+   "cpu_s": 1.586,
+   "cpu_energy_j": 6.7,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1079.4
+  },
+  "avoid": {
+   "calls": 1,
+   "wall_s": 0.988,
+   "cpu_s": 0.988,
+   "cpu_energy_j": 4.2,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1079.5
+  },
+  "combos": {
+   "calls": 1,
+   "wall_s": 39.211,
+   "cpu_s": 39.199,
+   "cpu_energy_j": 165.4,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4299.1
+  },
+  "threads": {
+   "calls": 1,
+   "wall_s": 40.272,
+   "cpu_s": 0.003,
+   "cpu_energy_j": 0.0,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4299.1
+  },
+  "degraded": {
+   "calls": 1,
+   "wall_s": 10.96,
+   "cpu_s": 10.945,
+   "cpu_energy_j": 46.2,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4304.7
+  }
+ },
+ "status": "failed",
+ "error": "ValueError('setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (2, 2) + inhomogeneous part.')"
+}

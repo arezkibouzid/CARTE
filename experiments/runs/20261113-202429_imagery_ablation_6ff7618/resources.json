@@ -1,0 +1,123 @@
+{
+ "wall_s": 783.81,
+ "cpu_s": 808.09,
+ "peak_rss_mb": 9203.8,
+ "cpu_energy_j": 2521.2,
+ "cpu_energy_method": "estimated",
+ "phases": {
+  "degrade original": {
+   "calls": 1,
+   "wall_s": 0.021,
+   "cpu_s": 0.01,
+   "cpu_energy_j": 0.0,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1988.0,
+   "gpu_energy_j": 0.0
+  },
+  "predict zeroshot": {
+   "calls": 36,
+   "wall_s": 210.639,
+   "cpu_s": 211.121,
+   "cpu_energy_j": 658.9,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 5486.4,
+   "gpu_energy_j": 27936.8
+  },
+  "predict finetuned_hack": {
+   "calls": 36,
+   "wall_s": 210.276,
+   "cpu_s": 210.699,
+   "cpu_energy_j": 657.2,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 5486.9,
+   "gpu_energy_j": 27867.6
+  },
+  "predict mix12k_nodice": {
+   "calls": 36,
+   "wall_s": 210.713,
+   "cpu_s": 211.122,
+   "cpu_energy_j": 658.7,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 5517.4,
+   "gpu_energy_j": 28265.0
+  },
+  "degrade grayscale": {
+   "calls": 1,
+   "wall_s": 2.63,
+   "cpu_s": 2.64,
+   "cpu_energy_j": 8.2,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4286.1,
+   "gpu_energy_j": 330.4
+  },
+  "degrade blur": {
+   "calls": 1,
+   "wall_s": 8.094,
+   "cpu_s": 8.118,
+   "cpu_energy_j": 25.3,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4386.2,
+   "gpu_energy_j": 954.0
+  },
+  "degrade half_resolution": {
+   "calls": 1,
+   "wall_s": 3.489,
+   "cpu_s": 3.493,
+   "cpu_energy_j": 10.9,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4382.9,
+   "gpu_energy_j": 374.6
+  },
+  "degrade quarter_resolution": {
+   "calls": 1,
+   "wall_s": 2.848,
+   "cpu_s": 2.856,
+   "cpu_energy_j": 8.9,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4352.4,
+   "gpu_energy_j": 313.8
+  },
+  "degrade jpeg_q20": {
+   "calls": 1,
+   "wall_s": 2.673,
+   "cpu_s": 2.642,
+   "cpu_energy_j": 8.2,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4414.6,
+   "gpu_energy_j": 307.8
+  },
+  "degrade noise_12": {
+   "calls": 1,
+   "wall_s": 9.627,
+   "cpu_s": 9.659,
+   "cpu_energy_j": 30.1,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4475.7,
+   "gpu_energy_j": 1179.8
+  },
+  "degrade other_palette": {
+   "calls": 1,
+   "wall_s": 1.182,
+   "cpu_s": 1.186,
+   "cpu_energy_j": 3.7,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4414.7,
+   "gpu_energy_j": 132.0
+  },
+  "degrade low_contrast": {
+   "calls": 1,
+   "wall_s": 3.641,
+   "cpu_s": 3.651,
+   "cpu_energy_j": 11.4,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 4445.9,
+   "gpu_energy_j": 430.0
+  }
+ },
+ "status": "ok",
+ "error": null,
+ "gpu_energy_j": 103240.3,
+ "gpu_peak_w": 141.6,
+ "gpu_mem_peak_mb": 7941.0,
+ "gpu_power_samples": 3057
+}

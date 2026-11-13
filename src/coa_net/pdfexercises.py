@@ -223,6 +223,29 @@ class Network:
                 "km_priced": round(float(self.length_m[doubtful].sum()) / 2000, 1),  # both directions are sections
                 "km_below_threshold": round(float((self.length_m * self.prob_share_below).sum()) / 2000, 1)}
 
+    def price_by_confidence(self, owner: np.ndarray, p_cal: np.ndarray, strength: float = 1.0, p_ref: float = 0.75,
+                            floor: float = 0.05, exempt: np.ndarray | None = None) -> dict:
+        """Uncertainty-aware cost from the segmentation network (TIFF-only routing).
+
+        Every section gets a *risk* r = mean over its 20 m samples of -ln(c), with c = min(p_cal / p_ref, 1) the calibrated
+        road probability normalised by the plateau the calibration reaches on certain roads (``p_ref``, about 0.75 with the
+        3 px label band), floored at ``floor``. r is 0 on a road the model is sure of, 0.69 where it is half as sure, 3.0 at
+        the floor; exp(-r) is the section's confidence (geometric mean of c). The cost becomes base x (1 + strength x r):
+        a route pays ``strength`` extra metres (or minutes) per metre and per nat of surprise, i.e. it trades length for
+        the log-likelihood that the roads it uses exist. ``exempt`` sections (roads added from another source) keep r = 0."""
+        cnt = np.maximum(np.bincount(owner, minlength=len(self.edges)), 1)
+        c = np.clip(np.asarray(p_cal, float) / max(p_ref, 1e-6), floor, 1.0)
+        risk = np.bincount(owner, weights=-np.log(c), minlength=len(self.edges)) / cnt
+        if exempt is not None:
+            risk[exempt] = 0.0
+        self.risk, self.confidence = risk, np.exp(-risk)
+        self.conf_strength, self.conf_ref = strength, p_ref
+        self.price = self.price * (1.0 + strength * risk)
+        low = self.confidence < 0.5
+        return {"strength": strength, "p_ref": round(float(p_ref), 3), "floor": floor,
+                "km_low_confidence": round(float(self.length_m[low].sum()) / 2000, 1),  # both directions are sections
+                "network_mean_confidence": round(float(np.average(self.confidence, weights=self.length_m)), 3)}
+
     def time_min(self, cap: float) -> np.ndarray:
         """Built-up part at min(50, cap), the rest at min(limit, cap)."""
         km = self.length_m / 1000.0
@@ -392,6 +415,11 @@ def route_facts(N: Network, edges: list[int], cap: float, bd_lines=None, osm=Non
         **({"km_below_prob_threshold": round(float((N.length_m[e] * N.prob_share_below[e]).sum()) / 1000, 2),
             "mean_prob": round(float(np.average(N.prob_mean[e], weights=N.length_m[e])), 3)}
            if getattr(N, "prob_share_below", None) is not None else {}),
+        **({"mean_confidence": round(float(np.exp(-np.average(N.risk[e], weights=N.length_m[e]))), 3),
+            "km_low_confidence": round(float(N.length_m[e][N.confidence[e] < 0.5].sum()) / 1000, 2),
+            "uncertainty_cost_share": round(float((N.length_m[e] * N.conf_strength * N.risk[e]).sum()
+                                                  / max((N.length_m[e] * (1 + N.conf_strength * N.risk[e])).sum(), 1e-9)), 3)}
+           if getattr(N, "risk", None) is not None else {}),
         "label_gap_joins_used": sum(1 for d in D if d.get("scan_gap") and not d.get("scan_link")),
         "road_names": names[:12],
     }
@@ -455,8 +483,9 @@ def osm_duration(lines, speeds, cap, osm, urban=None) -> dict:
 
 # ---------------------------------------------------------------------------------------------------------------- one exercise
 
-def solve(ex: PdfExercise, N: Network, bd_lines=None, osm=None, avoid=None) -> dict:
-    """``avoid``: polygons (lon/lat coordinate lists) that no road section may cross (zones to avoid, RA)."""
+def solve(ex: PdfExercise, N: Network, bd_lines=None, osm=None, avoid=None, forbid: np.ndarray | None = None) -> dict:
+    """``avoid``: polygons (lon/lat coordinate lists) that no road section may cross (zones to avoid, RA).
+    ``forbid``: boolean mask of sections removed from the network (stress tests: missing data)."""
     import shapely
 
     cap = ex.speed_cap_kmh
@@ -466,6 +495,8 @@ def solve(ex: PdfExercise, N: Network, bd_lines=None, osm=None, avoid=None) -> d
         ra = shapely.Polygon(to_l93(poly))
         if ra.is_valid and not ra.is_empty:
             inside &= ~shapely.intersects(ra, N.lines)
+    if forbid is not None:
+        inside &= ~forbid
     t = N.time_min(cap)
     base = N.length_m if ex.objective == "length" else t
     S = Solver(N, inside, base * N.price)
@@ -551,6 +582,7 @@ def solve(ex: PdfExercise, N: Network, bd_lines=None, osm=None, avoid=None) -> d
     for k, v in snapped.items():
         log.insert(0, f"{k} snapped to the nearest junction of the allowed network, {v['snap_m']:.0f} m away"
                    + ("" if v["inside_area"] else " (WARNING: the point itself is outside the deployment area)"))
+    res["_solver"], res["_solver_unpriced"], res["_leg_edges"] = S, S0, [list(edges) for _, edges in legs]
     for name, edges in legs:
         f = route_facts(N, edges, cap, bd_lines, osm)
         f["inside_area"] = bool(inside[edges].all())
@@ -737,6 +769,6 @@ def decision_markdown(ex: PdfExercise, res: dict, ref: dict | None, net_facts: d
 
 
 def jsonable(res: dict) -> dict:
-    out = json.loads(json.dumps({k: v for k, v in res.items() if k != "legs"}, default=str))
+    out = json.loads(json.dumps({k: v for k, v in res.items() if k != "legs" and not k.startswith("_")}, default=str))
     out["legs"] = [{k: v for k, v in l.items() if k != "_line"} for l in res["legs"]]
     return out
