@@ -686,6 +686,14 @@ def cmd_pdf_exercises(args) -> None:
     builtup.to_file(out / "builtup_areas.geojson", driver="GeoJSON")
     N = px.Network(G, "PRC U-Net network" if args.network == "prc-alone" else
                    "image network + corrector" if args.corrector else "image network", builtup=builtup)
+    if args.prob_threshold is not None:
+        if args.network != "prc-alone":
+            sys.exit("--prob-threshold needs --network prc-alone (the probabilities come from the U-Net raster)")
+        pr = N.price_by_probability(P, tr, args.prob_threshold, args.prob_penalty)
+        net["probability_penalty"] = (f"sections whose PRC road probability is below {pr['threshold']:g} (operator's threshold) cost "
+                                      f"1 + {pr['strength']:g} x the share below it: {pr['sections_priced']:,} sections priced, "
+                                      f"{pr['km_below_threshold']:,} km of road below the threshold")
+        net["corrector"] += "; " + net["probability_penalty"]
     print(f"image network ready: {len(N.edges):,} directed sections of rank <= 5 ({time.perf_counter() - t0:.0f} s)", flush=True)
 
     ref_net = bd_kd = osm = None
@@ -941,6 +949,9 @@ def main(argv: list[str] | None = None) -> None:
                          "PRC U-Net (--unet), the closest to BD TOPO and OSM on the exercise file")
     pe.add_argument("--unet", help="with --network prc-alone: folder with unet_oof.tif (scripts/prc_unet.py merge)")
     pe.add_argument("--no-osm", action="store_true", help="do not use OSM at all, even if the data folder has it")
+    pe.add_argument("--prob-threshold", type=float, help="with --network prc-alone: penalise road sections whose PRC probability is "
+                    "below this threshold (operator's choice, e.g. 0.7): routes avoid the stretches the U-Net is unsure of")
+    pe.add_argument("--prob-penalty", type=float, default=3.0, help="cost x (1 + PENALTY x share of the section below the threshold)")
     pe.add_argument("--builtup-rgb", default="204,206,184", help="colour of the built-up tint on the scan (IGN 1:100 000: grey-beige)")
     pe.add_argument("--builtup-tol", type=int, default=6, help="max difference per channel for a palette colour to count as the tint")
     pe.set_defaults(fn=cmd_pdf_exercises)

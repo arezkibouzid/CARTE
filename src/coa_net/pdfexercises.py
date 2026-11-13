@@ -184,6 +184,45 @@ class Network:
             self.urban_share = urban_share(self.lines, builtup)
         self.eidx = {(int(a), int(b)): i for i, (a, b) in enumerate(zip(self.u, self.v))}
 
+    def edge_probabilities(self, P, transform, step_m: float = 20.0) -> tuple[np.ndarray, np.ndarray]:
+        """Road probability of a segmentation raster (``P[..., 0]``, x 255) sampled every ``step_m`` along every section:
+        (owner section index, p). Max over 3 x 3 pixels, as the centre line and the road pixels can sit a pixel apart."""
+        if getattr(self, "_prob", None) is None:
+            import shapely
+            from pyproj import Transformer
+
+            L = shapely.length(self.lines)
+            n = np.maximum(np.ceil(L / step_m).astype(int), 1)
+            owner = np.repeat(np.arange(len(self.lines)), n)
+            frac = (np.arange(n.sum()) - np.repeat(np.cumsum(n) - n, n) + 0.5) / np.repeat(n, n)
+            xy = shapely.get_coordinates(shapely.line_interpolate_point(self.lines[owner], frac, normalized=True))
+            lon, lat = Transformer.from_crs(L93, "EPSG:4326", always_xy=True).transform(xy[:, 0], xy[:, 1])
+            c = ((np.asarray(lon) - transform.c) / transform.a).astype(int)
+            r = ((np.asarray(lat) - transform.f) / transform.e).astype(int)
+            p = np.zeros(len(r))
+            for dr in (-1, 0, 1):
+                for dc in (-1, 0, 1):
+                    rr = np.clip(r + dr, 0, P.shape[0] - 1)
+                    cc = np.clip(c + dc, 0, P.shape[1] - 1)
+                    p = np.maximum(p, P[rr, cc, 0] / 255.0)
+            self._prob = (owner, p)
+        return self._prob
+
+    def price_by_probability(self, P, transform, threshold: float, strength: float = 3.0) -> dict:
+        """Penalise the sections the segmentation network is unsure of: cost x (1 + strength x share of the section whose
+        road probability is below ``threshold``). The threshold is the operator's choice: the higher it is, the more of the
+        network counts as doubtful. Returns what was priced."""
+        owner, p = self.edge_probabilities(P, transform)
+        cnt = np.bincount(owner, minlength=len(self.edges))
+        self.prob_share_below = np.bincount(owner, weights=(p < threshold).astype(float), minlength=len(self.edges)) / np.maximum(cnt, 1)
+        self.prob_mean = np.bincount(owner, weights=p, minlength=len(self.edges)) / np.maximum(cnt, 1)
+        self.price = self.price * (1.0 + strength * self.prob_share_below)
+        self.prob_threshold, self.prob_strength = threshold, strength
+        doubtful = self.prob_share_below > 0
+        return {"threshold": threshold, "strength": strength, "sections_priced": int(doubtful.sum()),
+                "km_priced": round(float(self.length_m[doubtful].sum()) / 2000, 1),  # both directions are sections
+                "km_below_threshold": round(float((self.length_m * self.prob_share_below).sum()) / 2000, 1)}
+
     def time_min(self, cap: float) -> np.ndarray:
         """Built-up part at min(50, cap), the rest at min(limit, cap)."""
         km = self.length_m / 1000.0
@@ -350,6 +389,9 @@ def route_facts(N: Network, edges: list[int], cap: float, bd_lines=None, osm=Non
         "km_built_up": round(float((N.length_m[e] * N.urban_share[e]).sum()) / 1000, 2),
         "doubtful_sections": {"count": len(doubtful), "km": round(sum(L for _, L in doubtful) / 1000, 2)},
         "links_added_by_corrector_used": sum(1 for d in D if d.get("scan_link")),
+        **({"km_below_prob_threshold": round(float((N.length_m[e] * N.prob_share_below[e]).sum()) / 1000, 2),
+            "mean_prob": round(float(np.average(N.prob_mean[e], weights=N.length_m[e])), 3)}
+           if getattr(N, "prob_share_below", None) is not None else {}),
         "label_gap_joins_used": sum(1 for d in D if d.get("scan_gap") and not d.get("scan_link")),
         "road_names": names[:12],
     }
@@ -640,6 +682,8 @@ def decision_markdown(ex: PdfExercise, res: dict, ref: dict | None, net_facts: d
           "- **Doubtful roads**: each road carries the corrector's probability of being real; the route choice prices a label-gap join "
           "1 + 3 (1 - p) times and a road below p = 0.7 1 + 3 (0.7 - p) times, so a route avoids roads the map may not have. "
           "The lengths and durations reported are the real ones (not priced)."]
+    if net_facts.get("probability_penalty"):
+        L.append(f"- **Uncertain roads**: {net_facts['probability_penalty']}.")
     if ex.round_trip_distinct:
         L.append("- **Strictly different routes**: the second leg may not use any section of the first leg (either direction) nor any "
                  "section running within 20 m of it on more than half of its length; both leg orders are solved and the cheaper pair is kept "
