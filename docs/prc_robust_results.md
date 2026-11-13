@@ -37,3 +37,11 @@
 | mix12k_cld | 89.0% | 14,325 | 0.153 / 0.148 | 6.0% / 7.1% | 75.2% / 76.1% | 139.1 | 219.4 | 45% |
 | mix12k_hard | 88.2% | 22,117 | 0.136 / 0.133 | 5.7% / 6.8% | 72.1% / 72.5% | 138.8 | 331.5 | 42% |
 | mix12k_cld_hard | 88.7% | 14,322 | 0.147 / 0.137 | 5.9% / 7.0% | 72.2% / 71.3% | 143.6 | 270.3 | 41% |
+
+## 5. Conclusions
+
+- **Neither change improves the routes; mix12k stays the best model.** On pixels all three runs are slightly below it (road IoU 0.412-0.417 against 0.420), and on routes they are worse (route score on town pairs 0.136-0.153 against 0.119; exercises' length gap to BD TOPO 5.7-6.0% against 5.1%).
+- **clDice does what it is meant to do on the network, but not on the routes.** The traced network is much cleaner (14,300 sections instead of 25,100: fewer stray fragments), lies closer to BD TOPO (89.0% within 25 m) and has **27% fewer km of broken corridors** (219 against 302); the exercise routes follow the reference corridors more often (overlap 75% / 76% against 74% / 73%). But the gap points on the reference roads not followed rise (139 against 125 km): clDice joins the main corridors and loses minor links, so routes come out about 1 point longer. It costs +24% training time (19.3 instead of 15.5 min per fold).
+- **Uncertainty-guided sampling does not help**: drawing half of the sheet's tiles from the 20% most uncertain cells (towns, junctions, dense minor roads) costs accuracy on ordinary roads and worsens every route figure; the gaps do not move to less uncertain places (41-45% of the gap points still in the most uncertain cells).
+- **Recommendation**: keep mix12k for routing. clDice is worth keeping in mind when the network itself is the product (cleaner, fewer broken corridors). Training-side changes have now been tried four ways (more steps, a second sheet, TTA at inference, clDice and hard sampling); only the second sheet improved the routes. The remaining gaps are best attacked in the tracing of the network from the probabilities (gap bridging, hysteresis threshold), not in training.
+- **Caveat**: these three runs ran on the node with the CUDA 12.8 driver (PyTorch 2.11), mix12k on the CUDA 13 node (PyTorch 2.14); the same code and seeds, but not bit-identical numerics.
