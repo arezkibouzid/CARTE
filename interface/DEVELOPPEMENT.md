@@ -73,3 +73,21 @@ Règles d'intégrité de l'interface (validées avec l'utilisateur) :
   apparaissait « absente » côté client ; (2) shpjs v6 n’a plus `shp.combine`,
   l’entrée est `shp({shp, dbf})` → loadShapefile/loadShapefileGeometryOnly
   corrigés (fallback géométries seules si .dbf illisible). typecheck + build OK.
+- 2026-11-13 — **Version 2 : interface de pilotage du pipeline** (demande : configuration, carte interactive,
+  extraction visible, outils de dessin, latence minimale). Changement de règle validé : l’interface n’est plus en
+  lecture seule, elle **appelle un back end Python** (`backend/amiad_api.py`, FastAPI) qui exécute le pipeline sur le
+  cluster (choix : back end ajouté, exécution sur le cluster, OSM en contrôle *ou* en complément au choix de
+  l’utilisateur, chemins du cluster `examples/` + `outputs/hackathon100k/`).
+  - Back end : tuiles XYZ de la carte, de la probabilité et de l’incertitude (7-40 ms, 3-15 ms en cache, au lieu du
+    décodage du TIFF de 83 Mo dans le navigateur) ; couches BD TOPO / OSM / réseau extrait limitées à la zone
+    visible (0,01-0,16 s) ; itinéraires avec points, étapes ordonnées ou libres, aller-retour, zone de déploiement,
+    zones à éviter, OSM en complément, pénalité d’incertitude (0,2-0,5 s ; contrôles BD TOPO et OSM en parallèle
+    ensuite) ; extraction par étapes dans un rectangle (1 s) ; lecture des PDF d’exercices ; préparation au démarrage
+    (réseaux, calibration, références).
+  - Interface : 3 étapes (Configurer, Scénario, Résultats), barre d’outils de dessin, points déplaçables, menu du
+    rectangle, lecteur d’extraction en 5 étapes, tracé progressif des itinéraires, couches et légende, seuil
+    d’incertitude en direct. Supprimés : espaces Projets/Données/Inspecteur/Résultats v1, projets démo câblés sur des
+    dossiers locaux, lecture TIFF/shapefile dans le navigateur (geotiff, shpjs).
+  - Vérifié dans Chromium headless (`scripts/ui_smoke.py`) : exercice 7 (4 étapes, ordre libre) calculé en 0,45 s,
+    +0,6 % de distance et 82 % de tracé commun avec la BD TOPO ; mode OSM en complément + routes incertaines évitées
+    avec les deux contrôles en 5,8 s ; extraction 1,3 s ; aucune erreur JavaScript.

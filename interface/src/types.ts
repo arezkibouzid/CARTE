@@ -1,99 +1,147 @@
-import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from 'geojson';
+import type { FeatureCollection } from 'geojson';
 
-export type SourceType = 'tiff' | 'shapefile' | 'osm' | 'geojson';
+export type LonLat = [number, number];
+export type BBox = [number, number, number, number]; // ouest, sud, est, nord
 
-export type SourceRole =
-  | 'fond_tiff'          // TIFF servant de fond cartographique
-  | 'reseau_importe'     // réseau routier importé (BD TOPO, OSM, …)
-  | 'reseau_candidat'    // réseau candidat extrait d'un TIFF (extraction non disponible)
-  | 'resultat';          // résultats de calcul lus dans des fichiers existants
-
-export interface TiffImage {
-  url: string; // dataURL rendu côté client
-  /** [ouest, nord], [est, nord], [est, sud], [ouest, sud] — coordonnées image de MapLibre */
-  coordinates: [number, number][];
-  width: number;
-  height: number;
-  crsNote: string;
-}
-
-export interface DataSource {
+export interface ModelInfo {
   id: string;
-  name: string;
-  type: SourceType;
-  role: SourceRole;
-  /** Chemin servi en lecture seule sous /data/… (fichiers du dépôt), ou objectURL pour un import. */
-  path?: string;
-  /** Shapefile : chemin du .dbf accompagnon. */
-  dbfPath?: string;
-  /** Shapefile importé en .zip (objectURL). */
-  zipPath?: string;
-  /** objectURL du fichier importé (session navigateur). */
-  url?: string;
-  origin: 'depot' | 'import';
-  visible: boolean;
-  loaded: boolean;
-  loading: boolean;
-  error?: string;
-  featureCount?: number;
-  /** 1 = tout afficher ; N = 1 entité affichée sur N (affichage seul, données intactes). */
-  sample: number;
-  color: string;
-  crsNote?: string;
-  /** Données chargées en mémoire (non persistées). */
-  geojson?: FeatureCollection;
-  image?: TiffImage;
+  label: string;
+  description?: string;
 }
 
-export interface ScenarioPoint {
+export interface SheetInfo {
   id: string;
-  name: string;      // ex. PD5, WP1, PA5 — saisi librement par l'utilisateur
-  lon?: number;
-  lat?: number;
+  label: string;
+  bounds: BBox | null;
+  has_bdtopo: boolean;
+  has_osm: boolean;
+  has_pdf: boolean;
+  models: ModelInfo[];
+  default_model: string;
 }
 
-export interface ScenarioZone {
-  id: string;
-  name: string;
-  kind: 'deployment' | 'restricted'; // DA = aire de déploiement, RA = zone à éviter
-  coords: [number, number][];
+export interface BackendStatus {
+  ready: boolean;
+  steps: Record<string, string>;
 }
 
-export interface ScenarioImage {
-  id: string;
-  name: string;
-  /** /data/… (dépôt) ou objectURL (upload, session uniquement). */
-  url: string;
-  origin: 'depot' | 'upload';
-}
+/** Outils de la barre d'outils de la carte. */
+export type ToolId = 'pan' | 'start' | 'end' | 'waypoint' | 'rect' | 'area' | 'avoid';
 
 export interface Scenario {
-  /** Consigne / ordre écrit librement par l'utilisateur, affiché tel quel, jamais interprété. */
-  text: string;
-  points: ScenarioPoint[]; // ordre choisi par l'utilisateur
-  zones: ScenarioZone[];
-  images: ScenarioImage[];
+  label?: string; // ex. « Exercice 7 » quand chargé depuis le PDF
+  start?: LonLat;
+  end?: LonLat;
+  waypoints: LonLat[];
+  waypointOrder: 'fixed' | 'free';
+  roundTrip: boolean;
+  area?: LonLat[]; // zone de déploiement (DA)
+  avoid: LonLat[][]; // zones à éviter (RA)
+  requirements?: string[];
 }
 
-export interface Project {
-  id: string;
+export type DataPreset = 'tiff' | 'tiff_osm' | 'tiff_no_osm' | 'custom';
+
+export interface Options {
+  model: string;
+  objective: 'length' | 'time';
+  speedCap: number;
+  useBdtopo: boolean;
+  useOsm: boolean;
+  osmMode: 'reference' | 'fill';
+  tau: number; // seuil d'incertitude (probabilité calibrée)
+  penalize: boolean;
+  strength: number;
+  traceThreshold: number;
+}
+
+export interface LayerState {
+  scan: boolean;
+  prob: boolean;
+  uncert: boolean;
+  network: boolean;
+  bdtopo: boolean;
+  osm: boolean;
+  refs: boolean;
+}
+
+export interface Leg {
   name: string;
+  length_km: number;
+  duration_min: number;
+  mean_speed_kmh: number;
+  km_built_up: number;
+  km_below_prob_threshold?: number;
+  mean_prob?: number;
+  inside_area: boolean;
+  continuous: boolean;
+  km_by_speed_limit: Record<string, number>;
+  doubtful_sections?: { count: number; km: number };
+}
+
+export interface RouteResult {
+  route_id: string;
+  route: FeatureCollection;
+  total: { length_km: number; duration_min: number };
+  legs: Leg[];
+  log: string[];
+  points: Record<string, { snap_m: number; inside_area: boolean }>;
+  visit_order?: string[];
+  objective: 'length' | 'time';
+  network: string;
+  probability_penalty: { threshold: number; strength: number; sections_priced: number; km_below_threshold: number } | null;
+  compare: ('bdtopo' | 'osm')[];
+  timing_s: Record<string, number>;
+}
+
+export interface CompareResult {
+  which: 'bdtopo' | 'osm';
+  error?: string;
+  total?: { length_km: number; duration_min: number };
+  route?: FeatureCollection;
+  length_gap?: number;
+  time_gap?: number;
+  overlap?: number;
+  timing_s?: number;
+}
+
+export interface ExtractResult {
+  bounds: BBox;
+  images: Record<'scan' | 'probability' | 'mask' | 'skeleton', string>;
+  graph: FeatureCollection;
+  nodes: FeatureCollection;
+  stats: {
+    pixels: number;
+    road_pixels: number;
+    sections: number;
+    km: number;
+    junctions: number;
+    dead_ends: number;
+    pieces: number;
+    largest_piece_share: number;
+    mean_probability_on_roads: number | null;
+    bdtopo?: { bdtopo_km: number; completeness?: number; correctness?: number };
+  };
+  timing_s: Record<string, number>;
+}
+
+export interface PdfExercise {
+  number: number;
+  points: Record<string, LonLat>;
+  area: string[];
+  start: string;
+  end: string;
+  waypoints: string[];
+  waypoint_order: 'fixed' | 'free' | 'none';
+  objective: 'length' | 'time';
+  round_trip: boolean;
+  speed_cap_kmh: number;
+  requirements: string[];
   description: string;
-  createdAt: string;
-  sources: DataSource[];
-  scenario: Scenario;
-  /** Dossiers de résultats du dépôt (sous /data/…) : audit.json, comparaison.csv, etc. */
-  resultPaths: string[];
+  notes: string[];
 }
 
-export interface InspectorSelection {
-  sourceId: string;
-  sourceName: string;
-  role: SourceRole;
-  geometryType: string;
-  properties: GeoJsonProperties;
+export interface PdfResult {
+  metadata: Record<string, string | number>;
+  exercises: PdfExercise[];
 }
-
-export type DrawMode = 'point' | 'zone-deployment' | 'zone-restricted' | null;
-
-export type { Feature, FeatureCollection, Geometry };

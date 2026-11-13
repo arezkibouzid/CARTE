@@ -455,12 +455,17 @@ def osm_duration(lines, speeds, cap, osm, urban=None) -> dict:
 
 # ---------------------------------------------------------------------------------------------------------------- one exercise
 
-def solve(ex: PdfExercise, N: Network, bd_lines=None, osm=None) -> dict:
+def solve(ex: PdfExercise, N: Network, bd_lines=None, osm=None, avoid=None) -> dict:
+    """``avoid``: polygons (lon/lat coordinate lists) that no road section may cross (zones to avoid, RA)."""
     import shapely
 
     cap = ex.speed_cap_kmh
     area = shapely.Polygon(to_l93([ex.points[k] for k in ex.area]))
     inside = shapely.contains(area, N.lines)
+    for poly in avoid or []:
+        ra = shapely.Polygon(to_l93(poly))
+        if ra.is_valid and not ra.is_empty:
+            inside &= ~shapely.intersects(ra, N.lines)
     t = N.time_min(cap)
     base = N.length_m if ex.objective == "length" else t
     S = Solver(N, inside, base * N.price)

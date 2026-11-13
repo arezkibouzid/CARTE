@@ -1,0 +1,23 @@
+{
+  "cache_dir": "outputs/interface_cache",
+  "sheets": [
+    {
+      "id": "hackathon",
+      "label": "Hackathon — IGN 1:100 000 (Châlons, Verdun, Bar-le-Duc)",
+      "tif": "examples/Hackathon_100K.tif",
+      "bdtopo": "examples/Hackathon_BDTopo.shp",
+      "osm": "examples/Hackathon_OSM.shp",
+      "pdf": "examples/exercise_1-to-10-1.pdf",
+      "builtup": "outputs/hackathon100k/pdf_exercises/builtup_areas.geojson",
+      "labels": "outputs/hackathon100k/prc/road.npy",
+      "cache": "outputs/hackathon100k/cache",
+      "default_model": "nodice",
+      "models": [
+        {"id": "nodice", "label": "Couverture maximale", "description": "Trouve le plus de routes ; itinéraires les plus proches de BD TOPO et d'OSM (recommandé).", "raster": "outputs/hackathon100k/prc/mix12k_nodice"},
+        {"id": "nodice_tta", "label": "Compromis", "description": "Bon équilibre couverture / précision (8 orientations moyennées).", "raster": "outputs/hackathon100k/prc/mix12k_nodice_tta"},
+        {"id": "mix12k_tta", "label": "Précision maximale", "description": "Réseau le plus sûr et le plus connecté, un peu moins complet.", "raster": "outputs/hackathon100k/prc/mix12k_tta"},
+        {"id": "mix12k", "label": "Référence", "description": "Modèle de référence (entraînement avec Dice).", "raster": "outputs/hackathon100k/prc/mix12k"}
+      ]
+    }
+  ]
+}
