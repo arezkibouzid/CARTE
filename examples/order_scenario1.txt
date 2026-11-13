@@ -1,0 +1,6 @@
+ORDER BZH-1 - logistic movement on the Scenario 1 map (test order written for validation, not an ETLO order)
+Phase: day
+Intent: Deliver the fuel to Dinan before 10:30. The enemy is likely to strike the crossings. Keep the tankers out of the towns.
+Convoy C1: 6 x heavy_truck, 2 x fuel_tanker from Vannes to Dinan, depart 06:00, arrive before 10:30, priority 1, cargo: fuel.
+Convoy C2: 6 x pfm_carrier from Questembert to Broons, depart 06:00, arrive before 10:00, priority 2.
+Convoy C3: 4 x medium_truck, 1 x ambulance from Redon to Caulnes, depart 06:15, priority 3.

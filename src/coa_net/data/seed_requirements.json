@@ -1,0 +1,939 @@
+[
+ {
+  "id": "R-01",
+  "template": "SEG.LOAD",
+  "tier": "T0",
+  "params": {
+   "check": "bridge_mlc",
+   "margin_mlc": 0
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "forbid",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "H-BRIDGE-MLC",
+   "quote": "A bridge may only be crossed by vehicles whose military load class does not exceed the bridge classification. An unclassified bridge is not used until reconnoitred."
+  },
+  "trigger": "may only",
+  "explanation": "A bridge is crossed only if its load class is at least the column's (MLC).",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-02",
+  "template": "SEG.LOAD",
+  "tier": "T0",
+  "params": {
+   "check": "posted_weight"
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "H-WEIGHT",
+   "quote": "Posted gross weight restrictions must be respected; no posted limit means no restriction."
+  },
+  "trigger": "must",
+  "explanation": "Posted weight limits are respected.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-03",
+  "template": "SEG.GAUGE",
+  "tier": "T0",
+  "params": {
+   "check": "height",
+   "height_margin_m": 0.3
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "forbid",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "H-CLEARANCE",
+   "quote": "Tunnels and underpasses need at least 0.3 m vertical clearance above the tallest vehicle."
+  },
+  "trigger": "need",
+  "explanation": "Tunnels need 0.3 m of clearance above the tallest vehicle.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-04",
+  "template": "SEG.GAUGE",
+  "tier": "T0",
+  "params": {
+   "check": "width",
+   "width_margin_m": 0.5
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "H-WIDTH",
+   "quote": "Carriageway must be at least 0.5 m wider than the widest vehicle."
+  },
+  "trigger": "must",
+  "explanation": "The carriageway is at least 0.5 m wider than the widest vehicle.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-05",
+  "template": "SEG.GRADE",
+  "tier": "T0",
+  "params": {},
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "H-SLOPE",
+   "quote": "Gradients must stay within the climbing capability of the least capable vehicle."
+  },
+  "trigger": "must",
+  "explanation": "Slopes stay within the climbing capability of the column.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-06",
+  "template": "SEG.SURFACE",
+  "tier": "T0",
+  "params": {
+   "vehicle_classes": [
+    "heavy"
+   ]
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [
+    "heavy"
+   ],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "H-HEAVY-UNPAVED",
+   "quote": "Heavy wheeled vehicles shall not use unpaved tracks."
+  },
+  "trigger": "shall",
+  "explanation": "Heavy wheeled vehicles stay off unpaved tracks.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-07",
+  "template": "SEG.STATUS",
+  "tier": "T0",
+  "params": {
+   "closed_p": 0.5,
+   "suspect_p": 0.2,
+   "half_life_min": 60
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "H-CLOSED",
+   "quote": "Roads reported closed or destroyed shall not be used."
+  },
+  "trigger": "shall",
+  "explanation": "Roads believed closed (probability 0.5 or more) are not used.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-08",
+  "template": "PRO.EXPOSURE",
+  "tier": "T1",
+  "params": {
+   "max_threat": 0.8
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "H-THREAT",
+   "quote": "Routes shall not cross areas assessed as high threat."
+  },
+  "trigger": "shall",
+  "explanation": "No route crosses a high-threat area (threat level 0.8 or more).",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-09",
+  "template": "SEG.CARGO",
+  "tier": "T1",
+  "params": {
+   "cargo": [
+    "fuel",
+    "ammunition"
+   ],
+   "element": "tunnel"
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [
+    "fuel",
+    "ammunition"
+   ],
+   "phases": []
+  },
+  "on_unknown": "forbid",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "H-HAZMAT-TUNNEL",
+   "quote": "Convoys carrying fuel or ammunition shall not use tunnels."
+  },
+  "trigger": "shall",
+  "explanation": "Fuel and ammunition stay out of tunnels.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-10",
+  "template": "SEG.AVOID",
+  "tier": "T2",
+  "params": {
+   "attribute": "built_up"
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "S-BUILTUP",
+   "quote": "Avoid built-up areas to limit interference with civilian traffic and exposure."
+  },
+  "trigger": "should",
+  "explanation": "Built-up areas are avoided where possible (objective builtup).",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-11",
+  "template": "SEG.CARGO",
+  "tier": "T2",
+  "params": {
+   "cargo": [
+    "fuel",
+    "ammunition"
+   ],
+   "element": "built_up"
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [
+    "fuel",
+    "ammunition"
+   ],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "S-HAZMAT-BUILTUP",
+   "quote": "Dangerous goods convoys should bypass built-up areas."
+  },
+  "trigger": "should",
+  "explanation": "Dangerous goods bypass built-up areas where possible (objective hazmat_builtup).",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-12",
+  "template": "NET.SURVIVE",
+  "tier": "T1",
+  "params": {
+   "k": 1,
+   "max_alternates": 2
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "S-CHOKEPOINT, N-ALTERNATE",
+   "quote": "Avoid chokepoints where a single event would block the route. Each main supply route (MSR) needs at least one alternate supply route (ASR) that is mostly disjoint."
+  },
+  "trigger": "needs",
+  "explanation": "Each group keeps a designated route after the loss of any single critical element, where the road network allows it.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-13",
+  "template": "SEG.GRADE",
+  "tier": "T3",
+  "params": {
+   "prefer_max_slope_pct": 8.0
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [
+    "heavy"
+   ],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "S-SLOPE",
+   "quote": "Prefer gentle gradients for heavy vehicles (fuel use, speed, safety)."
+  },
+  "trigger": "prefer",
+  "explanation": "Heavy columns prefer slopes under 8 % (objective preferences).",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-14",
+  "template": "SEG.AVOID",
+  "tier": "T3",
+  "params": {
+   "attribute": "minor_road",
+   "min_road_rank": 5
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [
+    "medium",
+    "heavy"
+   ],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "S-ROAD-CLASS",
+   "quote": "Prefer major roads, which have the width and pavement strength for military traffic."
+  },
+  "trigger": "prefer",
+  "explanation": "Medium and heavy columns prefer major roads (objective preferences).",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-15",
+  "template": "PRO.EXPOSURE",
+  "tier": "T2",
+  "params": {},
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "S-THREAT",
+   "quote": "Minimise exposure to assessed threats."
+  },
+  "trigger": "should",
+  "explanation": "Exposure to assessed threats is minimised (objective threat_exposure).",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-16",
+  "template": "SEG.AVOID",
+  "tier": "T3",
+  "params": {
+   "attribute": "open"
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": [
+    "day"
+   ]
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "S-COVER",
+   "quote": "By day, prefer roads under cover to reduce air observation."
+  },
+  "trigger": "prefer",
+  "explanation": "By day, roads under cover are preferred (objective cover).",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-17",
+  "template": "SEG.SURFACE",
+  "tier": "T2",
+  "params": {
+   "weather_threshold": 0.5
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "S-WEATHER",
+   "quote": "Avoid roads degraded by weather."
+  },
+  "trigger": "should",
+  "explanation": "Weather-degraded roads are slower (travel time) and lower the route type to Y.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-18",
+  "template": "RTE.DETOUR",
+  "tier": "T1",
+  "params": {
+   "rho": 1.8
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "N-ALTERNATE",
+   "quote": "Each main supply route (MSR) needs at least one alternate supply route (ASR) that is mostly disjoint."
+  },
+  "trigger": "needs",
+  "explanation": "An alternate route takes at most 1.8 times the main route's travel time.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-19",
+  "template": "SCH.HEADWAY",
+  "tier": "T1",
+  "params": {
+   "headway_min": 10
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "N-HEADWAY",
+   "quote": "Successive convoys on the same road keep a minimum time gap."
+  },
+  "trigger": "is kept",
+  "explanation": "Columns on the same road in the same direction keep a 10-minute time gap.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-20",
+  "template": "SCH.MARCH",
+  "tier": "T1",
+  "params": {
+   "max_speed_kmh": 60
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "T-CONVOY-SPEED",
+   "quote": "Convoy march speed is capped."
+  },
+  "trigger": "is capped",
+  "explanation": "March speed at most 60 km/h.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-21",
+  "template": "SCH.MARCH",
+  "tier": "T1",
+  "params": {
+   "max_speed_kmh": 50
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [
+    "heavy"
+   ],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "T-HEAVY-SPEED",
+   "quote": "Heavy convoys march at a lower speed."
+  },
+  "trigger": "is capped",
+  "explanation": "Heavy columns march at 50 km/h at most.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-22",
+  "template": "SCH.MARCH",
+  "tier": "T1",
+  "params": {
+   "night_speed_factor": 0.7
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": [
+    "night"
+   ]
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "T-NIGHT",
+   "quote": "Night (blackout) driving reduces march speed."
+  },
+  "trigger": "is reduced",
+  "explanation": "At night the march speed is reduced by 30 %.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-23",
+  "template": "RTE.GAP_MAX",
+  "tier": "T1",
+  "params": {
+   "max_drive_min": 120
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "T-HALT",
+   "quote": "Scheduled halts for maintenance and crew rest."
+  },
+  "trigger": "is made",
+  "explanation": "A halt area is reached at least every 2 hours of driving.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-24",
+  "template": "SCH.HALT",
+  "tier": "T1",
+  "params": {
+   "halt_min": 15,
+   "halt_areas_only": true
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: stand-in rule (common movement-control practice, to confirm with the instructors)",
+   "paragraph": "T-HALT",
+   "quote": "Scheduled halts for maintenance and crew rest."
+  },
+  "trigger": "is made",
+  "explanation": "Halts last 15 minutes and take place at halt areas, within their capacity.",
+  "status": "approved",
+  "assumption": false
+ },
+ {
+  "id": "R-25",
+  "template": "RTE.TURN",
+  "tier": "T1",
+  "params": {
+   "max_turn_deg": 120,
+   "min_vehicle_length_m": 15
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
+   "paragraph": "",
+   "quote": ""
+  },
+  "trigger": "shall",
+  "explanation": "Columns with vehicles of 15 m or more take no turn sharper than 120 degrees.",
+  "status": "approved",
+  "assumption": true
+ },
+ {
+  "id": "R-26",
+  "template": "RTE.CROSSINGS_MAX",
+  "tier": "T2",
+  "params": {
+   "element": "built_up",
+   "max_count": 1
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [
+    "fuel",
+    "ammunition"
+   ],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
+   "paragraph": "",
+   "quote": ""
+  },
+  "trigger": "should",
+  "explanation": "A dangerous goods convoy crosses at most one built-up area where an alternative exists.",
+  "status": "approved",
+  "assumption": true
+ },
+ {
+  "id": "R-27",
+  "template": "RTE.ACCESS",
+  "tier": "T1",
+  "params": {},
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
+   "paragraph": "",
+   "quote": ""
+  },
+  "trigger": "shall",
+  "explanation": "Start points, via-points and prohibited areas from the order are respected.",
+  "status": "approved",
+  "assumption": true
+ },
+ {
+  "id": "R-28",
+  "template": "RTE.RANGE",
+  "tier": "T1",
+  "params": {
+   "max_km": 300
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
+   "paragraph": "",
+   "quote": ""
+  },
+  "trigger": "shall",
+  "explanation": "At most 300 km between fuel points.",
+  "status": "approved",
+  "assumption": true
+ },
+ {
+  "id": "R-29",
+  "template": "NET.SEPARATE",
+  "tier": "T2",
+  "params": {
+   "narrow_margin_m": 0.5
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
+   "paragraph": "",
+   "quote": ""
+  },
+  "trigger": "should",
+  "explanation": "Main routes of different groups do not use a narrow road in opposite directions where an alternative exists.",
+  "status": "approved",
+  "assumption": true
+ },
+ {
+  "id": "R-30",
+  "template": "NET.LATERAL",
+  "tier": "T2",
+  "params": {
+   "max_spacing_km": 10,
+   "link_max_km": 3
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
+   "paragraph": "",
+   "quote": ""
+  },
+  "trigger": "should",
+  "explanation": "A lateral link between a main route and its alternate at least every 10 km.",
+  "status": "approved",
+  "assumption": true
+ },
+ {
+  "id": "R-31",
+  "template": "NET.CONTROL",
+  "tier": "T2",
+  "params": {
+   "at_elements": true,
+   "at_junctions": true,
+   "max_spacing_km": 15
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
+   "paragraph": "",
+   "quote": ""
+  },
+  "trigger": "should",
+  "explanation": "Traffic control posts at critical elements, at splits and merges of designated routes, and at least every 15 km.",
+  "status": "approved",
+  "assumption": true
+ },
+ {
+  "id": "R-32",
+  "template": "NET.SIZE",
+  "tier": "T3",
+  "params": {},
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
+   "paragraph": "",
+   "quote": ""
+  },
+  "trigger": "prefer",
+  "explanation": "The designated network is kept small (objective network_size).",
+  "status": "approved",
+  "assumption": true
+ },
+ {
+  "id": "R-33",
+  "template": "NET.STATUS",
+  "tier": "T2",
+  "params": {
+   "dispatch_if": [
+    "heavy",
+    "hazmat"
+   ]
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
+   "paragraph": "",
+   "quote": ""
+  },
+  "trigger": "should",
+  "explanation": "Routes used by heavy or dangerous-goods groups are dispatch routes; other designated routes are supervised; alternates are reserved.",
+  "status": "approved",
+  "assumption": true
+ },
+ {
+  "id": "R-34",
+  "template": "SCH.WINDOW",
+  "tier": "T2",
+  "params": {
+   "area": "built_up",
+   "start_min": 450,
+   "end_min": 540
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
+   "paragraph": "",
+   "quote": ""
+  },
+  "trigger": "should",
+  "explanation": "Columns do not transit built-up areas between 07:30 and 09:00 where possible.",
+  "status": "approved",
+  "assumption": true
+ },
+ {
+  "id": "R-35",
+  "template": "SCH.VARY",
+  "tier": "T2",
+  "params": {
+   "min_change_share": 0.3
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
+   "paragraph": "",
+   "quote": ""
+  },
+  "trigger": "should",
+  "explanation": "Successive rotations change at least 30 % of their route or timing.",
+  "status": "approved",
+  "assumption": true
+ },
+ {
+  "id": "R-36",
+  "template": "PRO.CRITPOINT",
+  "tier": "T1",
+  "params": {
+   "no_stop_within_m": 800,
+   "element_kinds": [
+    "bridge",
+    "tunnel"
+   ],
+   "post_if_p_ge": 0.2
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
+   "paragraph": "",
+   "quote": ""
+  },
+  "trigger": "shall",
+  "explanation": "No halt or wait within 800 m of a bridge or tunnel; control post where the strike probability is 0.2 or more.",
+  "status": "approved",
+  "assumption": true
+ },
+ {
+  "id": "R-37",
+  "template": "SCH.MARCH",
+  "tier": "T1",
+  "params": {
+   "interval_day_m": 50,
+   "interval_night_m": 100,
+   "max_unit_vehicles": 20
+  },
+  "scope": {
+   "convoys": [],
+   "vehicle_classes": [],
+   "cargo": [],
+   "phases": []
+  },
+  "on_unknown": "risk",
+  "source": {
+   "document": "seed base: template default value (assumption, to confirm with the instructors)",
+   "paragraph": "",
+   "quote": ""
+  },
+  "trigger": "shall",
+  "explanation": "Vehicle interval 50 m by day and 100 m by night; march units of at most 20 vehicles.",
+  "status": "approved",
+  "assumption": true
+ }
+]

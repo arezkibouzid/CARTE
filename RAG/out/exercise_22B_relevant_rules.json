@@ -1,0 +1,599 @@
+{
+  "exercise_id": "22B",
+  "exercise_objective": "Generate a convoy movement chart for the 1st Marine Infantry Regiment column from CHÂLONS-EN-CHAMPAGNE to SOUILLY.",
+  "rules_file": "doctrine_final_unique_rules.csv",
+  "total_rules_in_csv": 214,
+  "retrieved_candidates": 120,
+  "selected_rules_count": 13,
+  "search_mode": "bm25",
+  "policy": "lenient",
+  "ranking_method": "BM25 retrieval + rule-based relevance scoring (0 to 100)",
+  "score_note": "relevance_score is a normalized ranking score, not a probability. Relevance and applicability are separate: only applicability_status \"applicable\" (enforce: true) may be used as a constraint. Rules with verification_status other than \"verified\" must be checked against the PDF first.",
+  "known_facts": {
+    "country": "France",
+    "bridges_on_route": "unknown",
+    "expressway_on_route": "unknown",
+    "halts_planned": "unknown"
+  },
+  "rules": [
+    {
+      "rank": 1,
+      "rule_id": "DR-0061",
+      "relevance_score": 84,
+      "rule_text": "last at least 10 minutes and should be taken when possible after every 2 hours of operation. b. Long halts made by columns for at",
+      "rule_class": "conditional_requirement",
+      "rule_value": "≥30 minutes, threshold for marking long halts",
+      "rule_scope": "Columns on road movement graphs",
+      "verification_status": "verified",
+      "applicability_status": "applicable",
+      "enforce": true,
+      "source": {
+        "pdf_document": "FM55-30 / STANAG 2174",
+        "pdf_page": 156
+      },
+      "matched_exercise_requirement": "Generate a convoy movement chart for the 1st Marine Infantry Regiment column from CHÂLONS-EN-CHAMPAGNE to SOUILLY.",
+      "how_it_helps": "Long halts have to appear on the movement graph of the columns.",
+      "missing_conditions": [
+        "Length of the longest planned halt (minutes)"
+      ],
+      "unchecked_conditions": [],
+      "check": [
+        "check: Length of the longest planned halt (minutes)"
+      ],
+      "number_check": {
+        "flag": "no value",
+        "rule_limit": "≥ 30 minutes",
+        "exercise_values": [],
+        "message": "The exercise gives no halt length to compare with ≥ 30 minutes."
+      },
+      "relevance_basis": "requirement",
+      "score_parts": {
+        "search": 20,
+        "requirement": 30,
+        "constraint": 15,
+        "scope": 9,
+        "guidance": 10,
+        "penalties": []
+      },
+      "warnings": [
+        "The quote shown does not contain the value stated for this rule (≥30 minutes, threshold for marking long halts). Read the full sentence on PDF page 156 before relying on it."
+      ]
+    },
+    {
+      "rank": 2,
+      "rule_id": "DR-0046",
+      "relevance_score": 84,
+      "rule_text": "to allow a 4-second gap for trucks. If the convoy includes vehicles with trailers, allow an 8-second gap. Normally, the gap will be 25 to",
+      "rule_class": "recommendation",
+      "rule_value": "25–50 m urban; 100 m rural/highway",
+      "rule_scope": "Convoy vehicle gaps",
+      "verification_status": "verified",
+      "applicability_status": "advisory_background",
+      "enforce": false,
+      "source": {
+        "pdf_document": "FM55-30 / STANAG 2174",
+        "pdf_page": 71
+      },
+      "matched_exercise_requirement": "Distance between each vehicle: 100 m.",
+      "how_it_helps": "Doctrinal gaps between the vehicles of a convoy. Compare them with the gap fixed by the exercise.",
+      "missing_conditions": [],
+      "unchecked_conditions": [
+        "Normal close-column urban and open-column rural movements",
+        "METT-T may change"
+      ],
+      "check": [
+        "check: Normal close-column urban and open-column rural movements (stated by the rule, not checked)",
+        "check: METT-T may change (stated by the rule, not checked)"
+      ],
+      "number_check": null,
+      "relevance_basis": "requirement",
+      "score_parts": {
+        "search": 13,
+        "requirement": 30,
+        "constraint": 25,
+        "scope": 9,
+        "guidance": 7,
+        "penalties": []
+      },
+      "warnings": []
+    },
+    {
+      "rank": 3,
+      "rule_id": "DR-0097",
+      "relevance_score": 81,
+      "rule_text": "vehicles off the road and staged, time to rest, and time to get vehicles back on the road. If 10 minutes is to be allowed",
+      "rule_class": "recommendation",
+      "rule_value": "15 minutes scheduled for 10-minute rest halt",
+      "rule_scope": "Convoy movement planning",
+      "verification_status": "verified",
+      "applicability_status": "advisory_background",
+      "enforce": false,
+      "source": {
+        "pdf_document": "FM55-30 / STANAG 2174",
+        "pdf_page": 254
+      },
+      "matched_exercise_requirement": "Generate a convoy movement chart for the 1st Marine Infantry Regiment column from CHÂLONS-EN-CHAMPAGNE to SOUILLY.",
+      "how_it_helps": "How long to schedule for a rest halt in a movement plan.",
+      "missing_conditions": [],
+      "unchecked_conditions": [
+        "When 10 minutes of actual rest are desired"
+      ],
+      "check": [
+        "check: When 10 minutes of actual rest are desired (stated by the rule, not checked)"
+      ],
+      "number_check": null,
+      "relevance_basis": "requirement",
+      "score_parts": {
+        "search": 20,
+        "requirement": 30,
+        "constraint": 15,
+        "scope": 9,
+        "guidance": 7,
+        "penalties": []
+      },
+      "warnings": [
+        "The quote shown does not contain the value stated for this rule (15 minutes scheduled for 10-minute rest halt). Read the full sentence on PDF page 254 before relying on it."
+      ]
+    },
+    {
+      "rank": 4,
+      "rule_id": "DR-0062",
+      "relevance_score": 74,
+      "rule_text": "as mentioned in 13.a, b, c and d. SPECIAL REGULATIONS FOR THE EXECUTION OF MOVEMENTS 15. Halts. a. Short halts made by columns normally are",
+      "rule_class": "recommendation",
+      "rule_value": "≥10 minutes; every 2 hours when possible",
+      "rule_scope": "Short halts by columns",
+      "verification_status": "verified",
+      "applicability_status": "advisory_background",
+      "enforce": false,
+      "source": {
+        "pdf_document": "FM55-30 / STANAG 2174",
+        "pdf_page": 156
+      },
+      "matched_exercise_requirement": "Generate a convoy movement chart for the 1st Marine Infantry Regiment column from CHÂLONS-EN-CHAMPAGNE to SOUILLY.",
+      "how_it_helps": "How long short halts are and how often they should be planned.",
+      "missing_conditions": [],
+      "unchecked_conditions": [
+        "Normally",
+        "when possible after every two hours"
+      ],
+      "check": [
+        "check: Normally (stated by the rule, not checked)",
+        "check: when possible after every two hours (stated by the rule, not checked)"
+      ],
+      "number_check": {
+        "flag": "no value",
+        "rule_limit": "≥ 10 minutes",
+        "exercise_values": [],
+        "message": "The exercise gives no halt length to compare with ≥ 10 minutes."
+      },
+      "relevance_basis": "requirement",
+      "score_parts": {
+        "search": 13,
+        "requirement": 30,
+        "constraint": 15,
+        "scope": 9,
+        "guidance": 7,
+        "penalties": []
+      },
+      "warnings": [
+        "The quote shown does not contain the value stated for this rule (≥10 minutes; every 2 hours when possible). Read the full sentence on PDF page 156 before relying on it."
+      ]
+    },
+    {
+      "rank": 5,
+      "rule_id": "DR-0207",
+      "relevance_score": 68,
+      "rule_text": "Units must properly plan road movements, prepare march tables, submit movement bids, and coordinate en route support.",
+      "rule_class": "mandatory_constraint",
+      "rule_value": null,
+      "rule_scope": "Motor transport units planning road movements",
+      "verification_status": "unverified",
+      "applicability_status": "potentially_applicable",
+      "enforce": false,
+      "source": {
+        "pdf_document": "FM 55-30",
+        "pdf_page": 51
+      },
+      "matched_exercise_requirement": "Generate a convoy movement chart for the 1st Marine Infantry Regiment column from CHÂLONS-EN-CHAMPAGNE to SOUILLY.",
+      "how_it_helps": "Related concept (movement table): planning role not recognised, read the PDF page to see how it helps.",
+      "missing_conditions": [
+        "Kept as a related concept of \"movement table\" (shared phrase: march tabl). Its planning role is not recognised, so a person should confirm that it bears on this requirement."
+      ],
+      "unchecked_conditions": [
+        "Motor transport units planning road movements",
+        "Road movements requiring appropriate control channels"
+      ],
+      "check": [
+        "check: Motor transport units planning road movements (stated by the rule, not checked)",
+        "check: Road movements requiring appropriate control channels (stated by the rule, not checked)",
+        "check: the quote is not verified against the PDF, page 51",
+        "check: planning role not recognised, confirm that it bears on the requirement"
+      ],
+      "number_check": null,
+      "relevance_basis": "related",
+      "score_parts": {
+        "search": 20,
+        "requirement": 20,
+        "constraint": 12,
+        "scope": 9,
+        "guidance": 7,
+        "penalties": []
+      },
+      "warnings": []
+    },
+    {
+      "rank": 6,
+      "rule_id": "DR-0047",
+      "relevance_score": 66,
+      "rule_text": "purpose. Short halts are made for personal comfort and relief, inspection of equipment, and en route equipment checks. Short halts will normally last 10 to",
+      "rule_class": "descriptive_value",
+      "rule_value": "10–15 minutes, normal range",
+      "rule_scope": "Short convoy halts",
+      "verification_status": "verified",
+      "applicability_status": "advisory_background",
+      "enforce": false,
+      "source": {
+        "pdf_document": "FM55-30 / STANAG 2174",
+        "pdf_page": 75
+      },
+      "matched_exercise_requirement": "Generate a convoy movement chart for the 1st Marine Infantry Regiment column from CHÂLONS-EN-CHAMPAGNE to SOUILLY.",
+      "how_it_helps": "How long short halts are and how often they should be planned.",
+      "missing_conditions": [],
+      "unchecked_conditions": [
+        "Normally, for personal relief and equipment checks"
+      ],
+      "check": [
+        "check: Normally, for personal relief and equipment checks (stated by the rule, not checked)"
+      ],
+      "number_check": null,
+      "relevance_basis": "requirement",
+      "score_parts": {
+        "search": 8,
+        "requirement": 30,
+        "constraint": 15,
+        "scope": 9,
+        "guidance": 4,
+        "penalties": []
+      },
+      "warnings": []
+    },
+    {
+      "rank": 7,
+      "rule_id": "DR-0209",
+      "relevance_score": 59,
+      "rule_text": "The highway regulation plan will specify the size of convoys or types of vehicles that require a movement credit.",
+      "rule_class": "conditional_requirement",
+      "rule_value": null,
+      "rule_scope": "Supervised routes in highway regulation plan",
+      "verification_status": "unverified",
+      "applicability_status": "potentially_applicable",
+      "enforce": false,
+      "source": {
+        "pdf_document": "FM 55-30",
+        "pdf_page": 68
+      },
+      "matched_exercise_requirement": "Generate a convoy movement chart for the 1st Marine Infantry Regiment column from CHÂLONS-EN-CHAMPAGNE to SOUILLY.",
+      "how_it_helps": "Related concept (movement table): planning role not recognised, read the PDF page to see how it helps.",
+      "missing_conditions": [
+        "Kept as a related concept of \"movement table\" (shared phrase: movement credit). Its planning role is not recognised, so a person should confirm that it bears on this requirement."
+      ],
+      "unchecked_conditions": [
+        "Supervised routes in highway regulation plan",
+        "Depends on convoy size and vehicle type"
+      ],
+      "check": [
+        "check: Supervised routes in highway regulation plan (stated by the rule, not checked)",
+        "check: Depends on convoy size and vehicle type (stated by the rule, not checked)",
+        "check: the quote is not verified against the PDF, page 68",
+        "check: planning role not recognised, confirm that it bears on the requirement"
+      ],
+      "number_check": null,
+      "relevance_basis": "related",
+      "score_parts": {
+        "search": 11,
+        "requirement": 20,
+        "constraint": 12,
+        "scope": 9,
+        "guidance": 7,
+        "penalties": []
+      },
+      "warnings": []
+    },
+    {
+      "rank": 8,
+      "rule_id": "DR-0029",
+      "relevance_score": 58,
+      "rule_text": "a minimum spacing of 30.5 meters (100 feet) between vehicles and a maximum speed of 40 KPH (25 MPH).",
+      "rule_class": "conditional_requirement",
+      "rule_value": "speed <= 40 KPH (25 MPH)",
+      "rule_scope": "Vehicles crossing bridges normally",
+      "verification_status": "verified",
+      "applicability_status": "applicable",
+      "enforce": true,
+      "source": {
+        "pdf_document": "FM5-36 / STANAG 2015",
+        "pdf_page": 74
+      },
+      "matched_exercise_requirement": "Speed in built-up areas: 50 km/h. | 1st serial expected time of departure: 17:00 pm.",
+      "how_it_helps": "Speed cap for a normal crossing of a classified bridge. It is lower than ordinary road speeds, so it changes trip duration whenever the route crosses such a bridge.",
+      "missing_conditions": [
+        "Does the route cross a classified bridge? (map data)",
+        "Vehicle MLC and the lowest bridge MLC on the route",
+        "The exercise does not state load limit (tonnes or MLC) or a classified bridge on the route (known from the map). If the map shows a classified bridge on the route, say so under Known facts."
+      ],
+      "unchecked_conditions": [
+        "minimum 30.5 m spacing also applies"
+      ],
+      "check": [
+        "check: Does the route cross a classified bridge? (map data)",
+        "check: Vehicle MLC and the lowest bridge MLC on the route",
+        "check: minimum 30.5 m spacing also applies (stated by the rule, not checked)"
+      ],
+      "number_check": {
+        "flag": "exceeds",
+        "rule_limit": "≤ 40 KPH",
+        "exercise_values": [
+          "50 km/h",
+          "80 km/h",
+          "40 km/h"
+        ],
+        "message": "The exercise states 50 km/h (breaks the limit), 80 km/h (breaks the limit), 40 km/h: this exceeds the rule limit (≤ 40 KPH) wherever the rule applies. Read its scope."
+      },
+      "relevance_basis": "requirement",
+      "score_parts": {
+        "search": 5,
+        "requirement": 12,
+        "constraint": 25,
+        "scope": 6,
+        "guidance": 10,
+        "penalties": []
+      },
+      "warnings": []
+    },
+    {
+      "rank": 9,
+      "rule_id": "DR-0210",
+      "relevance_score": 57,
+      "rule_text": "A movement credit is required for the movement of any vehicle or group of vehicles.",
+      "rule_class": "conditional_requirement",
+      "rule_value": null,
+      "rule_scope": "Dispatch routes",
+      "verification_status": "unverified",
+      "applicability_status": "potentially_applicable",
+      "enforce": false,
+      "source": {
+        "pdf_document": "FM 55-30",
+        "pdf_page": 68
+      },
+      "matched_exercise_requirement": "Generate a convoy movement chart for the 1st Marine Infantry Regiment column from CHÂLONS-EN-CHAMPAGNE to SOUILLY.",
+      "how_it_helps": "Related concept (movement table): planning role not recognised, read the PDF page to see how it helps.",
+      "missing_conditions": [
+        "Kept as a related concept of \"movement table\" (shared phrase: movement credit). Its planning role is not recognised, so a person should confirm that it bears on this requirement."
+      ],
+      "unchecked_conditions": [
+        "Dispatch routes",
+        "Only where route formally classified as a dispatch route"
+      ],
+      "check": [
+        "check: Dispatch routes (stated by the rule, not checked)",
+        "check: Only where route formally classified as a dispatch route (stated by the rule, not checked)",
+        "check: the quote is not verified against the PDF, page 68",
+        "check: planning role not recognised, confirm that it bears on the requirement"
+      ],
+      "number_check": null,
+      "relevance_basis": "related",
+      "score_parts": {
+        "search": 9,
+        "requirement": 20,
+        "constraint": 12,
+        "scope": 9,
+        "guidance": 7,
+        "penalties": []
+      },
+      "warnings": []
+    },
+    {
+      "rank": 10,
+      "rule_id": "DR-0031",
+      "relevance_score": 57,
+      "rule_text": "a maximum speed of 40 KPH (25 MPH).",
+      "rule_class": "conditional_requirement",
+      "rule_value": "speed <= 40 KPH (25 MPH)",
+      "rule_scope": "Vehicles in normal bridge crossings",
+      "verification_status": "verified",
+      "applicability_status": "applicable",
+      "enforce": true,
+      "source": {
+        "pdf_document": "FM5-36 / STANAG 2015",
+        "pdf_page": 74
+      },
+      "matched_exercise_requirement": "Speed in built-up areas: 50 km/h. | 1st serial expected time of departure: 17:00 pm.",
+      "how_it_helps": "Speed cap for a normal crossing of a classified bridge. It is lower than ordinary road speeds, so it changes trip duration whenever the route crosses such a bridge.",
+      "missing_conditions": [
+        "Does the route cross a classified bridge? (map data)",
+        "Vehicle MLC and the lowest bridge MLC on the route",
+        "The exercise does not state load limit (tonnes or MLC) or a classified bridge on the route (known from the map). If the map shows a classified bridge on the route, say so under Known facts."
+      ],
+      "unchecked_conditions": [
+        "spacing >=30.5 m"
+      ],
+      "check": [
+        "check: Does the route cross a classified bridge? (map data)",
+        "check: Vehicle MLC and the lowest bridge MLC on the route",
+        "check: spacing >=30.5 m (stated by the rule, not checked)"
+      ],
+      "number_check": {
+        "flag": "exceeds",
+        "rule_limit": "≤ 40 KPH",
+        "exercise_values": [
+          "50 km/h",
+          "80 km/h",
+          "40 km/h"
+        ],
+        "message": "The exercise states 50 km/h (breaks the limit), 80 km/h (breaks the limit), 40 km/h: this exceeds the rule limit (≤ 40 KPH) wherever the rule applies. Read its scope."
+      },
+      "relevance_basis": "requirement",
+      "score_parts": {
+        "search": 4,
+        "requirement": 12,
+        "constraint": 25,
+        "scope": 6,
+        "guidance": 10,
+        "penalties": []
+      },
+      "warnings": []
+    },
+    {
+      "rank": 11,
+      "rule_id": "DR-0001",
+      "relevance_score": 56,
+      "rule_text": "acceleration lane, increase convoy speed to equal as closely as possible that of other traffic on the expressway. The maximum speed authorized for military vehicles",
+      "rule_class": "mandatory_constraint",
+      "rule_value": "≤ 50 mph",
+      "rule_scope": "Military vehicles on expressways",
+      "verification_status": "verified",
+      "applicability_status": "advisory_background",
+      "enforce": false,
+      "source": {
+        "pdf_document": "FM55-30 / STANAG 2174",
+        "pdf_page": 84
+      },
+      "matched_exercise_requirement": "Speed in built-up areas: 50 km/h.",
+      "how_it_helps": "Maximum speed for military vehicles on an expressway.",
+      "missing_conditions": [
+        "Is any part of the route an expressway?"
+      ],
+      "unchecked_conditions": [],
+      "check": [
+        "check: Is any part of the route an expressway?"
+      ],
+      "number_check": {
+        "flag": "ok",
+        "rule_limit": "≤ 50 mph",
+        "exercise_values": [
+          "50 km/h",
+          "80 km/h",
+          "40 km/h"
+        ],
+        "message": "The exercise values (50 km/h, 80 km/h, 40 km/h) respect the rule limit (≤ 50 mph)."
+      },
+      "relevance_basis": "requirement",
+      "score_parts": {
+        "search": 7,
+        "requirement": 30,
+        "constraint": 25,
+        "scope": 9,
+        "guidance": 0,
+        "penalties": [
+          {
+            "reason": "already covered by the exercise own limit",
+            "points": 15
+          }
+        ]
+      },
+      "warnings": [
+        "The quote shown does not contain the value stated for this rule (≤ 50 mph). Read the full sentence on PDF page 84 before relying on it."
+      ]
+    },
+    {
+      "rank": 12,
+      "rule_id": "DR-0099",
+      "relevance_score": 49,
+      "rule_text": "through a node (road junction). c. Time Gap. The central computer adds a ten-minute \"tail\" to each convoy. Convoy commanders must be aware that another",
+      "rule_class": "descriptive_value",
+      "rule_value": "10 minutes, possible convoy separation",
+      "rule_scope": "U.S. MOBCON centralized convoy scheduling",
+      "verification_status": "verified",
+      "applicability_status": "not_applicable",
+      "enforce": false,
+      "source": {
+        "pdf_document": "FM55-30 / STANAG 2174",
+        "pdf_page": 263
+      },
+      "matched_exercise_requirement": "Generate a convoy movement chart for the 1st Marine Infantry Regiment column from CHÂLONS-EN-CHAMPAGNE to SOUILLY.",
+      "how_it_helps": "Time separation between convoys in a centralized scheduling system.",
+      "missing_conditions": [],
+      "unchecked_conditions": [
+        "U.S. MOBCON centralized convoy scheduling",
+        "Another convoy could be scheduled 10 min ahead or behind"
+      ],
+      "check": [
+        "check: U.S. MOBCON centralized convoy scheduling (stated by the rule, not checked)",
+        "check: Another convoy could be scheduled 10 min ahead or behind (stated by the rule, not checked)"
+      ],
+      "number_check": null,
+      "relevance_basis": "requirement",
+      "score_parts": {
+        "search": 20,
+        "requirement": 30,
+        "constraint": 15,
+        "scope": 0,
+        "guidance": 4,
+        "penalties": [
+          {
+            "reason": "a condition of the rule is contradicted by the exercise",
+            "points": 20
+          }
+        ]
+      },
+      "warnings": [
+        "The quote shown does not contain the value stated for this rule (10 minutes, possible convoy separation). Read the full sentence on PDF page 263 before relying on it."
+      ]
+    },
+    {
+      "rank": 13,
+      "rule_id": "DR-0030",
+      "relevance_score": 33,
+      "rule_text": "a minimum spacing of 30.5 meters (100 feet) between vehicles",
+      "rule_class": "conditional_requirement",
+      "rule_value": "spacing >= 30.5 m (100 ft)",
+      "rule_scope": "Vehicles in normal bridge crossings",
+      "verification_status": "verified",
+      "applicability_status": "advisory_background",
+      "enforce": false,
+      "source": {
+        "pdf_document": "FM5-36 / STANAG 2015",
+        "pdf_page": 74
+      },
+      "matched_exercise_requirement": "Distance between each vehicle: 100 m.",
+      "how_it_helps": "Minimum spacing between vehicles while crossing a classified bridge. It is a bridge rule, not the ordinary gap between convoy vehicles.",
+      "missing_conditions": [
+        "Does the route cross a classified bridge? (map data)",
+        "Vehicle MLC and the lowest bridge MLC on the route",
+        "The exercise does not state load limit (tonnes or MLC) or a classified bridge on the route (known from the map). If the map shows a classified bridge on the route, say so under Known facts."
+      ],
+      "unchecked_conditions": [
+        "40 KPH speed cap also applies"
+      ],
+      "check": [
+        "check: Does the route cross a classified bridge? (map data)",
+        "check: Vehicle MLC and the lowest bridge MLC on the route",
+        "check: 40 KPH speed cap also applies (stated by the rule, not checked)"
+      ],
+      "number_check": {
+        "flag": "ok",
+        "rule_limit": "≥ 30.5 m",
+        "exercise_values": [
+          "100 m"
+        ],
+        "message": "The exercise values (100 m) respect the rule limit (≥ 30.5 m)."
+      },
+      "relevance_basis": "requirement",
+      "score_parts": {
+        "search": 5,
+        "requirement": 12,
+        "constraint": 25,
+        "scope": 6,
+        "guidance": 0,
+        "penalties": [
+          {
+            "reason": "already covered by the exercise own limit",
+            "points": 15
+          }
+        ]
+      },
+      "warnings": []
+    }
+  ]
+}
