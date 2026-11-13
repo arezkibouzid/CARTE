@@ -1,0 +1,58 @@
+Annote l'exercice demandé sans le résoudre. Retourne seulement le JSON imposé.
+Choisis task_types dans ces libellés EXACTS selon le livrable explicitement demandé :
+- route_search : chercher un seul trajet, éventuellement via des points imposés.
+- route_pair : chercher plusieurs routes liées par une contrainte entre elles,
+  notamment deux routes séparées ou un aller-retour sur des routes distinctes.
+- network_design : concevoir un réseau de routes, axes et transversales.
+- classification : produire une classification ou un calque de reconnaissance.
+- movement_schedule : produire un graphique de mouvement, des horaires ou une
+  marche de convois/rames sur un itinéraire donné ; « movement chart » correspond
+  à ce type, même si une carte et une description de route sont aussi fournies.
+- resource_occupancy : produire des créneaux/diagrammes d'occupation de ressources.
+- coordination : déconflicter plusieurs mouvements ou coordonner leurs plannings.
+- other : seulement si aucun de ces types ne correspond à la demande.
+
+Les clés Pxxx_Sxxx sont les fragments originaux : une seule annotation par clé.
+Ne crée aucune nouvelle clé ni aucune liste de faits. Le code gardera les textes,
+citations, coordonnées et valeurs imprimées. Tu n'as pas à les réécrire.
+
+Pour chaque fragment principal :
+- kind : input pour une donnée, constraint pour une condition, objective pour
+  le but, reference pour un document/résultat cité, requested_output pour un
+  livrable, ignore pour un titre ou une simple décoration, ambiguous pour un
+  passage contradictoire, other sinon.
+- category : le sujet du passage, sans ajouter une contrainte.
+- scope : une condition explicite courte, par exemple night, built-up areas,
+  outbound, return, ou null si non précisée. Pas de commentaire géométrique déduit.
+  Ne confonds pas « outside built-up areas » (hors agglomération) et « outbound »
+  (trajet aller). Conserve une expression imprimée de la portée, ou null.
+- availability : not_applicable pour les passages qui ne citent pas une ressource.
+  Pour une référence : provided seulement si son contenu est effectivement présent
+  dans les pages/annexes fournies ; not_provided si elle est seulement citée et que
+  son contenu nécessaire est absent ; unclear si tu ne peux pas le déterminer.
+
+Tu disposes uniquement des pages envoyées, sans annexe externe supplémentaire.
+Le titre d'un document ou d'un tableau ne constitue pas son contenu.
+Une référence à une table d'effectifs/composition n'est pas la table elle-même.
+Ne confonds pas le coucher du soleil, un départ et une échéance d'arrivée.
+La tâche est déterminée par les livrables : une carte n'implique pas toujours
+une recherche d'itinéraire. Les pages de contexte servent à comprendre, sans
+importer leurs exemples comme exigences de cet exercice.
+Si deux passages demandent des objectifs incompatibles sans priorité indiquée,
+annote les passages concernés ambiguous ; ne choisis pas un objectif à leur place.
+
+visual_notes : pour chaque page principale, null si les textes fournis contiennent
+déjà l'information utile ; sinon transcris seulement les informations utiles visibles
+dans ses tableaux/symboles, sans inventer des effectifs ou coordonnées. Signale
+explicitement les éléments illisibles. Ces notes seront marquées à vérifier visuellement.
+
+Précisions de rôle et de catégorie :
+- requested_output exige category=output. continuity concerne uniquement une
+  exigence de continuité du réseau, jamais un graphique ou un planning.
+- Map et Layouts sous IN sont des entrées : input/route ou input/other.
+- Un en-tête EXERCISE N° seul est ignore/other, pas un livrable.
+- Une référence citée sur une page comportant une image ne doit pas être déclarée
+  absente sur la seule base du texte extrait : utilise unclear si le contenu
+  graphique ne permet pas d'établir sa disponibilité.
+- Un symbole d'unité n'est pas un tableau d'effectifs. Décris sa présence dans
+  visual_notes sans déduire un nombre de véhicules.

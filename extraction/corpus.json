@@ -1,0 +1,637 @@
+{
+  "version": "1.0",
+  "page_numbering": "physical_1_based",
+  "documents": [
+    {
+      "id": "ex01_10",
+      "filename": "exercise_1-to-10.pdf",
+      "sha256": "00d0e540c26f1b785aa04936e8600151ab442c2466e6098b73598d2bcbf92c95",
+      "page_count": 22
+    },
+    {
+      "id": "ex11_20",
+      "filename": "exercise_11-to-20.pdf",
+      "sha256": "22caf891a798edabf02bcc09e10b31f6b5ee87f7474697eed219ced9fe9aba7b",
+      "page_count": 22
+    },
+    {
+      "id": "ex21_27",
+      "filename": "exercise_21-to-27.pdf",
+      "sha256": "170ec6eed705ddc6326b3c63ad64cc4dc80f4f681649724a49a185b0e38a8dfc",
+      "page_count": 27
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "ex01_10_1",
+      "document_id": "ex01_10",
+      "exercise_id": "1",
+      "main_pages": [
+        3,
+        4
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_search"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex01_10_2",
+      "document_id": "ex01_10",
+      "exercise_id": "2",
+      "main_pages": [
+        5,
+        6
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_search"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex01_10_3",
+      "document_id": "ex01_10",
+      "exercise_id": "3",
+      "main_pages": [
+        7,
+        8
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_search"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex01_10_4",
+      "document_id": "ex01_10",
+      "exercise_id": "4",
+      "main_pages": [
+        9,
+        10
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_search"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex01_10_5",
+      "document_id": "ex01_10",
+      "exercise_id": "5",
+      "main_pages": [
+        11,
+        12
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_pair"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "aller/retour et sens de strictement différents non inventé"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex01_10_6",
+      "document_id": "ex01_10",
+      "exercise_id": "6",
+      "main_pages": [
+        13,
+        14
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_pair"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "aller/retour et sens de strictement différents non inventé"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex01_10_7",
+      "document_id": "ex01_10",
+      "exercise_id": "7",
+      "main_pages": [
+        15,
+        16
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_search"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "ordre et portée des points de passage"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex01_10_8",
+      "document_id": "ex01_10",
+      "exercise_id": "8",
+      "main_pages": [
+        17,
+        18
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_search"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "ordre et portée des points de passage",
+        "objectifs contradictoires conservés sans arbitrage"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex01_10_9",
+      "document_id": "ex01_10",
+      "exercise_id": "9",
+      "main_pages": [
+        19,
+        20
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_search"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "ordre et portée des points de passage"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex01_10_10",
+      "document_id": "ex01_10",
+      "exercise_id": "10",
+      "main_pages": [
+        21,
+        22
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_search"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "ordre et portée des points de passage",
+        "objectifs contradictoires conservés sans arbitrage"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex11_20_11",
+      "document_id": "ex11_20",
+      "exercise_id": "11",
+      "main_pages": [
+        1,
+        2
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_pair"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "aller/retour et sens de strictement différents non inventé",
+        "ordre et portée des points de passage",
+        "objectifs contradictoires conservés sans arbitrage"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex11_20_12",
+      "document_id": "ex11_20",
+      "exercise_id": "12",
+      "main_pages": [
+        3,
+        4
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_pair"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "aller/retour et sens de strictement différents non inventé",
+        "ordre et portée des points de passage"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex11_20_13",
+      "document_id": "ex11_20",
+      "exercise_id": "13",
+      "main_pages": [
+        5,
+        6
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_search"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "hauteur demandée séparée d'une hauteur mesurée"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex11_20_14",
+      "document_id": "ex11_20",
+      "exercise_id": "14",
+      "main_pages": [
+        7,
+        8
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_search"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "hauteur demandée séparée d'une hauteur mesurée"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex11_20_15",
+      "document_id": "ex11_20",
+      "exercise_id": "15",
+      "main_pages": [
+        9,
+        10
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_search"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "tonnes séparées de MLC"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex11_20_16",
+      "document_id": "ex11_20",
+      "exercise_id": "16",
+      "main_pages": [
+        11,
+        12
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_search"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "tonnes séparées de MLC"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex11_20_17",
+      "document_id": "ex11_20",
+      "exercise_id": "17",
+      "main_pages": [
+        13,
+        14
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_search"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "hauteur demandée séparée d'une hauteur mesurée",
+        "tonnes séparées de MLC",
+        "lignes LD/LA, pas de départ ponctuel imposé"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex11_20_18",
+      "document_id": "ex11_20",
+      "exercise_id": "18",
+      "main_pages": [
+        15,
+        16
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_pair"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "hauteur demandée séparée d'une hauteur mesurée",
+        "tonnes séparées de MLC",
+        "lignes LD/LA, pas de départ ponctuel imposé",
+        "séparation propre de 10 km, aucune règle de 5 km importée"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex11_20_19",
+      "document_id": "ex11_20",
+      "exercise_id": "19",
+      "main_pages": [
+        17,
+        18
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "route_pair"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "hauteur demandée séparée d'une hauteur mesurée",
+        "tonnes séparées de MLC",
+        "lignes LD/LA, pas de départ ponctuel imposé",
+        "séparation propre de 10 km, aucune règle de 5 km importée",
+        "dépendances et références externes"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex11_20_20",
+      "document_id": "ex11_20",
+      "exercise_id": "20",
+      "main_pages": [
+        21,
+        22
+      ],
+      "context_pages": [
+        19,
+        20
+      ],
+      "expected_task_types": [
+        "network_design"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "hauteur demandée séparée d'une hauteur mesurée",
+        "tonnes séparées de MLC",
+        "lignes LD/LA, pas de départ ponctuel imposé",
+        "bornes de nombres d'axes et transversales"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex21_27_21",
+      "document_id": "ex21_27",
+      "exercise_id": "21",
+      "main_pages": [
+        4,
+        5
+      ],
+      "context_pages": [
+        1,
+        2,
+        3
+      ],
+      "expected_task_types": [
+        "classification"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "hauteur demandée séparée d'une hauteur mesurée",
+        "tonnes séparées de MLC",
+        "lignes LD/LA, pas de départ ponctuel imposé",
+        "dépendances et références externes",
+        "bornes de nombres d'axes et transversales",
+        "référence STANAG non assimilée à conformité démontrée"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex21_27_22",
+      "document_id": "ex21_27",
+      "exercise_id": "22",
+      "main_pages": [
+        8,
+        9
+      ],
+      "context_pages": [
+        6,
+        7
+      ],
+      "expected_task_types": [
+        "movement_schedule"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "composition, espacements, tête/queue et périodes jour/nuit"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex21_27_22B",
+      "document_id": "ex21_27",
+      "exercise_id": "22B",
+      "main_pages": [
+        10,
+        11
+      ],
+      "context_pages": [
+        6,
+        7
+      ],
+      "expected_task_types": [
+        "movement_schedule"
+      ],
+      "coverage_checks": [
+        "variante 22B distincte de 22",
+        "nuit 40 km/h",
+        "départ 17:00",
+        "aucune donnée des pages 12-14 importée"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex21_27_23",
+      "document_id": "ex21_27",
+      "exercise_id": "23",
+      "main_pages": [
+        14,
+        15
+      ],
+      "context_pages": [
+        12,
+        13
+      ],
+      "expected_task_types": [
+        "resource_occupancy"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "occupation de ressources et exemples pédagogiques"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex21_27_24",
+      "document_id": "ex21_27",
+      "exercise_id": "24",
+      "main_pages": [
+        18,
+        19
+      ],
+      "context_pages": [
+        16,
+        17
+      ],
+      "expected_task_types": [
+        "coordination",
+        "movement_schedule"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "dépendances et références externes",
+        "composition, espacements, tête/queue et périodes jour/nuit",
+        "référence 23B incertaine, non remplacée par 22B"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex21_27_25",
+      "document_id": "ex21_27",
+      "exercise_id": "25",
+      "main_pages": [
+        20,
+        22
+      ],
+      "context_pages": [
+        21
+      ],
+      "expected_task_types": [
+        "coordination",
+        "movement_schedule"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "composition, espacements, tête/queue et périodes jour/nuit",
+        "symboles graphiques conservés avec incertitudes, pas seulement OCR"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex21_27_26",
+      "document_id": "ex21_27",
+      "exercise_id": "26",
+      "main_pages": [
+        24,
+        25
+      ],
+      "context_pages": [
+        23
+      ],
+      "expected_task_types": [
+        "other"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "symboles graphiques conservés avec incertitudes, pas seulement OCR"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    },
+    {
+      "case_id": "ex21_27_27",
+      "document_id": "ex21_27",
+      "exercise_id": "27",
+      "main_pages": [
+        26,
+        27
+      ],
+      "context_pages": [],
+      "expected_task_types": [
+        "other"
+      ],
+      "coverage_checks": [
+        "preuves par champ",
+        "livrables demandés distincts de résultats",
+        "incertitudes conservées",
+        "conditions de scénario distinctes d'une solution proposée"
+      ],
+      "coverage_status": "schema_representability_review_not_extraction_accuracy"
+    }
+  ],
+  "notes": [
+    "Les trois PDF totalisent 28 identifiants d'exercices (22B inclus).",
+    "L'ancien exercice de préparation des trois routes Sud-Nord est un protocole distinct, non inclus dans ces PDF.",
+    "Les sorties et références de correction ne sont jamais injectées dans les requêtes de test."
+  ]
+}
