@@ -34,6 +34,8 @@ def main():
     ap.add_argument("--raster", required=True, help="folder with unet_oof.tif")
     ap.add_argument("--out", required=True)
     ap.add_argument("--variant", action="append", required=True, metavar="NAME=SPEC", help="e.g. hyst0.3=low=0.3 ; base= for p >= 0.5")
+    ap.add_argument("--from-network", help="start from this traced network (network.pkl) and only add the bridges of each spec, "
+                    "reading the link probabilities in --raster (e.g. a calibrated raster)")
     a = ap.parse_args()
     src = Path(a.raster).resolve() / "unet_oof.tif"
     P, tr = scanunet.load_raster(src)
@@ -47,7 +49,16 @@ def main():
             link.unlink()
         link.symlink_to(src)
         t = time.perf_counter()
-        G, info = scanunet.trace_network(P, tr, spec or None)
+        if a.from_network:
+            with open(a.from_network, "rb") as f:
+                G = pickle.load(f)
+            ts = scanunet.parse_tracing(spec or None)
+            info = {"tracing": ts}
+            if ts.get("bridge"):
+                info["bridging"] = scanunet.bridge_gaps(G, P, tr, max_m=ts["bridge"], cone_deg=ts.get("bridge_cone", 50.0),
+                                                        min_p=ts.get("bridge_min_p", 0.15), mean_p=ts.get("bridge_mean_p", 0.3))
+        else:
+            G, info = scanunet.trace_network(P, tr, spec or None)
         sec = time.perf_counter() - t
         (d / "tracing.json").write_text(json.dumps(scanunet.parse_tracing(spec or None)), encoding="utf-8")
         with open(d / "network.pkl", "wb") as f:

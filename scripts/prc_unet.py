@@ -132,20 +132,29 @@ def cldice_loss(p, y, iters: int = 10):
     return 1 - 2 * tprec * tsens / (tprec + tsens)
 
 
-def loss_fn(out, road, imp, struct, mask, cldice: float = 0.0):
+def loss_fn(out, road, imp, struct, mask, cldice: float = 0.0, dice_w: float = 1.0, pos_w: float = 3.0):
+    """BCE on the road (positive weight ``pos_w``) and on the structure (30), 0.5 x cross-entropy of the importance on road
+    pixels (the loss of scan-unet), + ``dice_w`` x Dice on the road, + ``cldice`` x clDice. Held-out pixels are masked.
+    The defaults (dice 1, positive weight 3) are the loss of every run before the loss ablation."""
     import torch
-
-    from coa_net.scanunet import _loss
+    import torch.nn.functional as F
 
     m = mask.float()
-    p = torch.sigmoid(out[:, 0]) * m
-    y = road.float() * m
-    dice = 1 - (2 * (p * y).sum() + 1) / (p.sum() + y.sum() + 1)
     with torch.autocast("cuda", enabled=False):
-        base = _loss(out.float(), road, imp, struct, mask)
+        o = out.float()
+        p = torch.sigmoid(o[:, 0]) * m
+        y = road.float() * m
+        lr = F.binary_cross_entropy_with_logits(o[:, 0], road.float(), reduction="none", pos_weight=torch.tensor(pos_w, device=o.device))
+        ls = F.binary_cross_entropy_with_logits(o[:, 6], struct.float(), reduction="none", pos_weight=torch.tensor(30.0, device=o.device))
+        li = F.cross_entropy(o[:, 1:6], (imp.long() - 1).clamp(min=0), reduction="none")
+        mi = m * (imp > 0).float()
+        n = m.sum().clamp(min=1)
+        loss = (lr * m).sum() / n + (ls * m).sum() / n + 0.5 * (li * mi).sum() / mi.sum().clamp(min=1)
+        if dice_w:
+            loss = loss + dice_w * (1 - (2 * (p * y).sum() + 1) / (p.sum() + y.sum() + 1))
         if cldice:
-            base = base + cldice * cldice_loss(p.float(), y.float())
-    return base + dice
+            loss = loss + cldice * cldice_loss(p, y)
+    return loss
 
 
 def fold_scores(P, road, imp, m, n=2_000_000, seed=0) -> dict:
@@ -378,7 +387,7 @@ def finetune(a):
         opt.zero_grad(set_to_none=True)
         with torch.autocast("cuda", dtype=torch.bfloat16):
             o = net(x)
-        loss = loss_fn(o, *ys, cldice=a.cldice)
+        loss = loss_fn(o, *ys, cldice=a.cldice, dice_w=a.dice_weight, pos_w=a.pos_weight)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
         opt.step()
@@ -397,7 +406,7 @@ def finetune(a):
             net.train()
     name = "final" if f < 0 else f"fold{f}"
     torch.save(net.state_dict(), out / f"prc_{a.tag}_{name}.pt")
-    (out / f"prc_{a.tag}_config.json").write_text(json.dumps({"cldice": a.cldice, "hard_cells": a.hard_cells, "hard_share": a.hard_share if a.hard_cells else 0,
+    (out / f"prc_{a.tag}_config.json").write_text(json.dumps({"dice_weight": a.dice_weight, "pos_weight": a.pos_weight, "cldice": a.cldice, "hard_cells": a.hard_cells, "hard_share": a.hard_share if a.hard_cells else 0,
                                                                "hard_quantile": a.hard_quantile, "steps": a.steps, "lr": a.lr, "batch": a.batch, "tile": TILE,
                                                                "dropout": 0.1, "weights": a.weights, "extra": a.extra or [],
                                                                "extra_share": a.extra_share if a.extra else 0.0}, indent=1), encoding="utf-8")
@@ -480,6 +489,8 @@ def main():
     ap.add_argument("--extra", nargs="*", help="finetune: other labelled sheets (prep-extra names) for training only")
     ap.add_argument("--extra-share", type=float, default=0.5, help="finetune: share of training tiles drawn from the extra sheets")
     ap.add_argument("--cldice", type=float, default=0.0, help="finetune: weight of the clDice (connectivity) loss on the road output")
+    ap.add_argument("--dice-weight", type=float, default=1.0, help="finetune: weight of the Dice loss on the road output (0: none)")
+    ap.add_argument("--pos-weight", type=float, default=3.0, help="finetune: positive-class weight of the road BCE")
     ap.add_argument("--hard-cells", help="finetune: GeoTIFF of cell uncertainty (uncertainty_map.py, band 1) for uncertainty-guided sampling")
     ap.add_argument("--hard-share", type=float, default=0.5, help="finetune: share of the sheet's tiles drawn from the uncertain cells")
     ap.add_argument("--hard-quantile", type=float, default=0.8, help="finetune: cells at or above this uncertainty quantile")
