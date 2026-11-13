@@ -1,0 +1,17 @@
+{
+  "base": "rag_input.v2.original.json",
+  "source_pdf_pages": [
+    10,
+    11
+  ],
+  "changes": [
+    "Ajout source DA4 au fait F004",
+    "F014 classé requested_output",
+    "Signalement explicite de composition graphique non extraite"
+  ],
+  "limits": [
+    "Symboles militaires non interprétés",
+    "Pas de validation opérationnelle du planning"
+  ],
+  "raw_model_output_modified": false
+}

@@ -137,6 +137,7 @@ class OpenAICompatibleClient:
         max_retries: int = 2,
         connect_timeout: float = 5.0,
         log_path: str | None = None,
+        max_tokens: int | None = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -147,6 +148,7 @@ class OpenAICompatibleClient:
         self.use_json_schema = use_json_schema
         self.max_retries = max_retries
         self.log_path = log_path
+        self.max_tokens = max_tokens  # cap on the answer's length (None: the server's default)
         self.usage = Usage()
         self.down: str | None = None  # why the server stopped answering; then every later call fails at once
         self.schema_rejected = 0  # calls where the server refused schema-constrained output (plain JSON prompt used)
@@ -225,6 +227,8 @@ class OpenAICompatibleClient:
 
     def _complete(self, messages: list[dict], schema: dict, stage: str) -> dict:
         payload: dict[str, Any] = {"model": self.model, "messages": messages, "temperature": self.temperature}
+        if self.max_tokens:
+            payload["max_tokens"] = self.max_tokens
         if self.use_json_schema:
             payload["response_format"] = {"type": "json_schema", "json_schema": {"name": "answer", "schema": schema}}
         last: Exception | None = None

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { DataPreset, Options, SheetInfo } from '../types';
+import { NO_MODEL, type DataPreset, type Options, type SheetInfo } from '../types';
 
 interface Props {
   sheet: SheetInfo | null;
@@ -22,12 +22,15 @@ export function presetOf(o: Options): DataPreset {
 export default function ConfigPanel({ sheet, options: o, onChange }: Props) {
   const [advanced, setAdvanced] = useState(false);
   const preset = presetOf(o);
+  const noModel = o.model === NO_MODEL;
+  const routeOn = o.useOsm && sheet?.has_osm ? 'OpenStreetMap' : 'la BD TOPO';
   return (
     <div className="panel">
       <h3>1 · Données utilisées</h3>
       <div className="choice-grid">
         {PRESETS.map((p) => (
-          <button key={p.id} className={`choice ${preset === p.id ? 'on' : ''}`} onClick={() => onChange(p.set)}>
+          <button key={p.id} className={`choice ${preset === p.id ? 'on' : ''}`}
+            onClick={() => onChange(noModel && p.id === 'tiff' ? { ...p.set, model: sheet?.default_model ?? 'nodice' } : p.set)}>
             <span className="choice-title">{p.title}</span>
             <span className="choice-text">{p.text}</span>
           </button>
@@ -39,7 +42,7 @@ export default function ConfigPanel({ sheet, options: o, onChange }: Props) {
           <input type="checkbox" checked={o.useOsm} disabled={!sheet?.has_osm} onChange={(e) => onChange({ useOsm: e.target.checked })} />
           OpenStreetMap
         </label>
-        {o.useOsm && (
+        {o.useOsm && !noModel && (
           <div className="sub">
             <label className="check">
               <input type="radio" name="osm" checked={o.osmMode === 'reference'} onChange={() => onChange({ osmMode: 'reference' })} />
@@ -52,7 +55,7 @@ export default function ConfigPanel({ sheet, options: o, onChange }: Props) {
           </div>
         )}
         <label className="check">
-          <input type="checkbox" checked={o.useBdtopo} disabled={!sheet?.has_bdtopo} onChange={(e) => onChange({ useBdtopo: e.target.checked })} />
+          <input type="checkbox" checked={o.useBdtopo} disabled={!sheet?.has_bdtopo || (noModel && !o.useOsm)} onChange={(e) => onChange({ useBdtopo: e.target.checked })} />
           BD TOPO (IGN) — contrôle de l’itinéraire
         </label>
       </div>
@@ -61,12 +64,19 @@ export default function ConfigPanel({ sheet, options: o, onChange }: Props) {
       <p className="muted small">Comment le réseau routier est lu dans l’image (modèle d’apprentissage U-Net).</p>
       <div className="choice-grid">
         {(sheet?.models ?? []).map((m) => (
-          <button key={m.id} className={`choice ${o.model === m.id ? 'on' : ''}`} onClick={() => onChange({ model: m.id })}>
+          <button key={m.id} className={`choice ${o.model === m.id ? 'on' : ''}`}
+            onClick={() => onChange(m.id === NO_MODEL && !o.useOsm && !o.useBdtopo ? { model: m.id, useBdtopo: !!sheet?.has_bdtopo, useOsm: !sheet?.has_bdtopo } : { model: m.id })}>
             <span className="choice-title">{m.label}{m.id === sheet?.default_model ? ' ★' : ''}</span>
             <span className="choice-text">{m.description}</span>
           </button>
         ))}
       </div>
+      {noModel && (
+        <p className="muted small">
+          Sans modèle, la carte scannée n’est qu’un fond : l’itinéraire est calculé directement sur <b>{routeOn}</b>
+          {o.useOsm && o.useBdtopo ? ', puis contrôlé avec la BD TOPO' : ''}. Pas de probabilité, d’incertitude ni d’extraction animée.
+        </p>
+      )}
 
       <h3>3 · Itinéraire</h3>
       <div className="seg">
@@ -79,6 +89,7 @@ export default function ConfigPanel({ sheet, options: o, onChange }: Props) {
       </label>
       <p className="muted small">La durée suit les limitations légales (50 km/h en agglomération, 80 km/h sur route) sans dépasser cette vitesse.</p>
 
+      {!noModel && (<>
       <h3>4 · Incertitude</h3>
       <label className="slider">
         <span>Seuil d’incertitude : <b>{Math.round(o.tau * 100)} %</b></span>
@@ -99,8 +110,10 @@ export default function ConfigPanel({ sheet, options: o, onChange }: Props) {
         </label>
       )}
 
-      <button className="link" onClick={() => setAdvanced((a) => !a)}>{advanced ? '▾' : '▸'} Options avancées</button>
-      {advanced && (
+      </>)}
+
+      {!noModel && <button className="link" onClick={() => setAdvanced((a) => !a)}>{advanced ? '▾' : '▸'} Options avancées</button>}
+      {advanced && !noModel && (
         <div className="sub">
           <label className="slider">
             <span>Seuil de tracé pour l’extraction animée : <b>{o.traceThreshold.toFixed(2)}</b></span>

@@ -3,6 +3,9 @@ import type { FeatureCollection } from 'geojson';
 export type LonLat = [number, number];
 export type BBox = [number, number, number, number]; // ouest, sud, est, nord
 
+/** Identifiant du choix « sans modèle de segmentation » (itinéraire directement sur OSM / BD TOPO). */
+export const NO_MODEL = 'none';
+
 export interface ModelInfo {
   id: string;
   label: string;
@@ -26,7 +29,10 @@ export interface BackendStatus {
 }
 
 /** Outils de la barre d'outils de la carte. */
-export type ToolId = 'pan' | 'start' | 'end' | 'waypoint' | 'rect' | 'area' | 'avoid';
+export type ToolId = 'pan' | 'start' | 'end' | 'waypoint' | 'rect' | 'area' | 'avoid' | 'zfrom' | 'zto';
+
+/** Outils qui dessinent un polygone (un clic par sommet, double-clic pour fermer). */
+export const POLYGON_TOOLS: ToolId[] = ['area', 'avoid', 'zfrom', 'zto'];
 
 export interface Scenario {
   label?: string; // ex. « Exercice 7 » quand chargé depuis le PDF
@@ -38,6 +44,56 @@ export interface Scenario {
   area?: LonLat[]; // zone de déploiement (DA)
   avoid: LonLat[][]; // zones à éviter (RA)
   requirements?: string[];
+  /** single : un itinéraire (points, étapes) ; distinct : k itinéraires sous contraintes entre deux zones. */
+  mode: 'single' | 'distinct';
+  zoneFrom?: LonLat[]; // zone de départ (mode distinct)
+  zoneTo?: LonLat[]; // zone d'arrivée (mode distinct)
+  distinct: DistinctParams;
+}
+
+export interface DistinctParams {
+  k: number; // nombre d'itinéraires
+  sepKm: number; // écart minimal entre itinéraires
+  noIntersect: boolean;
+  vehicle: string;
+  turns: boolean; // virages aux carrefours tarifés
+  zoneRadiusKm: number; // rayon des zones autour de D et A quand elles ne sont pas dessinées
+}
+
+export interface Capabilities {
+  vehicles: { id: string; label: string; width_m: number }[];
+  threads: number;
+}
+
+export interface ItineraryProps {
+  id: string;
+  index: number;
+  length_km: number;
+  time_min: number;
+  roads: string[];
+  bridges: number;
+  tunnels: number;
+  builtup_km: number;
+  narrow_km: number;
+  width_unknown_km: number;
+  steep_km: number;
+  turns_difficult: number;
+  turns_critical: number;
+  min_radius_m: number | null;
+}
+
+export interface ItinerariesResult {
+  itineraries: FeatureCollection<GeoJSON.LineString, ItineraryProps>;
+  turns: FeatureCollection;
+  difficult_areas: FeatureCollection;
+  zones: FeatureCollection;
+  checks: { label: string; ok: boolean; detail: string }[];
+  all_ok: boolean;
+  log: string[];
+  solver: { turn_aware: boolean; tried: number; feasible_sets: number; alternatives: number };
+  timing_s: Record<string, number>;
+  network: string;
+  vehicle: string;
 }
 
 export type DataPreset = 'tiff' | 'tiff_osm' | 'tiff_no_osm' | 'custom';
@@ -63,6 +119,7 @@ export interface LayerState {
   bdtopo: boolean;
   osm: boolean;
   refs: boolean;
+  hard: boolean; // zones de manœuvre difficile (itinéraires distincts)
 }
 
 export interface Leg {
@@ -144,4 +201,94 @@ export interface PdfExercise {
 export interface PdfResult {
   metadata: Record<string, string | number>;
   exercises: PdfExercise[];
+}
+
+// ---------------------------------------------------------------------------- ordres d'opération
+export type ExplainLevel = 'concise' | 'standard' | 'detailed';
+
+export interface OrderInfo {
+  id: string;
+  label: string;
+  exercise_id: string;
+  document_id: string | null;
+  pages: number[] | null;
+  task_types: string[] | null;
+  extracted: boolean;
+  schema_version?: string;
+  review_status?: string | null;
+  extraction_status?: string | null;
+}
+
+export interface OrdersStatus {
+  explanation: { available: boolean; model: string | null; error: string | null };
+  extraction: { configured: boolean; model: string | null };
+  node: boolean;
+  pages_ready: boolean;
+}
+
+export interface OrderFact {
+  id: string;
+  text: string;
+  page: number | null;
+  kind: string;
+  category: string;
+  scope: string | null;
+  availability: string | null;
+  quantities: string[];
+}
+
+export interface OrderRule {
+  rank: number;
+  rule_id: string;
+  relevance_score: number;
+  rule_text: string;
+  rule_class: string;
+  rule_value: string;
+  rule_scope: string;
+  source: { pdf_document: string; pdf_page: number } | null;
+  verification_status: string;
+  applicability_status: string;
+  enforce: boolean;
+  matched_exercise_requirement: string;
+  how_it_helps: string;
+  check: string[];
+  number_check: { flag: string; rule_limit?: string; exercise_values?: string[] } | null;
+  warnings: string[];
+  group: 'applicable' | 'potential' | 'not_applicable';
+  linked_facts: string[];
+  explanation: string;
+  explained_by: string;
+}
+
+export interface OrderAnalysis {
+  order: string;
+  exercise_id: string;
+  schema_version: string;
+  review_status: string | null;
+  extraction: { status: string; model: string; seconds: number } | null;
+  task_types: string[] | null;
+  objective: string | null;
+  facts: OrderFact[];
+  issues: { kind: string; source_id?: string; text?: string }[];
+  visual_notes: { source_id: string; page: number; text: string }[];
+  map_inputs: { start?: LonLat; end?: LonLat; waypoints?: LonLat[]; area?: LonLat[] };
+  known_facts: Record<string, string>;
+  rules: OrderRule[];
+  rag: { total_rules_in_csv: number; selected_rules_count: number; search_mode: string; policy: string };
+  explanation: { level: ExplainLevel; model: string | null; seconds: number; fallback_reason: unknown };
+}
+
+export interface ChatReply {
+  answer: string;
+  cited_rules: string[];
+  sources: { rule_id: string; status: string; group: string; pdf_document: string; pdf_page: number; verification_status: string }[];
+  cited_facts: { id: string; page: number | null; text: string }[];
+  model: string | null;
+  seconds: number;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  reply?: ChatReply;
 }

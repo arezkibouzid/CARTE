@@ -48,7 +48,14 @@ def sheet_cfg(sheet: str) -> dict:
     raise HTTPException(404, f"unknown sheet {sheet}")
 
 
+NO_MODEL = "none"  # no segmentation model: routes run directly on OSM or BD TOPO
+NO_MODEL_INFO = {"id": NO_MODEL, "label": "Sans modèle de segmentation",
+                 "description": "L’image n’est pas lue : l’itinéraire est calculé directement sur OSM (si coché) ou sur la BD TOPO."}
+
+
 def model_cfg(sheet: str, model: str) -> dict:
+    if model == NO_MODEL:
+        raise HTTPException(400, "Sans modèle de segmentation : pas de probabilité ni d’extraction. Choisissez un modèle U-Net.")
     for m in sheet_cfg(sheet)["models"]:
         if m["id"] == model:
             return m
@@ -234,7 +241,7 @@ def tile(layer: str, z: int, x: int, y: int, sheet: str = "hackathon", model: st
             _tiles.move_to_end(key)
             data = _tiles[key]
             return Response(data or EMPTY, media_type="image/png", headers={"Cache-Control": "max-age=3600"})
-    data = render_tile(layer, sheet, z, x, y, model, tau)
+    data = None if (model == NO_MODEL and layer != "scan") else render_tile(layer, sheet, z, x, y, model, tau)
     if EMPTY is None:
         EMPTY = png(np.zeros((TILE, TILE, 4), np.uint8))
     with _lock:
@@ -347,6 +354,8 @@ def vectors(layer: Literal["bdtopo", "osm", "network"], bbox: str, zoom: float, 
     w, s, e, n = (float(v) for v in bbox.split(","))
     max_level = 0 if zoom < 10 else 1 if zoom < 11.5 else 2 if zoom < 13.5 else 3
     tol = 0.0 if zoom >= 14 else 360.0 / (256 * 2 ** zoom) * 1.0
+    if layer == "network" and model == NO_MODEL:
+        return JSONResponse({"type": "FeatureCollection", "features": []})
     L = {"bdtopo": lambda: bdtopo_layer(sheet), "osm": lambda: osm_layer(sheet), "network": lambda: network_layer(sheet, model)}[layer]()
     return JSONResponse(L.query((w, s, e, n), max_level, tol))
 
@@ -549,13 +558,25 @@ def route(req: RouteRequest):
 
     t0 = time.perf_counter()
     T = {}
-    N = network(req.sheet, req.model, req.use_osm and req.osm_mode == "fill")
+    no_model = req.model == NO_MODEL
+    if no_model:
+        if req.use_osm and sheet_cfg(req.sheet).get("osm"):
+            base_ref = "osm"
+        elif sheet_cfg(req.sheet).get("bdtopo"):
+            base_ref = "bdtopo"
+        else:
+            raise HTTPException(400, "Sans modèle de segmentation, il faut OSM ou la BD TOPO pour calculer l’itinéraire.")
+        N = reference_network(req.sheet, base_ref)
+        if not hasattr(N, "base_price"):
+            N.base_price = N.price.copy()
+    else:
+        N = network(req.sheet, req.model, req.use_osm and req.osm_mode == "fill")
     T["network"] = time.perf_counter() - t0
     with _lock:
         N.price = N.base_price.copy()
         N.prob_share_below = None
         priced = None
-        if req.prob_threshold is not None and req.prob_threshold > 0:
+        if not no_model and req.prob_threshold is not None and req.prob_threshold > 0:
             r = prob_raster(req.sheet, req.model)
             owner, p = N.edge_probabilities(r.a[..., None], r.tr)  # raw scores along every section, cached
             pc = calibration_lut(req.sheet, req.model)[np.clip(np.round(p * 255), 0, 255).astype(int)]
@@ -587,7 +608,7 @@ def route(req: RouteRequest):
         while len(_routes) > 50:
             _routes.popitem(last=False)
     out["route_id"] = route_id
-    out["compare"] = [w for w, use in (("bdtopo", req.use_bdtopo), ("osm", req.use_osm)) if use]
+    out["compare"] = [w for w, use in (("bdtopo", req.use_bdtopo), ("osm", req.use_osm)) if use and not (no_model and w == base_ref)]
     out["timing_s"] = {k: round(v, 2) for k, v in T.items()} | {"total": round(time.perf_counter() - t0, 2)}
     return JSONResponse(json.loads(json.dumps(out, default=_clean)))
 
@@ -825,7 +846,8 @@ def sheets():
         except Exception:  # noqa: BLE001
             pass
         out.append({"id": s["id"], "label": s["label"], "bounds": b, "has_bdtopo": bool(s.get("bdtopo")), "has_osm": bool(s.get("osm")),
-                    "has_pdf": bool(s.get("pdf")), "models": [{k: m[k] for k in ("id", "label", "description") if k in m} for m in s["models"]],
+                    "has_pdf": bool(s.get("pdf")), "models": [{k: m[k] for k in ("id", "label", "description") if k in m} for m in s["models"]]
+                    + ([NO_MODEL_INFO] if s.get("osm") or s.get("bdtopo") else []),
                     "default_model": s.get("default_model", s["models"][0]["id"])})
     return out
 
@@ -856,6 +878,165 @@ def warm_up():
             except Exception as e:  # noqa: BLE001
                 STATUS["steps"][name] = f"erreur : {e}"
     STATUS["ready"] = True
+
+
+# ----------------------------------------------------------------------------------------- constrained itineraries
+
+class ItinerariesRequest(BaseModel):
+    sheet: str = "hackathon"
+    model: str = "nodice"
+    use_osm: bool = False  # without a model: route on OSM (else BD TOPO)
+    origin_zone: list[LonLat] | None = None  # polygons; when absent, a disk of zone_radius_km around start / end
+    destination_zone: list[LonLat] | None = None
+    start: LonLat | None = None
+    end: LonLat | None = None
+    zone_radius_km: float = Field(8.0, gt=0.2, le=40)
+    k: int = Field(3, ge=1, le=6)
+    min_sep_km: float = Field(5.0, ge=0, le=50)
+    no_intersect: bool = True
+    vehicle: str = "pfm_carrier"
+    turn_aware: bool = True
+    area: list[LonLat] | None = None
+    avoid: list[list[LonLat]] = Field(default_factory=list)
+    n_seeds: int = Field(20, ge=3, le=40)
+
+
+@app.get("/api/capabilities")
+def capabilities():
+    from interface.backend import constrained as C
+
+    return C.capabilities()
+
+
+@app.post("/api/itineraries")
+def itineraries(req: ItinerariesRequest):
+    """k distinct itineraries between two zones under the vehicle's constraints (coa_net exercise pipeline)."""
+    from interface.backend import constrained as C
+
+    t0 = time.perf_counter()
+    cfg = sheet_cfg(req.sheet)
+    if req.model == NO_MODEL:
+        which = "osm" if req.use_osm and cfg.get("osm") else "bdtopo"
+        if not cfg.get(which):
+            raise HTTPException(400, "Sans modèle de segmentation, il faut OSM ou la BD TOPO.")
+
+        def graph_fn():
+            from coa_net.scenario import load_graph_cached
+
+            G, _, _ = load_graph_cached(str(rp(cfg[which])), rp(cfg["cache"]), kind=which)
+            return G
+        key, vector, net_name = (req.sheet, which, req.vehicle), True, "OSM" if which == "osm" else "BD TOPO"
+    else:
+        model_cfg(req.sheet, req.model)
+        key, vector, net_name = (req.sheet, req.model, req.vehicle), False, f"réseau lu sur la carte ({req.model})"
+
+        def graph_fn():
+            return unet_graph(req.sheet, req.model).copy()
+    from coa_net.vehicles import load_catalogue
+
+    if req.vehicle not in load_catalogue():
+        raise HTTPException(400, f"véhicule inconnu : {req.vehicle}")
+
+    def zone(poly, pt, name):
+        if poly and len(poly) >= 3:
+            return C._poly_l93(poly)
+        if pt:
+            return C._disk_l93(pt, req.zone_radius_km * 1000)
+        raise HTTPException(400, f"Dessinez la zone {name} ou placez le point {name}.")
+
+    origin, destination = zone(req.origin_zone, req.start, "de départ"), zone(req.destination_zone, req.end, "d’arrivée")
+    cached = key in C._bases
+    source = rp(cfg[which]) if req.model == NO_MODEL else rp(model_cfg(req.sheet, req.model)["raster"]) / "unet_oof.tif"
+    base = C.get_base(key, graph_fn, lambda: builtup(req.sheet), req.vehicle, vector, disk=CACHE / "bases", source=source)
+    t_base = time.perf_counter() - t0
+    try:
+        out = C.solve(base, origin, destination, req.k, req.min_sep_km, req.no_intersect, req.turn_aware,
+                      [C._poly_l93(z) for z in req.avoid if len(z) >= 3],
+                      C._poly_l93(req.area) if req.area and len(req.area) >= 3 else None, req.n_seeds)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    out["network"] = net_name
+    out["vehicle"] = C.VEHICLE_LABELS.get(req.vehicle, req.vehicle)
+    out["timing_s"] = {"réseau et véhicule" + (" (en mémoire)" if cached else ""): round(t_base, 1), **out["timing_s"],
+                       "total": round(time.perf_counter() - t0, 1)}
+    return JSONResponse(json.loads(json.dumps(out, default=_clean)))
+
+
+# ----------------------------------------------------------------------------------------- operational orders
+
+class OrderChatRequest(BaseModel):
+    messages: list[dict] = Field(min_length=1, max_length=40)  # [{role: user|assistant, content}], last = the question
+    level: Literal["concise", "standard", "detailed"] = "standard"
+    ui_context: dict | None = None  # points, zones and results of the map, sent by the interface
+    policy: Literal["lenient", "strict"] = "lenient"
+
+
+def _orders_call(fn, *a, **kw):
+    try:
+        return fn(*a, **kw)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
+
+
+@app.get("/api/orders")
+def orders_list():
+    from interface.backend import orders as O
+
+    return {"orders": O.list_orders(), "status": O.llm_status()}
+
+
+@app.get("/api/orders/status")
+def orders_status():
+    from interface.backend import orders as O
+
+    return O.llm_status()
+
+
+@app.get("/api/orders/{order_id}/analysis")
+def orders_analysis(order_id: str, level: Literal["concise", "standard", "detailed"] = "standard",
+                    policy: Literal["lenient", "strict"] = "lenient", explain: bool = True):
+    """Extraction + rules from the RAG + explanations at the requested level (model, or the RAG's wording)."""
+    from interface.backend import orders as O
+
+    out = _orders_call(O.explain, order_id, level, policy, use_llm=explain)
+    return JSONResponse(json.loads(json.dumps(out, default=_clean)))
+
+
+@app.post("/api/orders/{order_id}/extract")
+def orders_extract(order_id: str):
+    """Run the extraction bundle on this order of the corpus (needs the extraction model)."""
+    from interface.backend import orders as O
+
+    return _orders_call(O.run_extraction, order_id)
+
+
+@app.post("/api/orders/upload")
+async def orders_upload(file: UploadFile = File(...)):
+    """An extraction JSON produced elsewhere (schema 1.0, 2.0 or 3.2)."""
+    from interface.backend import orders as O
+
+    data = await file.read()
+    if len(data) > 5_000_000:
+        raise HTTPException(413, "fichier trop volumineux")
+    try:
+        obj = json.loads(data.decode("utf-8-sig"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        raise HTTPException(422, "ce fichier n’est pas un JSON valide")
+    return {"id": _orders_call(O.save_upload, obj)}
+
+
+@app.post("/api/orders/{order_id}/chat")
+def orders_chat(order_id: str, req: OrderChatRequest):
+    from interface.backend import orders as O
+
+    msgs = [m for m in req.messages if m.get("role") in ("user", "assistant") and isinstance(m.get("content"), str)]
+    if not msgs or msgs[-1]["role"] != "user":
+        raise HTTPException(422, "la dernière entrée doit être la question de l’utilisateur")
+    return JSONResponse(json.loads(json.dumps(_orders_call(O.chat, order_id, msgs, req.level, req.ui_context, req.policy), default=_clean)))
 
 
 @app.on_event("startup")

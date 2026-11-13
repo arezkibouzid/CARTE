@@ -201,6 +201,11 @@ button.btn.big.sticky { position: sticky; bottom: 0; margin: 8px 0 0; box-shadow
 .sw-scan { background: linear-gradient(90deg, #e9d8a6, #94d2bd); } .sw-prob { background: linear-gradient(90deg, #fcfdbf, #b73779, #000004); }
 .sw-uncert, .sw-doubt { background: #e65a1e; } .sw-sure { background: rgba(30,150,90,0.5); } .sw-net { background: #2b6cb0; }
 .sw-bd { background: #1f6feb; } .sw-osm { background: #1a7f37; } .sw-refs { background: repeating-linear-gradient(90deg, #555 0 4px, transparent 4px 7px); }
+.sw-hard { background: #e8590c; opacity: .55; }
+.it-sw { display: inline-block; width: 14px; height: 6px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+.check-ok { color: #1a7f37; } .check-ko { color: #bf3b2f; }
+.checks { list-style: none; padding: 0; margin: 4px 0 8px; } .checks li { margin: 2px 0; }
+.swatch.zfrom { background: #2b6cb0; } .swatch.zto { background: #7b2cbf; }
 .legend { display: flex; gap: 10px; margin-top: 2px; } .legend i { margin-right: 3px; vertical-align: middle; }
 .spin { width: 10px; height: 10px; border: 2px solid #c7dbfd; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin-left: auto; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -234,3 +239,26 @@ button.btn.big.sticky { position: sticky; bottom: 0; margin: 8px 0 0; box-shadow
 .tool .glyph { font-weight: 800; font-size: 15px; }
 .legend.col { flex-direction: column; gap: 2px; }
 .sw-weak { background: #ff9600; } .sw-doubt { background: #d7301f; }
+.field { display: flex; flex-direction: column; gap: 3px; font-size: 13px; flex: 1; margin: 4px 0; }
+.field input, .field select { padding: 5px 6px; border: 1px solid #c9ced6; border-radius: 6px; font: inherit; background: #fff; }
+/* ---------------------------------------------------------------- ordres d'opération */
+.orders .model-status { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; color: #57606a; margin-bottom: 4px; }
+.orders .model-status .sep { margin: 0 4px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; } .dot.ok { background: #1a7f37; } .dot.off { background: #afb8c1; }
+.orders .level { justify-content: space-between; align-items: center; margin: 8px 0; }
+.rule-group { margin-top: 10px; } .group-title { font-weight: 600; font-size: 14px; }
+.rule-group.applicable .group-title { color: #1a7f37; } .rule-group.potential .group-title { color: #9a6700; } .rule-group.not_applicable .group-title { color: #6e7781; }
+.card.rule { border-left: 4px solid #d0d7de; } .card.rule.applicable { border-left-color: #1a7f37; } .card.rule.potential { border-left-color: #d4a72c; } .card.rule.not_applicable { border-left-color: #afb8c1; opacity: .85; }
+.rid { font-family: ui-monospace, monospace; font-weight: 700; margin-right: 4px; }
+.badge.warn { background: #fff1e5; color: #9a3412; }
+.chip { display: inline-block; border: 1px solid #d0d7de; border-radius: 10px; padding: 1px 7px; margin: 2px 3px 2px 0; background: #f6f8fa; font-size: 12px; cursor: default; }
+button.chip { cursor: pointer; text-align: left; }
+.chip.fact { background: #eef4ff; border-color: #b6ccf5; } .chip.src.applicable { background: #e6f4ea; border-color: #9fd3ae; } .chip.src.potential { background: #fff8e1; border-color: #ecd58a; }
+.links { margin: 3px 0; } .quote { font-style: italic; color: #444; }
+.facts { list-style: none; padding: 0; margin: 4px 0; max-height: 260px; overflow: auto; } .facts li { padding: 2px 4px; border-radius: 4px; } .facts li.hi { background: #fff3bf; }
+.fid { font-family: ui-monospace, monospace; color: #57606a; }
+.chat { border: 1px solid #d0d7de; border-radius: 8px; padding: 8px; max-height: 420px; overflow: auto; background: #fbfbfc; }
+.msg { margin: 6px 0; } .msg.user { text-align: right; }
+.msg .bubble { display: inline-block; text-align: left; white-space: pre-wrap; padding: 6px 9px; border-radius: 10px; max-width: 92%; font-size: 13px; }
+.msg.user .bubble { background: #1f6feb; color: #fff; } .msg.assistant .bubble { background: #fff; border: 1px solid #d0d7de; }
+.chat-input { flex: 1; padding: 7px 8px; border: 1px solid #c9ced6; border-radius: 6px; font: inherit; }

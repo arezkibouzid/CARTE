@@ -1,5 +1,5 @@
 import type {
-  BackendStatus, BBox, CompareResult, ExtractResult, LonLat, Options, PdfResult, RouteResult, Scenario, SheetInfo,
+  ChatReply, ExplainLevel, OrderAnalysis, OrderInfo, OrdersStatus, Capabilities, ItinerariesResult, BackendStatus, BBox, CompareResult, ExtractResult, LonLat, Options, PdfResult, RouteResult, Scenario, SheetInfo,
 } from './types';
 
 /** Le back end est servi par la même origine (FastAPI sert aussi l'interface ; proxy Vite en développement). */
@@ -37,10 +37,23 @@ export function postRoute(sheet: string, sc: Scenario, o: Options, signal?: Abor
     sheet, model: o.model, start: sc.start, end: sc.end, waypoints: sc.waypoints, waypoint_order: sc.waypointOrder,
     objective: o.objective, round_trip: sc.roundTrip, speed_cap_kmh: o.speedCap, area: sc.area ?? null, avoid: sc.avoid,
     use_osm: o.useOsm, osm_mode: o.osmMode, use_bdtopo: o.useBdtopo,
-    prob_threshold: o.penalize ? o.tau : null, prob_penalty: o.strength,
+    prob_threshold: o.penalize && o.model !== 'none' ? o.tau : null, prob_penalty: o.strength,
   };
   return fetch(`${API}/api/route`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
     .then((r) => json<RouteResult>(r));
+}
+
+export const getCapabilities = () => fetch(`${API}/api/capabilities`).then((r) => json<Capabilities>(r));
+
+export function postItineraries(sheet: string, sc: Scenario, o: Options, signal?: AbortSignal) {
+  const d = sc.distinct;
+  const body = {
+    sheet, model: o.model, use_osm: o.useOsm, origin_zone: sc.zoneFrom ?? null, destination_zone: sc.zoneTo ?? null,
+    start: sc.start ?? null, end: sc.end ?? null, zone_radius_km: d.zoneRadiusKm, k: d.k, min_sep_km: d.sepKm,
+    no_intersect: d.noIntersect, vehicle: d.vehicle, turn_aware: d.turns, area: sc.area ?? null, avoid: sc.avoid,
+  };
+  return fetch(`${API}/api/itineraries`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
+    .then((r) => json<ItinerariesResult>(r));
 }
 
 export const getCompare = (routeId: string, which: 'bdtopo' | 'osm', signal?: AbortSignal) =>
@@ -59,6 +72,28 @@ export function uploadPdf(file: File) {
   const fd = new FormData();
   fd.append('file', file);
   return fetch(`${API}/api/pdf/upload`, { method: 'POST', body: fd }).then((r) => json<PdfResult>(r));
+}
+
+// ---------------------------------------------------------------------------- ordres d'opération
+export const getOrders = () => fetch(`${API}/api/orders`).then((r) => json<{ orders: OrderInfo[]; status: OrdersStatus }>(r));
+
+export const getOrderAnalysis = (id: string, level: ExplainLevel) =>
+  fetch(`${API}/api/orders/${encodeURIComponent(id)}/analysis?level=${level}`).then((r) => json<OrderAnalysis>(r));
+
+export const extractOrder = (id: string) =>
+  fetch(`${API}/api/orders/${encodeURIComponent(id)}/extract`, { method: 'POST' }).then((r) => json<{ status: string; seconds: number }>(r));
+
+export function uploadOrder(file: File) {
+  const fd = new FormData();
+  fd.append('file', file);
+  return fetch(`${API}/api/orders/upload`, { method: 'POST', body: fd }).then((r) => json<{ id: string }>(r));
+}
+
+export function chatOrder(id: string, messages: { role: string; content: string }[], level: ExplainLevel, ui: Record<string, unknown> | null) {
+  return fetch(`${API}/api/orders/${encodeURIComponent(id)}/chat`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages, level, ui_context: ui }),
+  }).then((r) => json<ChatReply>(r));
 }
 
 export const bboxOfPolygon = (pts: LonLat[]): BBox => [

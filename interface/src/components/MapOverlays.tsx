@@ -16,6 +16,8 @@ const ICONS: Record<string, JSX.Element> = {
   rect: svg('M4 6h16v12H4z'),
   area: svg('M12 3l8.5 6.2-3.2 9.8H6.7L3.5 9.2z'),
   avoid: svg('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM5.6 5.6l12.8 12.8'),
+  zfrom: <span className="glyph">ZD</span>,
+  zto: <span className="glyph">ZA</span>,
   fit: svg('M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5'),
   clear: svg('M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3'),
 };
@@ -52,6 +54,8 @@ export const HINTS: Record<ToolId, string> = {
   rect: 'Cliquez-glissez pour tracer un rectangle, puis choisissez une action.',
   area: 'Zone de déploiement : un clic par sommet, double-clic pour fermer. Échap pour annuler.',
   avoid: 'Zone à éviter : un clic par sommet, double-clic pour fermer. Échap pour annuler.',
+  zfrom: 'Zone de départ : un clic par sommet, double-clic pour fermer. Échap pour annuler.',
+  zto: 'Zone d’arrivée : un clic par sommet, double-clic pour fermer. Échap pour annuler.',
 };
 
 // ---------------------------------------------------------------------------- couches et légende
@@ -63,7 +67,10 @@ const LAYERS: { id: keyof LayerState; label: string; swatch: string }[] = [
   { id: 'bdtopo', label: 'BD TOPO', swatch: 'sw-bd' },
   { id: 'osm', label: 'OpenStreetMap', swatch: 'sw-osm' },
   { id: 'refs', label: 'Itinéraires de contrôle', swatch: 'sw-refs' },
+  { id: 'hard', label: 'Zones de manœuvre difficile', swatch: 'sw-hard' },
 ];
+
+const MODEL_LAYERS: (keyof LayerState)[] = ['prob', 'uncert', 'network'];
 
 export function LayerControl({ layers, setLayers, options, setTau, loading }: {
   layers: LayerState; setLayers: (l: LayerState) => void; options: Options; setTau: (t: number) => void; loading: Set<string>;
@@ -71,7 +78,7 @@ export function LayerControl({ layers, setLayers, options, setTau, loading }: {
   return (
     <div className="layers">
       <div className="layers-title">Couches</div>
-      {LAYERS.map((l) => (
+      {LAYERS.filter((l) => !(options.model === 'none' && MODEL_LAYERS.includes(l.id))).map((l) => (
         <label key={l.id} className="layer">
           <input type="checkbox" checked={layers[l.id]} onChange={(e) => setLayers({ ...layers, [l.id]: e.target.checked })} />
           <span className={`sw ${l.swatch}`} />
@@ -79,7 +86,7 @@ export function LayerControl({ layers, setLayers, options, setTau, loading }: {
           {loading.has(l.id) && <span className="spin" />}
         </label>
       ))}
-      {(layers.uncert || layers.network) && (
+      {options.model !== 'none' && (layers.uncert || layers.network) && (
         <div className="layer-sub">
           <label className="slider">
             <span>Seuil d’incertitude <b>{Math.round(options.tau * 100)} %</b></span>

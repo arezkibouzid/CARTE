@@ -3,7 +3,10 @@ import maplibregl, { type GeoJSONSource, type Map as MLMap, type RasterTileSourc
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { FeatureCollection, Feature } from 'geojson';
 import { getVectors, tileUrl } from '../api';
-import type { BBox, CompareResult, ExtractResult, LayerState, LonLat, Options, RouteResult, Scenario, SheetInfo, ToolId } from '../types';
+import { POLYGON_TOOLS, type BBox, type CompareResult, type ExtractResult, type ItinerariesResult, type LayerState, type LonLat, type Options, type RouteResult, type Scenario, type SheetInfo, type ToolId } from '../types';
+
+/** Couleurs des itinéraires distincts (IT-1, IT-2, ...). */
+export const IT_COLORS = ['#d1495b', '#2b6cb0', '#2a9d8f', '#e9a03b', '#8250df', '#6b7280'];
 
 export const STAGES = ['scan', 'probability', 'mask', 'skeleton', 'graph'] as const;
 
@@ -17,6 +20,7 @@ interface Props {
   rect: BBox | null;
   rectMenu?: ReactNode;
   route: RouteResult | null;
+  multi: ItinerariesResult | null;
   compares: Partial<Record<'bdtopo' | 'osm', CompareResult>>;
   extraction: { result: ExtractResult; stage: number; progress: number } | null;
   fitKey: number;
@@ -66,7 +70,7 @@ export default function MapView(p: Props) {
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
     map.addControl(new maplibregl.ScaleControl({ maxWidth: 140, unit: 'metric' }), 'bottom-left');
     map.on('load', () => {
-      for (const id of [...VECTOR_LAYERS, 'refs', 'route', 'zones', 'draft', 'rect', 'ext-graph', 'ext-nodes']) {
+      for (const id of [...VECTOR_LAYERS, 'refs', 'route', 'zones', 'draft', 'rect', 'ext-graph', 'ext-nodes', 'hard', 'its', 'turns']) {
         map.addSource(id, { type: 'geojson', data: EMPTY });
       }
       map.addLayer({ id: 'bdtopo', type: 'line', source: 'bdtopo', paint: { 'line-color': '#1f6feb', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 14, 2.2], 'line-opacity': 0.75 } });
@@ -75,10 +79,17 @@ export default function MapView(p: Props) {
       map.addLayer({ id: 'ext-graph', type: 'line', source: 'ext-graph', paint: { 'line-color': '#ff7a00', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.5, 15, 4] }, filter: ['<', ['get', 'order'], 0] });
       map.addLayer({ id: 'ext-nodes', type: 'circle', source: 'ext-nodes', layout: { visibility: 'none' }, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 1.5, 15, 4], 'circle-color': ['match', ['get', 'kind'], 'dead end', '#d7301f', '#ffffff'], 'circle-stroke-color': '#7a2e00', 'circle-stroke-width': 1 } });
       map.addLayer({ id: 'refs', type: 'line', source: 'refs', paint: { 'line-color': ['match', ['get', 'which'], 'bdtopo', '#1f6feb', '#1a7f37'], 'line-width': 3, 'line-dasharray': [2, 1.5], 'line-opacity': 0.9 } });
+      map.addLayer({ id: 'hard-fill', type: 'fill', source: 'hard', paint: { 'fill-color': '#e8590c', 'fill-opacity': 0.22 } });
+      map.addLayer({ id: 'hard-line', type: 'line', source: 'hard', paint: { 'line-color': '#e8590c', 'line-width': 0.8, 'line-opacity': 0.6 } });
+      const itColor: maplibregl.ExpressionSpecification = ['match', ['%', ['get', 'index'], IT_COLORS.length], ...IT_COLORS.slice(0, -1).flatMap((c, i) => [i, c]), IT_COLORS[IT_COLORS.length - 1]] as unknown as maplibregl.ExpressionSpecification;
+      map.addLayer({ id: 'its-casing', type: 'line', source: 'its', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 8 } });
+      map.addLayer({ id: 'its', type: 'line', source: 'its', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': itColor, 'line-width': 4.5 } });
+      map.addLayer({ id: 'turns', type: 'circle', source: 'turns', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 3, 14, 7], 'circle-color': ['match', ['get', 'severity'], 'critical', '#bf3b2f', '#f59f00'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5 } });
       map.addLayer({ id: 'route-casing', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 8 } });
       map.addLayer({ id: 'route', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['match', ['get', 'leg'], 1, '#7b2cbf', '#d1495b'], 'line-width': 4.5 } });
-      map.addLayer({ id: 'zones-fill', type: 'fill', source: 'zones', paint: { 'fill-color': ['match', ['get', 'kind'], 'avoid', '#bf3b2f', '#1a7f37'], 'fill-opacity': 0.12 } });
-      map.addLayer({ id: 'zones-line', type: 'line', source: 'zones', paint: { 'line-color': ['match', ['get', 'kind'], 'avoid', '#bf3b2f', '#1a7f37'], 'line-width': 2, 'line-dasharray': [3, 2] } });
+      const zoneColor: maplibregl.ExpressionSpecification = ['match', ['get', 'kind'], 'avoid', '#bf3b2f', 'from', '#2b6cb0', 'to', '#7b2cbf', '#1a7f37'];
+      map.addLayer({ id: 'zones-fill', type: 'fill', source: 'zones', paint: { 'fill-color': zoneColor, 'fill-opacity': 0.12 } });
+      map.addLayer({ id: 'zones-line', type: 'line', source: 'zones', paint: { 'line-color': zoneColor, 'line-width': 2, 'line-dasharray': [3, 2] } });
       map.addLayer({ id: 'draft-line', type: 'line', source: 'draft', paint: { 'line-color': '#8250df', 'line-width': 2, 'line-dasharray': [1, 1] } });
       map.addLayer({ id: 'draft-pts', type: 'circle', source: 'draft', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 4, 'circle-color': '#8250df' } });
       map.addLayer({ id: 'rect-fill', type: 'fill', source: 'rect', paint: { 'fill-color': '#ff7a00', 'fill-opacity': 0.06 } });
@@ -91,12 +102,13 @@ export default function MapView(p: Props) {
       const { tool } = props.current;
       const ll: LonLat = [e.lngLat.lng, e.lngLat.lat];
       if (tool === 'start' || tool === 'end' || tool === 'waypoint') return props.current.onPoint(tool, ll);
-      if (tool === 'area' || tool === 'avoid') return props.current.onPolygonVertex(ll);
+      if (POLYGON_TOOLS.includes(tool)) return props.current.onPolygonVertex(ll);
+      if (tool === 'pan' && turnInfo(map, e)) return;
       if (tool === 'pan') showInfo(map, e);
     });
     map.on('dblclick', (e) => {
       const { tool } = props.current;
-      if (tool === 'area' || tool === 'avoid') {
+      if (POLYGON_TOOLS.includes(tool)) {
         e.preventDefault();
         props.current.onPolygonClose();
       }
@@ -132,7 +144,7 @@ export default function MapView(p: Props) {
   useEffect(() => {
     if (!map) return;
     map.getCanvas().style.cursor = p.tool === 'pan' ? '' : 'crosshair';
-    if (p.tool === 'area' || p.tool === 'avoid') map.doubleClickZoom.disable();
+    if (POLYGON_TOOLS.includes(p.tool)) map.doubleClickZoom.disable();
     else map.doubleClickZoom.enable();
   }, [map, p.tool]);
 
@@ -229,6 +241,16 @@ export default function MapView(p: Props) {
     const sc = p.scenario;
     const zones: Feature[] = [];
     if (sc.area && sc.area.length >= 3) zones.push({ type: 'Feature', properties: { kind: 'area' }, geometry: { type: 'Polygon', coordinates: [[...sc.area, sc.area[0]]] } });
+    if (sc.mode === 'distinct') {
+      for (const [ring, kind] of [[sc.zoneFrom, 'from'], [sc.zoneTo, 'to']] as const) {
+        if (ring && ring.length >= 3) zones.push({ type: 'Feature', properties: { kind }, geometry: { type: 'Polygon', coordinates: [[...ring, ring[0]]] } });
+      }
+      // zones non dessinées : celles utilisées par le dernier calcul (disques autour de D et A)
+      for (const f of p.multi?.zones.features ?? []) {
+        const k = (f.properties as { kind: string }).kind;
+        if (!(k === 'from' ? sc.zoneFrom : sc.zoneTo)) zones.push(f);
+      }
+    }
     for (const z of sc.avoid) zones.push({ type: 'Feature', properties: { kind: 'avoid' }, geometry: { type: 'Polygon', coordinates: [[...z, z[0]]] } });
     setData(map, 'zones', { type: 'FeatureCollection', features: zones });
     const d = p.draftPolygon;
@@ -258,7 +280,7 @@ export default function MapView(p: Props) {
     sc.waypoints.forEach((w, i) => add(w, 'wp', String(i + 1), 'waypoint', i, `Étape ${i + 1}`));
     if (sc.start) add(sc.start, 'start', 'D', 'start', 0, 'Départ');
     if (sc.end) add(sc.end, 'end', 'A', 'end', 0, 'Arrivée');
-  }, [map, ready, p.scenario, p.draftPolygon, p.rect]);
+  }, [map, ready, p.scenario, p.draftPolygon, p.rect, p.multi]);
 
   // ------------------------------------------------------------------ menu du rectangle (suit la carte)
   useEffect(() => {
@@ -312,6 +334,26 @@ export default function MapView(p: Props) {
     }
     return () => cancelAnimationFrame(raf);
   }, [map, ready, p.route]);
+
+  // ------------------------------------------------------------------ itinéraires distincts : tracés, virages, zones difficiles
+  useEffect(() => {
+    if (!map || !ready) return;
+    const m = p.multi;
+    setData(map, 'its', m ? (m.itineraries as FeatureCollection) : EMPTY);
+    setData(map, 'turns', m ? m.turns : EMPTY);
+    setData(map, 'hard', m ? m.difficult_areas : EMPTY);
+    if (!m) return;
+    const all = m.itineraries.features.flatMap((f) => f.geometry.coordinates);
+    if (all.length) {
+      const xs = all.map((c) => c[0]);
+      const ys = all.map((c) => c[1]);
+      map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: 70, duration: 700, maxZoom: 13 });
+    }
+  }, [map, ready, p.multi]);
+  useEffect(() => {
+    if (!map || !ready) return;
+    for (const id of ['hard-fill', 'hard-line']) map.setLayoutProperty(id, 'visibility', p.layers.hard ? 'visible' : 'none');
+  }, [map, ready, p.layers.hard]);
 
   useEffect(() => {
     if (!map || !ready) return;
@@ -398,4 +440,16 @@ function showInfo(map: MLMap, e: maplibregl.MapMouseEvent) {
     .filter(([, v]) => v !== null && v !== undefined && v !== '' && v !== 0 && v !== '0')
     .map(([k, v]) => `<div><span>${k}</span><b>${String(v)}</b></div>`).join('')}</div>`;
   new maplibregl.Popup({ closeButton: true, maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(html).addTo(map);
+}
+
+/** Clic sur un virage difficile : rayon, déviation, position. Renvoie vrai si un virage a été trouvé. */
+function turnInfo(map: MLMap, e: maplibregl.MapMouseEvent): boolean {
+  if (!map.getLayer('turns')) return false;
+  const f = map.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: ['turns'] })[0];
+  if (!f) return false;
+  const q = f.properties as Record<string, unknown>;
+  const html = `<b>Virage ${q.turn}</b> (${q.severity === 'critical' ? 'critique' : 'difficile'})<br/>rayon ${q.radius_m} m · déviation ${q.deflection_deg}°<br/>`
+    + `à ${q.km} km du départ${q.at_junction === true || q.at_junction === 'true' ? ' · sur un carrefour' : ''}`;
+  new maplibregl.Popup({ closeButton: true, maxWidth: '260px' }).setLngLat(e.lngLat).setHTML(html).addTo(map);
+  return true;
 }

@@ -24,7 +24,9 @@ COA-Net handles it with its own machinery:
 from __future__ import annotations
 
 import math
+import os
 import re
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -181,6 +183,25 @@ class RoadArrays:
         return self.tree.query(geom, predicate="dwithin", distance=dist_m)
 
 
+_GEO: "weakref.WeakKeyDictionary" = None  # per road graph: midpoints and turn arcs (shared by masked copies of R)
+
+
+def _geo_cache(R: "RoadArrays") -> dict:
+    """Geometry derived once per road network (``R`` copies with another ``ok`` mask share it)."""
+    import weakref
+
+    import shapely
+
+    global _GEO
+    if _GEO is None:
+        _GEO = weakref.WeakKeyDictionary()
+    c = _GEO.get(R.G)
+    if c is None or c["n"] != len(R.lines):
+        c = {"n": len(R.lines), "mid": shapely_midpoints(R.lines)}
+        _GEO[R.G] = c
+    return c
+
+
 def edge_lines(G: nx.DiGraph, edges: list | None = None) -> np.ndarray:
     """Lambert-93 LineStrings of the edges (in ``G.edges`` order unless given)."""
     import shapely
@@ -284,21 +305,24 @@ class TurnRouter:
         dst[targets] = True
         self.src_edges = np.flatnonzero(src[R.u])
         self.dst_edges = np.flatnonzero(dst[R.v])
-        h_start, h_end = edge_headings(R)
-        a = pd.DataFrame({"e1": np.arange(E), "n": R.v})
-        b = pd.DataFrame({"e2": np.arange(E), "n": R.u})
-        m = a.merge(b, on="n")
-        e1, e2 = m["e1"].to_numpy(), m["e2"].to_numpy()
-        keep = R.v[e2] != R.u[e1]  # no U-turn onto the same road
-        e1, e2 = e1[keep], e2[keep]
-        defl = np.abs((h_start[e2] - h_end[e1] + 180.0) % 360.0 - 180.0)
+        # the turn arcs depend on the network only: built once and shared by every request on it
+        geo = _geo_cache(R)
+        if "turn_arcs" not in geo:
+            h_start, h_end = edge_headings(R)
+            a = pd.DataFrame({"e1": np.arange(E), "n": R.v})
+            b = pd.DataFrame({"e2": np.arange(E), "n": R.u})
+            m = a.merge(b, on="n")
+            e1, e2 = m["e1"].to_numpy(), m["e2"].to_numpy()
+            keep = R.v[e2] != R.u[e1]  # no U-turn onto the same road
+            e1, e2 = e1[keep], e2[keep]
+            geo["turn_arcs"] = (e1, e2, np.abs((h_start[e2] - h_end[e1] + 180.0) % 360.0 - 180.0))
+        e1, e2, defl = geo["turn_arcs"]
         if max_turn_deg is not None:
             ok = defl <= max_turn_deg
             e1, e2, defl = e1[ok], e2[ok], defl[ok]
         self.e1, self.e2, self.defl = e1, e2, defl
         self.turn_cost = turn_min * (defl / 90.0) ** 2 + np.where(defl > sharp_deg, sharp_min, 0.0)
-        mid = shapely_midpoints(R.lines)
-        self.mid = mid
+        self.mid = geo["mid"]
 
     def _matrix(self, mask: np.ndarray):
         from scipy.sparse import csr_matrix
@@ -335,10 +359,15 @@ class TurnRouter:
         self._index()
         return np.array([self._cost.get((a, b), np.nan) for a, b in zip(edges[:-1], edges[1:])])
 
+    _index_lock = threading.Lock()  # solve_distinct explores seeds on threads: build the lookup once, whole
+
     def _index(self) -> None:
-        if not hasattr(self, "_key"):
-            self._key = {(int(a), int(b)): float(d) for a, b, d in zip(self.e1, self.e2, self.defl)}
-            self._cost = {(int(a), int(b)): float(c) for a, b, c in zip(self.e1, self.e2, self.turn_cost)}
+        if hasattr(self, "_cost"):
+            return
+        with self._index_lock:
+            if not hasattr(self, "_cost"):
+                self._key = {(int(a), int(b)): float(d) for a, b, d in zip(self.e1, self.e2, self.defl)}
+                self._cost = {(int(a), int(b)): float(c) for a, b, c in zip(self.e1, self.e2, self.turn_cost)}
 
     def turns_of(self, edges: list[int]) -> np.ndarray:
         """Deflection (degrees) at each junction of an edge path."""
@@ -438,8 +467,9 @@ def route_line(R: RoadArrays, edges: list[int]):
 
 def solve_distinct(R: RoadArrays, sources: np.ndarray, targets: np.ndarray, k: int, sep_m: float,
                    n_seeds: int = 20, n_second: int = 3, penalty: np.ndarray | None = None,
-                   time_budget_s: float = 300.0, router=None) -> DistinctResult:
-    """k itineraries pairwise >= sep_m apart: seeded sequential exclusion, best total time."""
+                   time_budget_s: float = 300.0, router=None, threads: int | None = None) -> DistinctResult:
+    """k itineraries pairwise >= sep_m apart: seeded sequential exclusion, best total time.
+    ``threads``: seeds explored in parallel (default: up to 8, or the number of processors)."""
     import shapely
 
     t0 = time.perf_counter()
@@ -467,20 +497,19 @@ def solve_distinct(R: RoadArrays, sources: np.ndarray, targets: np.ndarray, k: i
 
     seeds = router.via_candidates(base, n=n_seeds)
     log.append(f"{len(seeds)} diverse first-itinerary seeds (via-point alternatives within 1.6x the fastest)")
-    sets: list[tuple[float, list[list[int]]]] = []
-    tried = 0
-    for si, seed in enumerate(seeds):
+
+    def explore(seed) -> tuple[int, list[tuple[float, list[list[int]]]]] | None:
+        """Every completion of one first itinerary (independent of the other seeds)."""
         if time.perf_counter() - t0 > time_budget_s:
-            log.append(f"time budget reached after {si} seeds")
-            break
+            return None
+        found: list[tuple[float, list[list[int]]]] = []
+        n_tried = 0
         e1 = to_edges(seed)
         mask1 = exclude(base, e1)
         if k == 1:
-            sets.append((cost(e1), [e1]))
-            continue
-        seconds = router.via_candidates(mask1, n=n_second) or []
-        for p2 in seconds:
-            tried += 1
+            return 0, [(cost(e1), [e1])]
+        for p2 in router.via_candidates(mask1, n=n_second) or []:
+            n_tried += 1
             e2 = to_edges(p2)
             chosen = [e1, e2]
             mask = exclude(mask1, e2)
@@ -494,7 +523,24 @@ def solve_distinct(R: RoadArrays, sources: np.ndarray, targets: np.ndarray, k: i
                 chosen.append(e)
                 mask = exclude(mask, e)
             if ok:
-                sets.append((sum(cost(e) for e in chosen), chosen))
+                found.append((sum(cost(e) for e in chosen), chosen))
+        return n_tried, found
+
+    # seeds are independent: explored on threads (shapely's spatial queries release the GIL; results are
+    # gathered in seed order, so the outcome is the same as a sequential run)
+    from concurrent.futures import ThreadPoolExecutor
+
+    workers = max(1, min(len(seeds), threads if threads else min(8, os.cpu_count() or 1)))
+    with ThreadPoolExecutor(workers) as pool:
+        results = list(pool.map(explore, seeds))
+    sets: list[tuple[float, list[list[int]]]] = []
+    tried = 0
+    for si, r_ in enumerate(results):
+        if r_ is None:
+            log.append(f"time budget reached after {si} seeds")
+            break
+        tried += r_[0]
+        sets += r_[1]
     uniq: dict[tuple, tuple[float, list[list[int]]]] = {}
     for c, es in sets:
         uniq.setdefault(tuple(sorted(tuple(e) for e in es)), (c, es))

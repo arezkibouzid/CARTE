@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import type { CompareResult, ExtractResult, RouteResult } from '../types';
+import type { CompareResult, ExtractResult, ItinerariesResult, RouteResult } from '../types';
+import { IT_COLORS } from './MapView';
 
 interface Props {
   route: RouteResult | null;
+  multi: ItinerariesResult | null;
   compares: Partial<Record<'bdtopo' | 'osm', CompareResult | 'loading'>>;
   extraction: ExtractResult | null;
   error: string;
@@ -20,12 +22,13 @@ function download(name: string, data: unknown) {
   URL.revokeObjectURL(url);
 }
 
-export default function ResultsPanel({ route, compares, extraction, error }: Props) {
+export default function ResultsPanel({ route, multi, compares, extraction, error }: Props) {
   const [showLog, setShowLog] = useState(false);
   return (
     <div className="panel">
-      {error && <div className="card errcard">{error}</div>}
-      {!route && !extraction && !error && (
+      {error && <div className="card errcard" style={{ whiteSpace: 'pre-line' }}>{error}</div>}
+      {multi && <MultiResult m={multi} />}
+      {!route && !multi && !extraction && !error && (
         <p className="muted">Aucun résultat pour l’instant. Calculez un itinéraire (onglet Scénario) ou tracez un rectangle sur la carte pour voir l’extraction du réseau.</p>
       )}
 
@@ -108,5 +111,76 @@ export default function ResultsPanel({ route, compares, extraction, error }: Pro
         </>
       )}
     </div>
+  );
+}
+
+function MultiResult({ m }: { m: ItinerariesResult }) {
+  const [showLog, setShowLog] = useState(false);
+  const its = m.itineraries.features.map((f) => f.properties);
+  const nOk = m.checks.filter((c) => c.ok).length;
+  const exportAll = () => download('itineraires_distincts.geojson', {
+    type: 'FeatureCollection',
+    features: [
+      ...m.itineraries.features.map((f) => ({ ...f, properties: { kind: 'itinerary', ...f.properties } })),
+      ...m.turns.features.map((f) => ({ ...f, properties: { kind: 'difficult_turn', ...f.properties } })),
+      ...m.difficult_areas.features.map((f) => ({ ...f, properties: { kind: 'difficult_area', ...f.properties } })),
+    ],
+  });
+  return (
+    <>
+      <h3>Itinéraires distincts</h3>
+      <div className="kpis">
+        <div className="kpi"><span>Itinéraires</span><b>{its.length}</b></div>
+        <div className="kpi"><span>Contraintes</span><b className={m.all_ok ? 'check-ok' : 'check-ko'}>{nOk}/{m.checks.length} ✓</b></div>
+        <div className="kpi"><span>Calcul</span><b>{m.timing_s.total?.toFixed(0)} s</b></div>
+      </div>
+      <p className="small muted">
+        {m.network} · {m.vehicle}{m.solver.turn_aware ? ' · virages aux carrefours tarifés' : ''} · {m.solver.feasible_sets} ensemble(s) valide(s) comparé(s)
+      </p>
+      {its.map((p) => (
+        <div key={p.id} className="card">
+          <div className="title"><span className="it-sw" style={{ background: IT_COLORS[p.index % IT_COLORS.length] }} />{p.id} : {p.length_km.toFixed(1)} km · {Math.round(p.time_min)} min</div>
+          {p.roads.length > 0 && <div className="small">Par {p.roads.join(' → ')}</div>}
+          <div className="small muted">
+            {p.turns_critical > 0 ? <span className="check-ko">{p.turns_critical} virage(s) critique(s)</span> : '0 virage critique'} · {p.turns_difficult} difficile(s)
+            {p.min_radius_m !== null && <> · rayon minimal {Math.round(p.min_radius_m)} m</>}
+          </div>
+          <div className="small muted">
+            {p.builtup_km.toFixed(1)} km en zone bâtie · {p.bridges} pont(s) · {p.tunnels} tunnel(s)
+            {p.narrow_km > 0 && <> · <span className="check-ko">{p.narrow_km.toFixed(1)} km trop étroits pour croiser</span></>}
+            {p.width_unknown_km > 0 && <> · largeur inconnue sur {p.width_unknown_km.toFixed(1)} km</>}
+            {p.steep_km > 0 && <> · {p.steep_km.toFixed(1)} km de forte pente</>}
+          </div>
+        </div>
+      ))}
+      <h3>Contrôle des contraintes</h3>
+      <ul className="checks small">
+        {m.checks.map((c, i) => (
+          <li key={i} className={c.ok ? 'check-ok' : 'check-ko'}>{c.ok ? '✓' : '✗'} {c.label}{c.detail ? ` — ${c.detail}` : ''}</li>
+        ))}
+      </ul>
+      {m.difficult_areas.features.length > 0 && (
+        <>
+          <h3>Zones de manœuvre difficile (3 km autour des itinéraires)</h3>
+          <ul className="small">
+            {m.difficult_areas.features.map((f, i) => {
+              const q = f.properties as { kind: string; features: number; area_km2: number };
+              return <li key={i}>{q.kind} : {q.features} ({q.area_km2} km²)</li>;
+            })}
+          </ul>
+        </>
+      )}
+      <p className="small muted">Points rouges : virages critiques (rayon &lt; 15 m) ; orange : difficiles (&lt; 30 m). Cliquez sur un point pour le détail.</p>
+      <div className="row">
+        <button className="btn" onClick={exportAll}>Exporter (GeoJSON)</button>
+        <button className="link" onClick={() => setShowLog((s) => !s)}>{showLog ? '▾' : '▸'} Décisions du calcul</button>
+      </div>
+      {showLog && (
+        <ul className="log small">
+          {m.log.map((l, i) => <li key={i}>{l}</li>)}
+          <li>Temps : {Object.entries(m.timing_s).map(([k, v]) => `${k} ${v} s`).join(' · ')}</li>
+        </ul>
+      )}
+    </>
   );
 }

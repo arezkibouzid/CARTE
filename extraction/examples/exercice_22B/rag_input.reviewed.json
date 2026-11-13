@@ -1,0 +1,508 @@
+{
+  "schema_version": "2.0",
+  "document": {
+    "id": "ex21_27",
+    "filename": "exercise_21-to-27.pdf",
+    "sha256": "170ec6eed705ddc6326b3c63ad64cc4dc80f4f681649724a49a185b0e38a8dfc",
+    "page_count": 27
+  },
+  "exercise_id": "22B",
+  "main_pages": [
+    10,
+    11
+  ],
+  "context_pages": [
+    6,
+    7
+  ],
+  "review_status": "reviewed_against_pdf_text_and_layout",
+  "task_types": [
+    "movement_schedule"
+  ],
+  "description": "Generate a convoy movement chart for the 1st Marine Infantry Regiment column from CHÂLONS-EN-CHAMPAGNE to SOUILLY.",
+  "facts": [
+    {
+      "kind": "constraint",
+      "category": "route",
+      "text": "Route description: D3 – Sainte Menehould – D3 – Les Islettes – D603 - Clermont en Argonne – D998 – Fleury sur Aire – D20 – Ippecourt – D21 – Souilly.",
+      "value": "D3 – Sainte Menehould – D3 – Les Islettes – D603 - Clermont en Argonne – D998 – Fleury sur Aire – D20 – Ippecourt – D21 – Souilly.",
+      "unit": null,
+      "scope": null,
+      "certainty": "explicit",
+      "source_ids": [
+        "P010_S013"
+      ],
+      "id": "F001"
+    },
+    {
+      "kind": "constraint",
+      "category": "route",
+      "text": "Start point: Eastern exit of Châlons-en-Champagne.",
+      "value": "Eastern exit of Châlons-en-Champagne",
+      "unit": null,
+      "scope": null,
+      "certainty": "explicit",
+      "source_ids": [
+        "P010_S011",
+        "P010_S008",
+        "P010_S009"
+      ],
+      "id": "F002"
+    },
+    {
+      "kind": "constraint",
+      "category": "route",
+      "text": "End point: village of SOUILLY.",
+      "value": "village of SOUILLY",
+      "unit": null,
+      "scope": null,
+      "certainty": "explicit",
+      "source_ids": [
+        "P010_S012",
+        "P010_S009"
+      ],
+      "id": "F003"
+    },
+    {
+      "kind": "constraint",
+      "category": "route",
+      "text": "Deployment area defined by DA1, DA2, DA3, DA4.",
+      "value": "DA1 (LAT : 49.15615 / LONG : 4.09213), DA2 (LAT : 49.34313 / LONG : 5.48992), DA3 (LAT : 48.68776 / LONG : 5.62423), DA4 (LAT : 48.60316 / LONG : 4.71215)",
+      "unit": null,
+      "scope": null,
+      "certainty": "explicit",
+      "source_ids": [
+        "P010_S005",
+        "P010_S006",
+        "P010_S007",
+        "P010_S008"
+      ],
+      "id": "F004"
+    },
+    {
+      "kind": "constraint",
+      "category": "composition",
+      "text": "1 serial per company.",
+      "value": "1 serial per company",
+      "unit": null,
+      "scope": null,
+      "certainty": "explicit",
+      "source_ids": [
+        "P010_S014",
+        "P010_S009"
+      ],
+      "id": "F005"
+    },
+    {
+      "kind": "constraint",
+      "category": "spacing",
+      "text": "Distance between each vehicle: 100 m.",
+      "value": 100,
+      "unit": "m",
+      "scope": null,
+      "certainty": "explicit",
+      "source_ids": [
+        "P010_S015",
+        "P010_S009"
+      ],
+      "id": "F006"
+    },
+    {
+      "kind": "constraint",
+      "category": "spacing",
+      "text": "Distance between each serial: 3 km.",
+      "value": 3,
+      "unit": "km",
+      "scope": null,
+      "certainty": "explicit",
+      "source_ids": [
+        "P010_S016",
+        "P010_S009"
+      ],
+      "id": "F007"
+    },
+    {
+      "kind": "constraint",
+      "category": "speed",
+      "text": "Speed in built-up areas: 50 km/h.",
+      "value": 50,
+      "unit": "km/h",
+      "scope": "built-up areas",
+      "certainty": "explicit",
+      "source_ids": [
+        "P010_S017",
+        "P010_S009"
+      ],
+      "id": "F008"
+    },
+    {
+      "kind": "constraint",
+      "category": "speed",
+      "text": "Speed outside built-up areas: 80 km/h.",
+      "value": 80,
+      "unit": "km/h",
+      "scope": "outside built-up areas",
+      "certainty": "explicit",
+      "source_ids": [
+        "P010_S018",
+        "P010_S009"
+      ],
+      "id": "F009"
+    },
+    {
+      "kind": "constraint",
+      "category": "speed",
+      "text": "Night-time speed: 40 km/h.",
+      "value": 40,
+      "unit": "km/h",
+      "scope": "night",
+      "certainty": "explicit",
+      "source_ids": [
+        "P010_S019",
+        "P010_S009"
+      ],
+      "id": "F010"
+    },
+    {
+      "kind": "constraint",
+      "category": "speed",
+      "text": "Train speed adjusted to match slowest vehicle.",
+      "value": true,
+      "unit": null,
+      "scope": null,
+      "certainty": "explicit",
+      "source_ids": [
+        "P010_S020",
+        "P010_S009"
+      ],
+      "id": "F011"
+    },
+    {
+      "kind": "constraint",
+      "category": "time",
+      "text": "1st serial expected time of departure: 17:00 pm.",
+      "value": "17:00",
+      "unit": "HH:MM",
+      "scope": null,
+      "certainty": "explicit",
+      "source_ids": [
+        "P010_S021",
+        "P010_S009"
+      ],
+      "id": "F012"
+    },
+    {
+      "kind": "constraint",
+      "category": "time",
+      "text": "Sunset time: 18:00 pm.",
+      "value": "18:00",
+      "unit": "HH:MM",
+      "scope": null,
+      "certainty": "explicit",
+      "source_ids": [
+        "P010_S022",
+        "P010_S009"
+      ],
+      "id": "F013"
+    },
+    {
+      "kind": "requested_output",
+      "category": "output",
+      "text": "Movement Chart Showing the movements of the units of the 1st Marine Infantry Regiment.",
+      "value": "Movement Chart Showing the movements of the units of the 1st Marine Infantry Regiment",
+      "unit": null,
+      "scope": null,
+      "certainty": "explicit",
+      "source_ids": [
+        "P010_S010",
+        "P010_S009"
+      ],
+      "id": "F014"
+    },
+    {
+      "kind": "unparsed",
+      "category": "other",
+      "text": "Vocabulary definitions for Convoy, Column, Serial.",
+      "value": "Vocabulary definitions for Convoy, Column, Serial",
+      "unit": null,
+      "scope": null,
+      "certainty": "explicit",
+      "source_ids": [
+        "P007_S001"
+      ],
+      "id": "F015"
+    },
+    {
+      "kind": "unparsed",
+      "category": "other",
+      "text": "Example of a Convoy Movement Chart (Space-Time Diagram).",
+      "value": "Example of a Convoy Movement Chart (Space-Time Diagram)",
+      "unit": null,
+      "scope": null,
+      "certainty": "explicit",
+      "source_ids": [
+        "P006_IMAGE"
+      ],
+      "id": "F016"
+    }
+  ],
+  "issues": [
+    {
+      "kind": "visual_review_required",
+      "source_ids": [
+        "P010_S009",
+        "P010_IMAGE"
+      ],
+      "text": "Référence de composition et symbole graphique présents page 10 ; détail des effectifs non extrait. Ne pas conclure à une absence totale."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "P006_IMAGE",
+      "page": 6,
+      "role": "context",
+      "modality": "image",
+      "quote": null
+    },
+    {
+      "id": "P007_S001",
+      "page": 7,
+      "role": "context",
+      "modality": "text",
+      "quote": "Vocabulary\nConvoy\nA group of vehicles moving together to accomplish a specific mission, particularly transportation or resupply.\nColumn\nA group of vehicles moving under a single command, along the same route and in the same direction, generally\ncorresponding to a battalion-level.\nSerial (French « Rame »)\nA group of approximately 15 to 30 vehicles, generally corresponding to a company-level unit."
+    },
+    {
+      "id": "P007_IMAGE",
+      "page": 7,
+      "role": "context",
+      "modality": "image",
+      "quote": null
+    },
+    {
+      "id": "P010_S001",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "EXERCISE N°22B\nIN"
+    },
+    {
+      "id": "P010_S002",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "Map"
+    },
+    {
+      "id": "P010_S003",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "Layouts"
+    },
+    {
+      "id": "P010_S004",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "The deployment area is included within the following box :"
+    },
+    {
+      "id": "P010_S005",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "DA1 (LAT : 49.15615 / LONG : 4.09213)"
+    },
+    {
+      "id": "P010_S006",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "DA2 (LAT : 49.34313 / LONG : 5.48992)"
+    },
+    {
+      "id": "P010_S007",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "DA3 (LAT : 48.68776 / LONG : 5.62423)"
+    },
+    {
+      "id": "P010_S008",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "DA4 (LAT : 48.60316 / LONG : 4.71215)"
+    },
+    {
+      "id": "P010_S009",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "1st Marine Infantry Regiment – Unit Composition Table\nOUT"
+    },
+    {
+      "id": "P010_S010",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "Movement Chart Showing the movements of the units of the 1st Marine Infantry Regiment ."
+    },
+    {
+      "id": "P010_S011",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "Start point : Eastern exit of Châlons-en-\nChampagne\n(LAT : 48.96354 / LONG : 4.53220)"
+    },
+    {
+      "id": "P010_S012",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "End point : village of SOUILLY\n(LAT : 49.02690 / LONG : 5.28468)"
+    },
+    {
+      "id": "P010_S013",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "Route description :\nD3 – Sainte Menehould – D3 – Les \nIslettes – D603 - Clermont en Argonne –\nD998 – Fleury sur Aire – D20 – Ippecourt\n– D21 – Souilly.\nREQUIREMENTS"
+    },
+    {
+      "id": "P010_S014",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "1 serial per company"
+    },
+    {
+      "id": "P010_S015",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "Distance between each vehicule : 100 m"
+    },
+    {
+      "id": "P010_S016",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "Distance between each serial : 3 km"
+    },
+    {
+      "id": "P010_S017",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "Speed in built-up areas : 50 km/h"
+    },
+    {
+      "id": "P010_S018",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "speed outside built-up areas : 80 km/h"
+    },
+    {
+      "id": "P010_S019",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "Night-time speed : 40 km/h"
+    },
+    {
+      "id": "P010_S020",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "The train speed is adjusted to match that of the slowest vehicule"
+    },
+    {
+      "id": "P010_S021",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "1st serial expected time of departure : 17:00 pm"
+    },
+    {
+      "id": "P010_S022",
+      "page": 10,
+      "role": "main",
+      "modality": "text",
+      "quote": "Sunset time : 18:00 pm\nStarting \npoint\nFinishing\npoint"
+    },
+    {
+      "id": "P010_IMAGE",
+      "page": 10,
+      "role": "main",
+      "modality": "image",
+      "quote": null
+    },
+    {
+      "id": "P011_S001",
+      "page": 11,
+      "role": "main",
+      "modality": "text",
+      "quote": "EXERCISE N°22B\nFor this exercise, we need you to \ngenerate the convoy movement chart \nfor the 1st Marine Infantry Regiment\ncolumn from CHÂLONS-EN-CHAMPAGNE \nto SOUILLY ."
+    },
+    {
+      "id": "P011_IMAGE",
+      "page": 11,
+      "role": "main",
+      "modality": "image",
+      "quote": null
+    }
+  ],
+  "printed_coordinates": [
+    {
+      "source_id": "P010_S005",
+      "latitude": 49.15615,
+      "longitude": 4.09213,
+      "printed_text": "LAT : 49.15615 / LONG : 4.09213",
+      "crs": null,
+      "note": "LAT/LONG explicites ; datum non déduit du PDF."
+    },
+    {
+      "source_id": "P010_S006",
+      "latitude": 49.34313,
+      "longitude": 5.48992,
+      "printed_text": "LAT : 49.34313 / LONG : 5.48992",
+      "crs": null,
+      "note": "LAT/LONG explicites ; datum non déduit du PDF."
+    },
+    {
+      "source_id": "P010_S007",
+      "latitude": 48.68776,
+      "longitude": 5.62423,
+      "printed_text": "LAT : 48.68776 / LONG : 5.62423",
+      "crs": null,
+      "note": "LAT/LONG explicites ; datum non déduit du PDF."
+    },
+    {
+      "source_id": "P010_S008",
+      "latitude": 48.60316,
+      "longitude": 4.71215,
+      "printed_text": "LAT : 48.60316 / LONG : 4.71215",
+      "crs": null,
+      "note": "LAT/LONG explicites ; datum non déduit du PDF."
+    },
+    {
+      "source_id": "P010_S011",
+      "latitude": 48.96354,
+      "longitude": 4.5322,
+      "printed_text": "LAT : 48.96354 / LONG : 4.53220",
+      "crs": null,
+      "note": "LAT/LONG explicites ; datum non déduit du PDF."
+    },
+    {
+      "source_id": "P010_S012",
+      "latitude": 49.0269,
+      "longitude": 5.28468,
+      "printed_text": "LAT : 49.02690 / LONG : 5.28468",
+      "crs": null,
+      "note": "LAT/LONG explicites ; datum non déduit du PDF."
+    }
+  ],
+  "manual_correction": true
+}
