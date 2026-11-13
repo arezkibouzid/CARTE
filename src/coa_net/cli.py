@@ -1,4 +1,4 @@
-"""Command line: ``coa-net demo | plan | exercise | read-order | compile-doctrine | signoff | llm-check | audit | bench | fetch-osm |
+"""Command line: ``coa-net demo | plan | exercise | scan-roads | scan-learn | scan-unet | real-bench | read-order | compile-doctrine | signoff | llm-check | audit | bench | fetch-osm |
 templates``."""
 
 from __future__ import annotations
@@ -99,6 +99,11 @@ def _run(session: COANet, order: str, incidents: list[tuple[float, str]], out: P
         print("  concern: " + x)
     chosen = session.choose(coa)
     print(f"\nchosen: COA {chosen.label}")
+    from .scanlearn import write_plan_checks
+
+    n_checks = write_plan_checks(session.H.G, chosen, out)
+    if n_checks:
+        print(f"   map checks before the move (image network): {n_checks} stretches on the MSRs and ASRs, in {out / 'map_checks.md'}")
     for c in chosen.sched.credits.values():
         print(f"   {c.unit}: depart {hhmm(c.depart)}, arrive {hhmm(c.arrive)}" + (f" (deadline {hhmm(c.deadline)})" if c.deadline is not None else ""))
     for t, text in incidents:
@@ -125,11 +130,33 @@ def cmd_demo(args) -> None:
 
 def cmd_plan(args) -> None:
     kw, reqs, data_notes = {}, None, []
-    if args.graphml or args.place or args.bdtopo:
+    if args.graphml or args.place or args.bdtopo or args.scan:
         from .loaders import add_places, load_bdtopo, load_osm
 
         places = {k: tuple(v) for k, v in json.loads(Path(args.places).read_text()).items()} if args.places else None
-        if args.bdtopo and args.bdtopo.lower().endswith(".shp"):
+        if args.scan:
+            # image input: the road network is read from the scanned map (see scanroads.py)
+            from .realdata import roadside_halts, systemic_unknowns
+            from .scenario import load_graph_cached
+
+            cache = Path(args.out) / "cache"
+            cache.mkdir(parents=True, exist_ok=True)
+            G, rep, _ = load_graph_cached(args.scan, cache, kind="scan")
+            print(f"road network read from the scan {args.scan}: {rep.nodes} junctions, {rep.km:.0f} km ({rep.seconds:.0f} s)")
+            if args.corrector:
+                from .scanlearn import correct_graph
+
+                print(f"learned corrector: {correct_graph(G, args.scan, args.corrector)}")
+            reqs, notes = systemic_unknowns(G, load_requirements(args.requirements))
+            notes += roadside_halts(G, max_rank=min(3, args.max_rank or 3))
+            for n in notes:
+                print("data-driven policy change: " + n)
+            data_notes = [f"road network read from the scanned map {Path(args.scan).name}: {rep.km:.0f} km; widths, slopes and "
+                          "load classes unknown (not on the map)"] + notes
+            if places:
+                for name, info in add_places(G, places, snap_max_rank=3).items():
+                    print(f"place {name}: junction {info['node']}, {info['distance_m']} m from the map position")
+        elif args.bdtopo and args.bdtopo.lower().endswith(".shp"):
             # organisers' Scenario data: BD TOPO v2 ROUTE shapefile without .prj (see realdata.py)
             from .realdata import load_scenario_bdtopo, roadside_halts, systemic_unknowns
 
@@ -171,7 +198,7 @@ def cmd_plan(args) -> None:
     order_text, reading = _order_text(args.order)
     if reading.task == "itineraries":
         print("note: this order asks for itineraries between drawn zones; `coa-net exercise --pdf` solves that task")
-    _run(session, order_text, incidents, Path(args.out), args.place or args.graphml or args.bdtopo or "map", args.coa)
+    _run(session, order_text, incidents, Path(args.out), args.place or args.graphml or args.bdtopo or args.scan or "map", args.coa)
     from .orderdoc import movement_readback
 
     (Path(args.out) / "readback.md").write_text(movement_readback(reading, session.mission), encoding="utf-8")
@@ -364,6 +391,42 @@ def cmd_bench(args) -> None:
         Path(args.out).write_text(text + "\n", encoding="utf-8")
 
 
+def cmd_real_bench(args) -> None:
+    import pickle
+
+    from . import realbench as rb
+    from .bench import to_markdown
+    from .loaders import add_places
+    from .realdata import roadside_halts, systemic_unknowns
+    from .scenario import ScenarioPaths, load_graph_cached
+
+    paths = ScenarioPaths.from_dir(args.data)
+    out = Path(args.out)
+    cache = out / "cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    if args.network == "bdtopo":
+        G, _, _ = load_graph_cached(paths.bdtopo, cache)
+        max_rank = args.max_rank or 4
+    else:
+        G, _, _ = load_graph_cached(paths.scan100, cache, kind="scan")
+        max_rank = args.max_rank or 5
+        if args.corrector:
+            from .scanlearn import correct_graph
+
+            print(f"learned corrector: {correct_graph(G, paths.scan100, args.corrector)}")
+    reqs, notes = systemic_unknowns(G, load_requirements(args.requirements))
+    roadside_halts(G, max_rank=3)
+    places = {k: tuple(v) for k, v in json.loads(Path(args.places).read_text()).items()}
+    add_places(G, places, snap_max_rank=3)
+    scorer = rb.BDScorer(paths.bdtopo) if args.network != "bdtopo" and paths.bdtopo else None
+    res = rb.run(G, None, range(args.seeds), max_rank, reqs, reps=args.reps, scorer=scorer, places_xy=places)
+    with (out / "results.pkl").open("wb") as fh:
+        pickle.dump(res, fh)
+    text = to_markdown(res, f"{args.network}{' + corrector' if args.corrector else ''}: baselines and COA-Net, random missions")
+    (out / "bench.md").write_text(text + "\n", encoding="utf-8")
+    print(text)
+
+
 def cmd_fetch(args) -> None:
     from .loaders import save_graphml_osm
 
@@ -394,7 +457,8 @@ def cmd_exercise(args) -> None:
         reading = reading_from_text(text, "exercise.txt")
     reqs, notes = _base(args) if (args.requirements or args.provisional) else (None, [])
     run = run_exercise(paths, args.out, text, cache=args.cache, n_seeds=args.seeds, turn_aware=not args.no_turns,
-                       compare=not args.no_compare, osm_check=not args.no_osm, llm=_llm(args), requirements=reqs)
+                       compare=not args.no_compare, osm_check=not args.no_osm, llm=_llm(args), requirements=reqs,
+                       network=args.network, corrector=args.corrector)
     from .exercise import parse_exercise
 
     rb = exercise_readback(reading, parse_exercise(text)[0], run.facts)
@@ -404,6 +468,303 @@ def cmd_exercise(args) -> None:
     print((Path(args.out) / "decision_process.txt").read_text(encoding="utf-8"))
     print(f"outputs in {args.out}: itineraries.geojson, difficult_areas.geojson, zones.geojson, map_*.png, decision_process.txt, "
           "metrics.json, readback.md, sketch_marks.png")
+
+
+def cmd_scan_roads(args) -> None:
+    from .scanroads import write_network_outputs
+    from .scenario import ScenarioPaths, load_graph_cached
+
+    paths = ScenarioPaths.from_dir(args.data)
+    tif = args.tif or (paths.scan100 if args.scale == "100k" else paths.scan250)
+    if not tif:
+        sys.exit(f"no {args.scale} scan in {args.data}")
+    out = Path(args.out)
+    cache = Path(args.cache) if args.cache else out / "cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    t0 = time.perf_counter()
+    G, rep, cached = load_graph_cached(tif, cache, kind="scan")
+    print(f"road network read from {tif}{' (cache)' if cached else ''}: {rep.nodes} junctions, {rep.km:.0f} km "
+          f"({rep.largest_scc_share:.0%} of the junctions in the largest connected network), {time.perf_counter() - t0:.0f} s")
+    if args.corrector:
+        from .scanlearn import correct_graph
+
+        print(f"learned corrector: {correct_graph(G, tif, args.corrector)}")
+    write_network_outputs(G, tif, out)
+    if not args.no_check and paths.bdtopo:
+        from .scancheck import validate
+
+        G_ref, _, _ = load_graph_cached(paths.bdtopo, cache)
+        res = validate(G, paths.bdtopo, paths.osm, G_ref=G_ref, out=out, n_pairs=args.pairs)
+        print((out / "validation.md").read_text(encoding="utf-8"))
+        print(f"correctness vs BD TOPO (25 m) {res['correctness_vs_bdtopo']['25m']:.1%}")
+    print(f"outputs in {out}: network.geojson, scan_report.md, map_network.png" + ("" if args.no_check else ", validation.md/.json"))
+
+
+def cmd_scan_learn(args) -> None:
+    import copy
+
+    from . import scanlearn as sl
+    from .scenario import ScenarioPaths, load_graph_cached
+
+    paths = ScenarioPaths.from_dir(args.data)
+    tif = args.tif or (paths.scan100 if args.scale == "100k" else paths.scan250)
+    if not (tif and paths.bdtopo):
+        sys.exit("scan-learn needs the scan and the BD TOPO shapefile (labels)")
+    out = Path(args.out)
+    cache = Path(args.cache) if args.cache else out / "cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    t0 = time.perf_counter()
+    G, rep, cached = load_graph_cached(tif, cache, kind="scan")
+    print(f"road network read from {tif}{' (cache)' if cached else ''}: {rep.km:.0f} km")
+    unet = None
+    if args.unet:  # out-of-fold U-Net probabilities (coa-net scan-unet) as features of every task
+        import shutil
+
+        from . import scanunet
+
+        unet = scanunet.load_raster(Path(args.unet) / "unet_oof.tif")
+        out.mkdir(parents=True, exist_ok=True)
+        for f in ("unet_final.pt", "unet_scores.json"):
+            if (Path(args.unet) / f).exists():
+                shutil.copy(Path(args.unet) / f, out / f)
+    ds = sl.build_dataset(G, tif, paths.bdtopo, paths.osm, grid=args.grid, unet=unet)
+    cv = sl.cross_validate(ds)
+    models = sl.train_final(ds)
+    out.mkdir(parents=True, exist_ok=True)
+    extra, extra_meta = set(), {}
+    if not args.no_cnn:
+        try:
+            from . import scancnn
+        except ImportError:
+            scancnn = None
+            print("crop network skipped: PyTorch is not installed")
+        if scancnn is not None:
+            try:
+                import torch  # noqa: F401
+
+                res = scancnn.cross_validate_cnn(ds, cv, G, tif)
+                extra_meta["cnn"] = res
+                scancnn.train_final_cnn(ds, G, tif, out, [t for t, r in res.items() if r["used"]])
+            except ImportError:
+                print("crop network skipped: PyTorch is not installed")
+    P = sl.predictions_from_oof(ds, cv)
+    gate = None
+    if not args.no_route_gate:
+        from .scanroute import fold_pairs, route_gate
+
+        G_bd, _, _ = load_graph_cached(paths.bdtopo, cache)
+        pairs = fold_pairs(ds["bounds"], ds["grid"], cv["folds_of_blocks"], per_fold=args.route_pairs)
+        prec = lambda dec, key, v: sl.decision_scores(ds, cv, {key: v})[dec]["precision"]
+        gate = route_gate(G, P, sl.road_gate_enabled(cv, args.allow_removal) - sl.REMOVALS, sl.THRESH, G_bd, pairs, precision_of=prec)
+        print(f"route gate: kept {gate['enabled']}; routes against BD TOPO, time ratio median "
+              f"{gate['no_correction']['time_ratio_median']:.3f} -> {gate['corrected']['time_ratio_median']:.3f}")
+    if not args.no_geometry:
+        from . import scangeom
+
+        gmodel, offsets, gsc = scangeom.learn(G, ds["roads"], tif, paths.bdtopo, ds["bounds"], ds["grid"], cv["folds_of_blocks"], unet=unet)
+        scangeom.save(out, gmodel, offsets, gsc)
+        extra_meta["geometry"] = gsc
+        if gsc["enabled"]:
+            extra.add("move_lines")
+    sl.save(out, models, P, cv, ds, tif, sl.scan_graph_key(tif), allow_removal=args.allow_removal, route_gate=gate,
+            extra_enabled=extra, extra_meta=extra_meta)
+    Gc = copy.deepcopy(G)
+    changes = sl.correct_graph(Gc, tif, out)
+    md = sl.markdown(cv, sl.feature_importance(models), changes, ds)
+    if gate:
+        from .scanroute import markdown as route_md
+
+        md += "\n" + route_md(gate)
+    if extra_meta.get("cnn"):
+        md += "\n## Crop network (bridges and crossings)\n\n| decision | AUC tabular | AUC crop network | used |\n| --- | --- | --- | --- |\n"
+        md += "".join(f"| {sl.TASK_TEXT[t]} | {r['auc_tabular']:.3f} | {r['auc_cnn']:.3f} | {'yes' if r['used'] else 'no'} |\n"
+                      for t, r in extra_meta["cnn"].items())
+    if extra_meta.get("geometry"):
+        g = extra_meta["geometry"]
+        md += (f"\n## Learned displacement of the lines\n\n{g['scored']} sample points scored on unseen blocks: mean offset to BD TOPO "
+               f"{g['mean_offset_m']:.1f} m -> {g['mean_after_m']:.1f} m, within 10 m {g['within_10m_before']:.0%} -> "
+               f"{g['within_10m_after']:.0%}; network within 25 m of BD TOPO {g['network_25m_before']:.1%} -> "
+               f"{g['network_25m_after']:.1%} (R2 {g['r2']:.2f}). Lines moved: {'yes' if g['enabled'] else 'no'}.\n")
+    (out / "corrector_report.md").write_text(md, encoding="utf-8")
+    (out / "corrector_scores.json").write_text(json.dumps(sl.jsonable(cv), indent=1, default=float), encoding="utf-8")
+    print(md)
+    if not args.no_check:
+        from .scancheck import validate
+
+        G_ref, _, _ = load_graph_cached(paths.bdtopo, cache)
+        res = validate(Gc, paths.bdtopo, paths.osm, G_ref=G_ref, out=out / "corrected_network")
+        print(f"corrected network: correctness vs BD TOPO (25 m) {res['correctness_vs_bdtopo']['25m']:.1%}; "
+              f"checks in {out / 'corrected_network' / 'validation.md'}")
+    print(f"corrector in {out} ({time.perf_counter() - t0:.0f} s): use --corrector {out} with exercise, plan --scan or scan-roads")
+
+
+def cmd_scan_unet(args) -> None:
+    from . import scanunet
+    from .scenario import ScenarioPaths
+
+    paths = ScenarioPaths.from_dir(args.data)
+    tif = args.tif or (paths.scan100 if args.scale == "100k" else paths.scan250)
+    if not (tif and paths.bdtopo):
+        sys.exit("scan-unet needs the scan and the BD TOPO shapefile (labels)")
+    t0 = time.perf_counter()
+    sc = scanunet.learn(tif, paths.bdtopo, Path(args.out), grid=args.grid, steps=args.steps, final=not args.no_final)
+    print(json.dumps(sc, indent=1))
+    print(f"U-Net in {args.out} ({time.perf_counter() - t0:.0f} s): use scan-learn --unet {args.out}")
+
+
+def cmd_pdf_exercises(args) -> None:
+    """Solve every route exercise of a PDF exercise file on the image network (+ corrector); BD TOPO / OSM check only."""
+    import geopandas as gpd
+    import numpy as np
+    import shapely
+    from scipy.spatial import cKDTree
+
+    from . import pdfexercises as px
+    from .exercise import edge_lines
+    from .scenario import ScenarioPaths, annotate_areas, file_key, load_graph_cached
+
+    paths = ScenarioPaths.from_dir(args.data)
+    tif = paths.scan100
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    cache = Path(args.cache) if args.cache else out / "cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    t0 = time.perf_counter()
+    meta, exs = px.read_pdf(args.pdf, figures_dir=out)
+    if args.only:
+        exs = [e for e in exs if e.number in set(args.only)]
+    (out / "pdf_metadata.json").write_text(json.dumps(meta, indent=1, ensure_ascii=False), encoding="utf-8")
+    (out / "exercises_read.json").write_text(json.dumps([{k: v for k, v in e.__dict__.items()} for e in exs], indent=1,
+                                                        ensure_ascii=False), encoding="utf-8")
+    print(f"{args.pdf}: {meta.get('pages')} pages, {len(exs)} exercises read ({time.perf_counter() - t0:.0f} s)", flush=True)
+
+    # road network: the map reader (+ corrector), or the segmentation network's own graph (prc-alone)
+    if args.network == "prc-alone":
+        from . import scanunet
+
+        if not args.unet:
+            sys.exit("--network prc-alone needs --unet DIR (a folder with unet_oof.tif, e.g. from scripts/prc_unet.py merge)")
+        P, tr = scanunet.load_raster(Path(args.unet) / "unet_oof.tif")
+        G = scanunet.unet_network(Path(args.unet), args.tracing)
+        net = {"source": (f"road network traced from the fine-tuned PRC U-Net probabilities `{args.unet}` ({G.number_of_edges() // 2:,} "
+                          "sections; road where p >= 0.5, thinned to centre lines; no map reader; the U-Net was trained on BD TOPO "
+                          "labels only, out of fold)"), "corrector": "none (the U-Net network has no map symbols to correct)"}
+        args.corrector = None
+    else:
+        G, _, _ = load_graph_cached(tif, cache, kind="scan")
+        net = {"source": f"road network read from the scan {Path(tif).name} ({G.number_of_edges() // 2:,} sections)"}
+    if args.corrector:
+        from .scanlearn import correct_graph
+
+        ch = correct_graph(G, tif, args.corrector)
+        meta_c = json.loads((Path(args.corrector) / "corrector.json").read_text(encoding="utf-8"))
+        net["corrector"] = (f"`{args.corrector}` ({ch.get('mode', '')}); corrections switched on: {', '.join(meta_c.get('enabled', [])) or 'none'}; "
+                            f"{ch.get('links added', 0)} missing links added, {ch.get('white roads to rank 4', 0)} white roads moved to rank 4, "
+                            f"{ch.get('roads priced as doubtful (p < 0.7)', 0)} roads priced as doubtful, {ch.get('label gaps priced', 0)} label gaps priced"
+                            + (f", lines moved by the learned displacement" if "move_lines" in meta_c.get("enabled", []) else ""))
+    else:
+        net["corrector"] = "none"
+    # built-up tint: palette indices chosen by colour (each IGN sheet has its own palette order)
+    import rasterio
+
+    rgb = np.array([int(v) for v in args.builtup_rgb.split(",")])
+    with rasterio.open(tif) as src:
+        cm = src.colormap(1)
+    classes = tuple(sorted(k for k, v in cm.items() if np.abs(np.array(v[:3]) - rgb).max() <= args.builtup_tol))
+    if not classes:
+        sys.exit(f"no palette colour within {args.builtup_tol} of {args.builtup_rgb}: give --builtup-rgb")
+    bu_path = cache / f"builtup_{file_key(tif)}_{'-'.join(map(str, classes))}.geojson"
+    if bu_path.exists():
+        builtup = gpd.read_file(bu_path)
+    else:
+        from .scanmap import builtup_polygons
+
+        builtup = builtup_polygons(tif, classes=classes)
+        builtup.to_file(bu_path, driver="GeoJSON")
+    net["builtup"] = (f"{len(builtup):,} built-up polygons ({builtup.to_crs(px.L93).area.sum() / 1e6:.0f} km2) read from the scan tint "
+                      f"RGB {args.builtup_rgb} (palette indices {', '.join(map(str, classes))})")
+    builtup.to_file(out / "builtup_areas.geojson", driver="GeoJSON")
+    N = px.Network(G, "PRC U-Net network" if args.network == "prc-alone" else
+                   "image network + corrector" if args.corrector else "image network", builtup=builtup)
+    if args.prob_threshold is not None:
+        if args.network != "prc-alone":
+            sys.exit("--prob-threshold needs --network prc-alone (the probabilities come from the U-Net raster)")
+        pr = N.price_by_probability(P, tr, args.prob_threshold, args.prob_penalty)
+        net["probability_penalty"] = (f"sections whose PRC road probability is below {pr['threshold']:g} (operator's threshold) cost "
+                                      f"1 + {pr['strength']:g} x the share below it: {pr['sections_priced']:,} sections priced, "
+                                      f"{pr['km_below_threshold']:,} km of road below the threshold")
+        net["corrector"] += "; " + net["probability_penalty"]
+    print(f"image network ready: {len(N.edges):,} directed sections of rank <= 5 ({time.perf_counter() - t0:.0f} s)", flush=True)
+
+    ref_net = bd_kd = osm = None
+    if paths.bdtopo and not args.no_check:
+        Gb, _, _ = load_graph_cached(paths.bdtopo, cache)
+        Lb = edge_lines(Gb, list(Gb.edges))
+        ref_net = px.Network(Gb, "BD TOPO", priced=False, builtup=builtup)
+        bd_kd = cKDTree(px._sample(Lb, 10.0))
+    if args.no_osm and paths.osm:
+        print("OSM ignored (--no-osm)", flush=True)
+    if paths.osm and not args.no_check and not args.no_osm:
+        from .realdata import read_lines
+
+        o, _ = read_lines(paths.osm, "utf-8", ["maxspeed"])
+        o = o.to_crs(px.L93)
+        osm = (shapely.STRtree(o.geometry.values), o["maxspeed"].fillna(0).astype(float).values)
+    print(f"checks ready ({time.perf_counter() - t0:.0f} s)", flush=True)
+
+    rows = []
+    for ex in exs:
+        t = time.perf_counter()
+        d = out / f"exercise_{ex.number:02d}"
+        d.mkdir(parents=True, exist_ok=True)
+        try:
+            res = px.solve(ex, N, bd_kd, osm)
+        except RuntimeError as e:
+            (d / "decision.md").write_text(f"# Exercise {ex.number}\n\nNo solution: {e}\n", encoding="utf-8")
+            print(f"exercise {ex.number}: no solution ({e})", flush=True)
+            rows.append((ex, None, None))
+            continue
+        ref = px.solve(ex, ref_net) if ref_net is not None else None
+        px.write_geojson(d / "route.geojson", ex, res)
+        if ref:
+            px.write_geojson(d / "route_bdtopo_check.geojson", ex, ref)
+        px.render_layout(d / "layout.png", tif, ex, res, ref)
+        (d / "decision.md").write_text(px.decision_markdown(ex, res, ref, net), encoding="utf-8")
+        (d / "metrics.json").write_text(json.dumps({"exercise": ex.number, "result": px.jsonable(res),
+                                                    "bdtopo_check": px.jsonable(ref) if ref else None}, indent=1), encoding="utf-8")
+        rows.append((ex, res, ref))
+        print(f"exercise {ex.number}: {res['total']['length_km']:.1f} km, {res['total']['duration_min']:.0f} min"
+              + (f" (BD TOPO {ref['total']['length_km']:.1f} km, {ref['total']['duration_min']:.0f} min)" if ref else "")
+              + f", {time.perf_counter() - t:.0f} s", flush=True)
+
+    L = [f"# Route exercises of `{Path(args.pdf).name}`", "",
+         f"PDF: {meta.get('pages')} pages, author {meta.get('Author', '?')}, created {meta.get('CreationDate', '?')}, {meta.get('Producer', '')}.",
+         f"Network: {net['source']}. Corrector: {net['corrector']}.",
+         "OSM: " + ("used for the speed-limit check only" if osm is not None else "not used") + ".",
+         f"Built-up areas: {net['builtup']}.",
+         f"Speed: legal limit of each section (built-up {px.URBAN_KMH:.0f}, expressway {px.EXPRESSWAY_KMH:.0f}, other roads {px.ROAD_KMH:.0f} km/h), "
+         "capped at the convoy speed given in the PDF. " + (
+             "BD TOPO and OSM are used only as checks." if osm is not None and ref_net is not None else
+             "BD TOPO is used only as a check (no OSM)." if ref_net is not None else
+             "OSM is used only as a check (no BD TOPO)." if osm is not None else
+             "No BD TOPO and no OSM: the routes come from the scan and the PDF alone, without checks."), "",
+         "| exercise | objective | route | waypoints | length | duration | inside area | continuous | within 25 m of BD TOPO | BD TOPO check (length / duration) | notes |",
+         "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
+    for ex, res, ref in rows:
+        if res is None:
+            L.append(f"| {ex.number} | | no solution | | | | | | | | |")
+            continue
+        wp = {"fixed": "fixed order", "free": "free order", "none": "-"}[ex.waypoint_order]
+        route = "; ".join(l["name"] for l in res["legs"])
+        b25 = np.mean([l.get("share_within_25m_of_bdtopo", np.nan) for l in res["legs"]])
+        L.append(f"| [{ex.number}](exercise_{ex.number:02d}/decision.md) | {'shortest' if ex.objective == 'length' else 'fastest'} | {route} | {wp} | "
+                 f"{res['total']['length_km']:.1f} km | {res['total']['duration_min']:.0f} min | "
+                 f"{'yes' if all(l['inside_area'] for l in res['legs']) else 'NO'} | {'yes' if all(l['continuous'] for l in res['legs']) else 'NO'} | "
+                 + (f"{b25:.0%} | " if b25 == b25 else "- | ") + (f"{ref['total']['length_km']:.1f} km / {ref['total']['duration_min']:.0f} min" if ref else "-") +
+                 f" | {'; '.join(ex.notes)} |")
+    (out / "summary.md").write_text("\n".join(L) + "\n", encoding="utf-8")
+    print("\n".join(L))
+    print(f"outputs in {out} ({time.perf_counter() - t0:.0f} s)")
 
 
 def cmd_audit(args) -> None:
@@ -445,7 +806,9 @@ def main(argv: list[str] | None = None) -> None:
     src.add_argument("--place", help="OSM place name, downloaded with osmnx")
     src.add_argument("--graphml", help="cached OSM graph (see fetch-osm)")
     src.add_argument("--bdtopo", help="BD TOPO GeoPackage with a troncon_de_route layer, or the organisers' v2 ROUTE shapefile (.shp)")
+    src.add_argument("--scan", help="scanned map (GeoTIFF, e.g. 'Scenario1 100K.tif'): the road network is read from the image")
     src.add_argument("--synthetic", type=int, default=0, help="synthetic theatre seed (default)")
+    p.add_argument("--corrector", help="with --scan: learned corrector folder (coa-net scan-learn) applied to the image network")
     p.add_argument("--places", help='JSON {"name": [lon, lat]} gazetteer for the order')
     p.add_argument("--dem", help="DEM raster for slopes (needs rasterio)")
     p.add_argument("--incident", action="append", help='"HH:MM@free-text report", repeatable')
@@ -508,9 +871,94 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--requirements", help="requirement base JSON (default: seed base; e.g. the base compiled from the doctrine)")
     x.add_argument("--provisional", action="store_true", help="use draft instances (doctrine not signed off yet), flagged")
     x.add_argument("--llm", action="store_true", help="name the sketch's marks with the model (L9, needs a vision-language model)")
+    x.add_argument("--network", choices=("scan", "scan250", "bdtopo", "osm"), default="scan",
+                   help="road graph source: scan = read from the 1:100 000 image (default; BD TOPO and OSM only check it), "
+                        "scan250 = from the 1:250 000 image, bdtopo = the BD TOPO shapefile (the pipeline on main), osm = the OSM shapefile")
+    x.add_argument("--corrector", help="learned corrector folder (coa-net scan-learn) applied to the image network")
     for k in ("bdtopo", "osm", "scan100", "scan250"):
         x.add_argument(f"--{k}", help=f"explicit path for {k}")
     x.set_defaults(fn=cmd_exercise)
+
+    rbp = sub.add_parser("real-bench", help="the 100-seed benchmark on a real network (random missions between the towns of a "
+                         "gazetteer): B0, B1 and COA-Net; on the image network the routes are also checked against BD TOPO")
+    rbp.add_argument("--data", required=True, help="folder with the Scenario files")
+    rbp.add_argument("--places", required=True, help='JSON {"name": [lon, lat]} gazetteer (towns the missions link)')
+    rbp.add_argument("--network", choices=("scan", "bdtopo"), default="scan")
+    rbp.add_argument("--corrector", help="with --network scan: learned corrector folder (coa-net scan-learn)")
+    rbp.add_argument("--max-rank", type=int, help="corridor backbone (default 5 on the image network, 4 on BD TOPO)")
+    rbp.add_argument("--seeds", type=int, default=100)
+    rbp.add_argument("--reps", type=int, default=20, help="Monte Carlo replications per plan")
+    rbp.add_argument("--requirements", help="requirement base JSON (default: seed base)")
+    rbp.add_argument("--out", default="outputs/real_bench")
+    rbp.set_defaults(fn=cmd_real_bench)
+
+    sr = sub.add_parser("scan-roads", help="read the road network from a scanned map (image input) and check it against the "
+                        "shapefiles: network.geojson, validation.md, overlay figures")
+    sr.add_argument("--data", required=True, help="folder with the Scenario files (scans; shapefiles for the checks)")
+    sr.add_argument("--scale", choices=("100k", "250k"), default="100k", help="which scan to read")
+    sr.add_argument("--tif", help="explicit scan path (overrides --data/--scale)")
+    sr.add_argument("--out", default="outputs/scan_roads")
+    sr.add_argument("--cache", help="cache folder (default: OUT/cache)")
+    sr.add_argument("--no-check", action="store_true", help="skip the sanity checks against BD TOPO and OSM")
+    sr.add_argument("--pairs", type=int, default=300, help="junction pairs for the route comparison")
+    sr.add_argument("--corrector", help="learned corrector folder (coa-net scan-learn) applied before the checks")
+    sr.set_defaults(fn=cmd_scan_roads)
+
+    sl = sub.add_parser("scan-learn", help="train the learned corrector of the image network on the shapefiles (labels), "
+                        "scored by spatial cross-validation on blocks of the sheet it never saw")
+    sl.add_argument("--data", required=True, help="folder with the Scenario files (scan; shapefiles as labels)")
+    sl.add_argument("--scale", choices=("100k", "250k"), default="100k")
+    sl.add_argument("--tif", help="explicit scan path (overrides --data/--scale)")
+    sl.add_argument("--out", default="outputs/scan_learn", help="corrector folder: models, out-of-fold predictions, report")
+    sl.add_argument("--cache", help="cache folder (default: OUT/cache)")
+    sl.add_argument("--grid", type=int, default=4, help="the sheet is cut into GRID x GRID blocks for the cross-validation")
+    sl.add_argument("--no-check", action="store_true", help="skip the sanity checks of the corrected network")
+    sl.add_argument("--no-route-gate", action="store_true", help="keep every correction that passes the road-level gate "
+                    "(default: also require that it brings routes closer to BD TOPO's, on pairs drawn in unseen blocks)")
+    sl.add_argument("--route-pairs", type=int, default=60, help="route-gate pairs per fold")
+    sl.add_argument("--no-cnn", action="store_true", help="skip the crop network for bridges and crossings (needs PyTorch)")
+    sl.add_argument("--no-geometry", action="store_true", help="skip the learned displacement of the lines")
+    sl.add_argument("--unet", help="folder of coa-net scan-unet: its out-of-fold road, importance and structure "
+                    "probabilities become features of every task")
+    sl.add_argument("--allow-removal", action="store_true", help="remove the roads and label gaps the corrector doubts "
+                    "(default: price them, so that no village is cut off)")
+    sl.set_defaults(fn=cmd_scan_learn)
+
+    su = sub.add_parser("scan-unet", help="train a small U-Net on the scan with BD TOPO drawn onto it (road, importance, "
+                        "structure), out of fold on the blocks of scan-learn; needs PyTorch")
+    su.add_argument("--data", required=True, help="folder with the Scenario files (scan; BD TOPO as labels)")
+    su.add_argument("--scale", choices=("100k", "250k"), default="100k")
+    su.add_argument("--tif", help="explicit scan path (overrides --data/--scale)")
+    su.add_argument("--out", default="outputs/scan_unet", help="folder for unet_oof.tif, unet_final.pt, unet_scores.json")
+    su.add_argument("--grid", type=int, default=4)
+    su.add_argument("--steps", type=int, default=2000, help="training steps per fold (batches of 8 tiles)")
+    su.add_argument("--no-final", action="store_true", help="skip the network trained on every block (for another sheet)")
+    su.set_defaults(fn=cmd_scan_unet)
+
+    pe = sub.add_parser("pdf-exercises", help="solve every route exercise of a PDF exercise file (points, deployment area, "
+                        "waypoints, shortest/fastest, distinct round trip) on the image network; layout, GeoJSON, decision log")
+    pe.add_argument("--data", required=True, help="folder with the scan (*100K.tif) and, for the checks, *BDTopo*.shp / *OSM*.shp")
+    pe.add_argument("--pdf", required=True, help="exercise file (PDF)")
+    pe.add_argument("--corrector", help="learned corrector folder (coa-net scan-learn) applied to the image network")
+    pe.add_argument("--out", default="outputs/pdf_exercises")
+    pe.add_argument("--cache", help="cache folder (default: OUT/cache)")
+    pe.add_argument("--only", type=int, nargs="*", help="exercise numbers to solve (default: all)")
+    pe.add_argument("--no-check", action="store_true", help="skip the BD TOPO / OSM checks")
+    pe.add_argument("--network", choices=("scan", "prc-alone"), default="scan",
+                    help="scan: road network read from the map (+ --corrector); prc-alone: the network traced from a fine-tuned "
+                         "PRC U-Net (--unet), the closest to BD TOPO and OSM on the exercise file")
+    pe.add_argument("--unet", help="with --network prc-alone: folder with unet_oof.tif (scripts/prc_unet.py merge)")
+    pe.add_argument("--tracing", help="with --network prc-alone: how the road network is traced from the probabilities, e.g. "
+                    "'low=0.3,bridge=150' (hysteresis: continue a road down to p 0.3; join dead ends to the road they point at "
+                    "within 150 m when the probability along the link stays reasonable). Default: the folder's network.pkl or "
+                    "tracing.json, else p >= 0.5")
+    pe.add_argument("--no-osm", action="store_true", help="do not use OSM at all, even if the data folder has it")
+    pe.add_argument("--prob-threshold", type=float, help="with --network prc-alone: penalise road sections whose PRC probability is "
+                    "below this threshold (operator's choice, e.g. 0.7): routes avoid the stretches the U-Net is unsure of")
+    pe.add_argument("--prob-penalty", type=float, default=3.0, help="cost x (1 + PENALTY x share of the section below the threshold)")
+    pe.add_argument("--builtup-rgb", default="204,206,184", help="colour of the built-up tint on the scan (IGN 1:100 000: grey-beige)")
+    pe.add_argument("--builtup-tol", type=int, default=6, help="max difference per channel for a palette colour to count as the tint")
+    pe.set_defaults(fn=cmd_pdf_exercises)
 
     a = sub.add_parser("audit", help="audit a Scenario delivery: files, CRS, encodings, OSM/BD TOPO agreement, scan alignment")
     a.add_argument("--data", required=True)

@@ -298,7 +298,8 @@ def build_graph(segments: Iterable[tuple[list, dict, str]], name: str, simplify:
     return finalize_graph(G, centrality_samples=centrality_samples)
 
 
-_SIG_KEYS = ("highway", "maxspeed_kmh", "width_m", "lanes", "paved", "bridge", "tunnel", "ford", "built_up", "name", "dual")
+_SIG_KEYS = ("highway", "maxspeed_kmh", "width_m", "lanes", "paved", "bridge", "tunnel", "ford", "built_up", "name", "dual",
+             "scan_symbol", "scan_gap", "scan_stream")  # scan_*: image network (scanroads.py); None on vector data
 
 
 def _sig(d: dict) -> tuple:

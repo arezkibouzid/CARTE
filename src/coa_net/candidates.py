@@ -83,6 +83,7 @@ class Route:
     max_leg_km: float  # longest distance between fuel points
     tags: set[str] = field(default_factory=set)
     violations: list[tuple[str, str, str]] = field(default_factory=list)  # route-level (req id, tier, detail)
+    doubt_m: float = 0.0  # image network: length-weighted doubt of the learned corrector (m)
 
     @property
     def key(self) -> tuple[Arc, ...]:
@@ -155,7 +156,7 @@ def search(
         return ()
     bc, bn = _banned_sets(H, banned_elements)
     bad_arcs = banned_arcs or set()
-    w = weight or (lambda arc, ae: ae.time_min)
+    w = weight or (lambda arc, ae: ae.time_min + ae.doubt_min)
     arcs = coster.arcs
     G = H.G
     tick = itertools.count()
@@ -445,6 +446,7 @@ def make_route(H: CorridorGraph, group: Group, arcs: tuple[Arc, ...], aps: set[s
         max_turn=max_turn,
         max_leg_km=max_leg / 1000.0,
         tags=set(tags or ()),
+        doubt_m=sum(a.doubt_m for a in aes),
     )
     r.violations = route_violations(r, group)
     return r
@@ -520,7 +522,7 @@ def _flow_network(H: CorridorGraph, coster) -> dict[tuple[Any, Any], tuple[int, 
             if ae is None or not ae.ok:
                 continue
             head = ("a", arc)
-            net[(u, head)] = (2, int(round(ae.time_min * 100)))
+            net[(u, head)] = (2, int(round((ae.time_min + ae.doubt_min) * 100)))
             prev = head
             for e in H.corridors[arc[0]].arc_elements(arc[1]):
                 ein, eout = ("e", e, "in"), ("e", e, "out")
@@ -588,12 +590,17 @@ def disjoint_pair(H: CorridorGraph, group: Group, max_turn: float | None = None)
 
     Corridors without critical elements have capacity 2, so the two routes may
     share ordinary roads; only bridges, tunnels and the like must be distinct."""
-    flow_e = _two_unit_min_cost_flow(_flow_network(H, group.coster), group.origin, group.destination)
+    net = _flow_network(H, group.coster)
+    flow_e = _two_unit_min_cost_flow(net, group.origin, group.destination)
     if flow_e is None:
         return None
     flow: dict[Any, dict[Any, int]] = {}
     for (a, b), f in flow_e.items():
         flow.setdefault(a, {})[b] = f
+    # element nodes are shared by every arc crossing the element: a unit may enter an element at a junction on
+    # one arc and leave it on another arc that starts there, without passing that arc's head node. Each edge
+    # leaving an element node is owned by the arc whose chain it belongs to, so that arc is recorded too.
+    owners = _element_exit_owners(H, group.coster)
     paths = []
     for _ in range(2):
         node = group.origin
@@ -607,9 +614,37 @@ def disjoint_pair(H: CorridorGraph, group: Group, max_turn: float | None = None)
             flow[node][nxt] -= 1
             if isinstance(nxt, tuple) and nxt and nxt[0] == "a":
                 arcs.append(nxt[1])
+            elif isinstance(node, tuple) and node and node[0] == "e" and arcs:
+                cands = owners.get((node, nxt), [])
+                if cands and arcs[-1] not in cands:
+                    here = H.arc_end(arcs[-1])
+                    a2 = next((a for a in cands if H.arc_nodes(a)[0] == here), None)
+                    if a2 is not None:
+                        arcs.append(a2)
             node = nxt
-        paths.append(_remove_loops(H, arcs, group.origin))
+        path = _remove_loops(H, arcs, group.origin)
+        if any(H.arc_end(a) != H.arc_nodes(b)[0] for a, b in zip(path[:-1], path[1:])):
+            return None  # not a drivable sequence: no disjoint pair from this flow
+        paths.append(path)
     return paths[0], paths[1]
+
+
+def _element_exit_owners(H: CorridorGraph, coster) -> dict[tuple[Any, Any], list[Arc]]:
+    """Arcs owning each edge that leaves an element node in :func:`_flow_network`."""
+    own: dict[tuple[Any, Any], list[Arc]] = {}
+    for u, outs in H.out.items():
+        for arc, v in outs:
+            ae = coster.arcs.get(arc)
+            if ae is None or not ae.ok:
+                continue
+            prev = None
+            for e in H.corridors[arc[0]].arc_elements(arc[1]):
+                if prev is not None:
+                    own.setdefault((prev, ("e", e, "in")), []).append(arc)
+                prev = ("e", e, "out")
+            if prev is not None:
+                own.setdefault((prev, v), []).append(arc)
+    return own
 
 
 def _remove_loops(H: CorridorGraph, arcs: list[Arc], src: Any) -> tuple[Arc, ...]:
@@ -634,7 +669,7 @@ def _remove_loops(H: CorridorGraph, arcs: list[Arc], src: Any) -> tuple[Arc, ...
 
 def _weight_fn(H: CorridorGraph, coster: GroupCoster, wx: float, wb: float, wo: float, wp: float):
     def w(arc: Arc, ae: ArcEval) -> float:
-        return ae.time_min + wx * ae.exposure + wb * ae.builtup_m / 1000 + wo * ae.open_m / 1000 + wp * ae.pref_m / 1000
+        return ae.time_min + ae.doubt_min + wx * ae.exposure + wb * ae.builtup_m / 1000 + wo * ae.open_m / 1000 + wp * ae.pref_m / 1000
 
     return w
 
@@ -749,7 +784,7 @@ def generate_candidates(
         for r in pool.values():
             for c in r.corridors:
                 used[c] = used.get(c, 1.0) * 1.6
-        add(run(weight=lambda arc, ae: ae.time_min * used.get(arc[0], 1.0)), "diverse")
+        add(run(weight=lambda arc, ae: (ae.time_min + ae.doubt_min) * used.get(arc[0], 1.0)), "diverse")
     for base in sorted(pool.values(), key=lambda r: r.time_min)[:3]:
         crit = frozenset(base.elements - aps)
         if crit:

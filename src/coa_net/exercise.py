@@ -590,11 +590,13 @@ def itinerary_facts(R: RoadArrays, it: Itinerary, evals: dict, towns_small, spec
     bridges, tunnels, fords, unknown_w, narrow, steep, builtup_m = [], 0, 0, 0.0, [], 0.0, 0.0
     uncertain_w = 0.0  # roads whose rounded width may be under the column's need
     max_slope = 0.0
+    slope_known = False
+    sym_m: dict[str, float] = {}
     risks: dict[str, int] = {}
     for e in it.edge_idx:
         a, b = R.edges[e]
         d = G[a][b]
-        nm = d.get("name") or ""
+        nm = (d.get("name") or "").split(";")[0].replace(" ", "")  # OSM writes "D 766" (and "N 24;E 50")
         if re.match(r"^[ADNCRE]\d", nm) and (not names or names[-1] != nm):
             names.append(nm)
         if d.get("bridge"):
@@ -606,11 +608,14 @@ def itinerary_facts(R: RoadArrays, it: Itinerary, evals: dict, towns_small, spec
         elif d["width_m"] < need_width_m:
             narrow.append(d["length_m"])
         if d.get("slope_pct") is not None:
+            slope_known = True
             max_slope = max(max_slope, d["slope_pct"])
             if d["slope_pct"] > spec.steep_slope_pct:
                 steep += d["length_m"]
         if d.get("built_up"):
             builtup_m += d["length_m"]
+        if d.get("scan_symbol"):
+            sym_m[d["scan_symbol"]] = sym_m.get(d["scan_symbol"], 0.0) + d["length_m"]
         for rid, detail in evals[R.edges[e]].unknown:
             risks[rid] = risks.get(rid, 0) + 1
             if "may be under" in detail:
@@ -626,6 +631,8 @@ def itinerary_facts(R: RoadArrays, it: Itinerary, evals: dict, towns_small, spec
         "width_uncertain_km": round(uncertain_w / 1000, 1),
         "steep_km": round(steep / 1000, 2), "max_slope_pct": max_slope, "builtup_km": round(builtup_m / 1000, 1),
         "built_up_towns_crossed": crossed, "unknown_risks": risks,
+        "slope_known": slope_known,
+        "map_symbols_km": {k: round(v / 1000, 1) for k, v in sorted(sym_m.items(), key=lambda kv: -kv[1])},
     }
 
 

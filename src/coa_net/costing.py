@@ -37,6 +37,7 @@ class EdgeEval:
     unknown: list[tuple[str, str]] = field(default_factory=list)  # (requirement id, detail), policy "risk"
     blocked: list[tuple[str, str, str]] = field(default_factory=list)  # (requirement id, tier, detail)
     recce: list[tuple[str, str]] = field(default_factory=list)  # unknowns that block until reconnoitred
+    doubt: float = 0.0  # image network: extra cost factor of a road the learned corrector doubts (0 when sure or unknown)
 
 
 @dataclass
@@ -52,6 +53,8 @@ class ArcEval:
     max_threat: float
     blocked: list[tuple[str, str, str]]  # first violations, for explanations
     recce: list[tuple[str, str]]
+    doubt_min: float = 0.0  # extra minutes charged for doubtful image roads (route choice only, not travel time)
+    doubt_m: float = 0.0  # length-weighted doubt (m)
 
 
 class GroupCoster:
@@ -186,6 +189,11 @@ class GroupCoster:
         if unknown:
             pref = True
         t = d["length_m"] / 1000.0 / self.edge_speed(d) * 60.0
+        doubt = 0.0
+        if d.get("source_id") == "scan":
+            from .scanlearn import uncertainty_penalty
+
+            doubt = uncertainty_penalty(d) - 1.0
         return EdgeEval(
             ok=not blocked,
             time_min=t,
@@ -197,6 +205,7 @@ class GroupCoster:
             unknown=unknown,
             blocked=blocked,
             recce=recce,
+            doubt=doubt,
         )
 
     def _has(self, d: dict, attribute: str, min_rank: int = 5) -> bool:
@@ -268,6 +277,8 @@ class GroupCoster:
             max_threat=max((e.threat for e in es), default=0.0),
             blocked=blocked[:3],
             recce=[r for e in es for r in e.recce],
+            doubt_min=sum(e.time_min * e.doubt for e in es),
+            doubt_m=sum(e.length_m * min(e.doubt, 1.0) for e in es),
         )
 
     def arc_ok(self, arc: Arc) -> bool:
