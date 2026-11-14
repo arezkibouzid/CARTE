@@ -1,0 +1,338 @@
+{
+ "schema_version": "1.0",
+ "document_id": "exercise_21-to-27",
+ "exercise_id": "23",
+ "main_pages": [
+  3
+ ],
+ "context_pages": [],
+ "task_types": [
+  "coordination"
+ ],
+ "evidence": [
+  {
+   "id": "ev1",
+   "document_id": "exercise_21-to-27",
+   "page": 3,
+   "modality": "text",
+   "quote": "Junction occupancy and congestion",
+   "bbox": null,
+   "observation": null
+  }
+ ],
+ "entities": [],
+ "geographic_objects": [
+  {
+   "id": "g1",
+   "text": "DA1",
+   "evidence_ids": [
+    "ev1"
+   ],
+   "certainty": "explicit",
+   "role": "exercise_input",
+   "kind": "point",
+   "purpose": "deployment_area",
+   "coordinate_status": "explicit",
+   "crs": "WGS84",
+   "positions": [
+    {
+     "longitude": 4.09213,
+     "latitude": 49.15615,
+     "evidence_ids": [
+      "ev1"
+     ]
+    }
+   ],
+   "member_ids": []
+  },
+  {
+   "id": "g2",
+   "text": "DA2",
+   "evidence_ids": [
+    "ev1"
+   ],
+   "certainty": "explicit",
+   "role": "exercise_input",
+   "kind": "point",
+   "purpose": "deployment_area",
+   "coordinate_status": "explicit",
+   "crs": "WGS84",
+   "positions": [
+    {
+     "longitude": 5.48992,
+     "latitude": 49.34313,
+     "evidence_ids": [
+      "ev1"
+     ]
+    }
+   ],
+   "member_ids": []
+  },
+  {
+   "id": "g3",
+   "text": "DA3",
+   "evidence_ids": [
+    "ev1"
+   ],
+   "certainty": "explicit",
+   "role": "exercise_input",
+   "kind": "point",
+   "purpose": "deployment_area",
+   "coordinate_status": "explicit",
+   "crs": "WGS84",
+   "positions": [
+    {
+     "longitude": 5.62423,
+     "latitude": 48.68776,
+     "evidence_ids": [
+      "ev1"
+     ]
+    }
+   ],
+   "member_ids": []
+  },
+  {
+   "id": "g4",
+   "text": "DA4",
+   "evidence_ids": [
+    "ev1"
+   ],
+   "certainty": "explicit",
+   "role": "exercise_input",
+   "kind": "point",
+   "purpose": "deployment_area",
+   "coordinate_status": "explicit",
+   "crs": "WGS84",
+   "positions": [
+    {
+     "longitude": 4.71215,
+     "latitude": 48.60316,
+     "evidence_ids": [
+      "ev1"
+     ]
+    }
+   ],
+   "member_ids": []
+  }
+ ],
+ "statements": [
+  {
+   "id": "s1",
+   "text": "Three intersections A, B and C between roads D931 and D3, D2 and D3, D603 and D998",
+   "evidence_ids": [
+    "ev1"
+   ],
+   "certainty": "explicit",
+   "role": "exercise_input",
+   "kind": "input_fact",
+   "category": "other",
+   "operator": "unspecified",
+   "value": {
+    "number": null,
+    "text": null,
+    "boolean": null,
+    "unit": null
+   },
+   "scope": {
+    "subject_ids": [],
+    "leg": "unspecified",
+    "period": "unspecified",
+    "condition": null
+   }
+  },
+  {
+   "id": "s2",
+   "text": "Route used by the 1st Marine Infantry Regiment and by the 2nd Marine Infantry Regiment along the D3, D603, D931 roads",
+   "evidence_ids": [
+    "ev1"
+   ],
+   "certainty": "explicit",
+   "role": "exercise_input",
+   "kind": "input_fact",
+   "category": "other",
+   "operator": "unspecified",
+   "value": {
+    "number": null,
+    "text": null,
+    "boolean": null,
+    "unit": null
+   },
+   "scope": {
+    "subject_ids": [],
+    "leg": "unspecified",
+    "period": "unspecified",
+    "condition": null
+   }
+  },
+  {
+   "id": "s3",
+   "text": "Generate diagrams showing junction occupancy by both 1st and 2nd Marine Infantry Regiments.",
+   "evidence_ids": [
+    "ev1"
+   ],
+   "certainty": "explicit",
+   "role": "exercise_requirement",
+   "kind": "objective",
+   "category": "other",
+   "operator": "unspecified",
+   "value": {
+    "number": null,
+    "text": null,
+    "boolean": null,
+    "unit": null
+   },
+   "scope": {
+    "subject_ids": [],
+    "leg": "unspecified",
+    "period": "unspecified",
+    "condition": null
+   }
+  },
+  {
+   "id": "s4",
+   "text": "In the event of congestion at road junctions, propose solutions to ensure the smooth flow of military movements.",
+   "evidence_ids": [
+    "ev1"
+   ],
+   "certainty": "explicit",
+   "role": "exercise_requirement",
+   "kind": "objective",
+   "category": "other",
+   "operator": "unspecified",
+   "value": {
+    "number": null,
+    "text": null,
+    "boolean": null,
+    "unit": null
+   },
+   "scope": {
+    "subject_ids": [],
+    "leg": "unspecified",
+    "period": "unspecified",
+    "condition": null
+   }
+  },
+  {
+   "id": "s5",
+   "text": "Flow rate is the number of vehicles or convoys passing through a given point per unit of time.",
+   "evidence_ids": [
+    "ev1"
+   ],
+   "certainty": "explicit",
+   "role": "context_definition",
+   "kind": "definition",
+   "category": "other",
+   "operator": "unspecified",
+   "value": {
+    "number": null,
+    "text": null,
+    "boolean": null,
+    "unit": null
+   },
+   "scope": {
+    "subject_ids": [],
+    "leg": "unspecified",
+    "period": "unspecified",
+    "condition": null
+   }
+  },
+  {
+   "id": "s6",
+   "text": "Saturation is when traffic demand reaches or exceeds the capacity of a junction or route, causing delays and congestion.",
+   "evidence_ids": [
+    "ev1"
+   ],
+   "certainty": "explicit",
+   "role": "context_definition",
+   "kind": "definition",
+   "category": "other",
+   "operator": "unspecified",
+   "value": {
+    "number": null,
+    "text": null,
+    "boolean": null,
+    "unit": null
+   },
+   "scope": {
+    "subject_ids": [],
+    "leg": "unspecified",
+    "period": "unspecified",
+    "condition": null
+   }
+  },
+  {
+   "id": "s7",
+   "text": "Deconfliction is the spatial and temporal coordination of military movements to prevent conflicts between convoys sharing the same routes or junction.",
+   "evidence_ids": [
+    "ev1"
+   ],
+   "certainty": "explicit",
+   "role": "context_definition",
+   "kind": "definition",
+   "category": "other",
+   "operator": "unspecified",
+   "value": {
+    "number": null,
+    "text": null,
+    "boolean": null,
+    "unit": null
+   },
+   "scope": {
+    "subject_ids": [],
+    "leg": "unspecified",
+    "period": "unspecified",
+    "condition": null
+   }
+  },
+  {
+   "id": "s8",
+   "text": "Example: 3 vehicles per minute at 50 km/h",
+   "evidence_ids": [
+    "ev1"
+   ],
+   "certainty": "explicit",
+   "role": "illustrative_example",
+   "kind": "other",
+   "category": "other",
+   "operator": "unspecified",
+   "value": {
+    "number": null,
+    "text": null,
+    "boolean": null,
+    "unit": null
+   },
+   "scope": {
+    "subject_ids": [],
+    "leg": "unspecified",
+    "period": "unspecified",
+    "condition": null
+   }
+  }
+ ],
+ "ordered_relations": [],
+ "requested_outputs": [
+  {
+   "id": "d1",
+   "text": "Intersections occupancy charts",
+   "evidence_ids": [
+    "ev1"
+   ],
+   "certainty": "explicit",
+   "role": "exercise_requirement",
+   "kind": "occupancy_chart"
+  },
+  {
+   "id": "d2",
+   "text": "Proposals to ensure the smooth flow of movements.",
+   "evidence_ids": [
+    "ev1"
+   ],
+   "certainty": "explicit",
+   "role": "exercise_requirement",
+   "kind": "options_report"
+  }
+ ],
+ "references": [],
+ "issues": [],
+ "unparsed_statements": []
+}

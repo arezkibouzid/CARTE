@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+# heavy binary index files: rebuilt by `docrag index`
+*.npy
+*.npz
+# the PDFs are not stored here (see doctrine/SOURCES.md)
+doctrine/*.pdf
+# working folders are ignored, except the audited one kept in the repository
+work/
+work_demo/
+work_rebuilt*/
+scratch/
+archive_logs/
+_rangement/
+out/

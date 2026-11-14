@@ -1,0 +1,80 @@
+STEP 5 SAFETY CHAIN (test approvals in a temporary folder; your real decisions.json is not touched)
+
+candidates: {'constraint': 16, 'blocked': 51, 'advisory': 28, 'unclassified_evidence': 43} 
+
+A  APPROVAL GATES
+   [PASS] cannot accept an unclassified candidate
+   [PASS] cannot accept an ambiguous candidate
+   [PASS] cannot accept a blocked candidate (context missing) without context
+   [PASS] cannot accept a rule that needs a PDF comparison without ticking it
+   [PASS] complete constraints can be accepted (16)
+
+B  EXPORT
+   [PASS] only approved candidates are in the export
+   [PASS] every approved complete constraint is in the export
+   [PASS] nothing unapproved is exported (blocked, unclassified, advisory not accepted)
+   [PASS] every exported rule is a hard class and binding
+   [PASS] the export passes validation against the index
+   [PASS] a forged approval of unclassified is refused at export
+   [PASS] a forged approval of ambiguous is refused at export
+   [PASS] a forged approval of blocked without context is refused at export
+   [PASS] an accepted non-binding candidate goes to `advisory`, never to `rules`
+   [PASS] the advisory export passes validation
+
+C  VALIDATION: damaged exports must be REJECTED (hash recomputed, so only the content checks can catch it)
+   [PASS] value x10 + 7                                    -> rejected
+   [PASS] wrong unit                                       -> rejected
+   [PASS] quote and value both changed                     -> rejected
+   [PASS] operator flipped (< to >)                        -> rejected
+   [PASS] bound flipped (max to min)                       -> rejected
+   [PASS] invented quotation                               -> rejected
+   [PASS] page that does not hold the quote                -> rejected
+   [PASS] document that does not exist                     -> rejected
+   [PASS] rule marked draft                                -> rejected
+   [PASS] approved_by emptied                              -> rejected
+   [PASS] PDF comparison removed                           -> rejected
+   [PASS] context incomplete but exported                  -> rejected
+   [PASS] class changed to a non-constraint                -> rejected
+   [PASS] binding flag set to false inside rules           -> rejected
+   [PASS] unclassified class inside rules                  -> rejected
+   [PASS] EVID template inside rules                       -> rejected
+   [PASS] duplicate id                                     -> rejected
+   [PASS] unknown template                                 -> rejected
+   [PASS] invalid strictness                               -> rejected
+   [PASS] numeric rule turned into a flag                  -> rejected
+   [PASS] binding entry smuggled into advisory             -> rejected
+   [PASS] value edited, hash left as it was                -> rejected
+
+E  HUMAN EDITS AND APPROVAL OF THE EXACT VERSION
+   [PASS] an edit of scope/conditions without the PDF comparison is refused at approval
+   [PASS] an edited value without the PDF comparison is refused at approval
+   [PASS] POSITIVE: a hand-typed rule verified against the PDF exports and validates
+   [PASS] a hand-typed rule cannot be accepted without the PDF comparison
+   [PASS] a forged approval of a hand-typed rule without the PDF comparison is refused at export
+   [PASS] POSITIVE: a verified correction (scope and conditions) exports with the edit and validates
+   [PASS] the edited rule says it was edited and needs the PDF comparison
+   [PASS] conditions removed (a general rule is created)   -> rejected
+   [PASS] scope removed                                    -> rejected
+   [PASS] a different condition                            -> rejected
+   [PASS] a condition added                                -> rejected
+   [PASS] empty text in scope                              -> rejected
+   [PASS] approval fingerprint removed                     -> rejected
+   [PASS] PDF comparison flag removed                      -> rejected
+   [PASS] origin removed                                   -> rejected
+   [PASS] conditions removed AND fingerprint recomputed -> rejected (recorded approval differs)
+   [PASS] conditions (edit in decisions.json) changed after approval -> export refuses until it is approved again
+   [PASS] scope (edit in decisions.json) changed after approval -> export refuses until it is approved again
+   [PASS] value changed after approval -> export refuses until it is approved again
+   [PASS] operator changed after approval -> export refuses until it is approved again
+   [PASS] unit changed after approval -> export refuses until it is approved again
+   [PASS] class changed after approval -> export refuses until it is approved again
+   [PASS] an approval with no recorded version (hand-written decisions.json) is refused at export
+   [PASS] unclassified: a forged Accept with a correct fingerprint still does not enter the export
+   [PASS] blocked (context missing): a forged Accept with a correct fingerprint still does not enter the export
+
+D  DETERMINISM
+   [PASS] same approvals give the same rules and hashes
+   [PASS] the real decisions.json was not touched
+
+64 of 64 checks passed
+temporary folder: C:\Users\MOLTRA~1\AppData\Local\Temp\step5_2gclctqv

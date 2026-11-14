@@ -1,0 +1,69 @@
+SYNTHETIC TEST DOCUMENT. This is not NATO doctrine. All values are invented to test software.
+
+ROAD MOVEMENT STANDARD FOR LOGISTIC CONVOYS (SYNTHETIC)
+
+[page 1]
+1 Scope
+1. This standard sets the rules for planning the road movement of logistic convoys in the theatre.
+2. It applies to all convoys unless a national supplement states otherwise.
+
+2 Definitions
+1. A convoy is a group of vehicles moving under one commander.
+2. A serial is a subdivision of a convoy that moves as a unit.
+3. A halt is a planned stop of the convoy for rest, refuelling or maintenance.
+
+3 Road classification
+3.1 Classes
+1. Roads are classified by carriageway width. Class A roads have a width of at least 6.0 m.
+2. Class B roads have a width of at least 4.5 m but less than 6.0 m.
+3. Class C roads are narrower than 4.5 m and are to be used only when no other route exists.
+3.2 Use by heavy vehicles
+1. Heavy vehicles shall not use roads narrower than 4.5 m.
+2. Tank transporters should be routed on Class A roads whenever possible.
+
+[page 2]
+4 Speed
+1. The maximum speed of a convoy on Class A roads shall not exceed 60 km/h.
+2. Heavy vehicles shall not exceed 40 km/h on Class B roads.
+3. In built-up areas the convoy shall not exceed 30 km/h.
+4. The speed limit for Class C roads is given in Annex A.
+5. At night the maximum speed should be reduced by 10 km/h.
+
+5 Serial intervals
+1. Serials shall keep an interval of at least 150 m between the last vehicle of one serial and the first vehicle of the next.
+2. Within a serial, vehicles should keep a distance of 50 m on open roads.
+3. The distance between vehicles shall be doubled in poor visibility.
+4. The time gap between convoys sharing a route shall be at least 10 min.
+
+6 Halts
+1. A halt shall be made every 2 hours of driving.
+2. Each halt should last at least 15 min.
+3. Halt areas shall be located outside built-up areas.
+
+[page 3]
+7 Bridges and tunnels
+1. A convoy shall not cross a bridge whose load class is lower than the MLC of its heaviest vehicle.
+2. Tank transporters with MLC 100 shall use only bridges of MLC 100 or higher.
+3. Tunnels shall have a clearance of at least 0.3 m above the highest vehicle.
+4. Vehicles taller than 4.0 m shall not enter tunnels without prior reconnaissance.
+
+8 Hazardous cargo
+1. Fuel tankers shall avoid towns of more than 10 000 inhabitants.
+2. Vehicles carrying explosives must not be halted within built-up areas.
+3. Convoys carrying hazardous cargo shall be escorted.
+
+9 Gradients and turns
+1. Heavy vehicles shall not use gradients steeper than 12 %.
+2. Sharp turns with a radius below 25 m shall be avoided by vehicles longer than 12 m.
+
+10 Itineraries
+1. Where several itineraries link the same two zones, they shall not intersect and shall be at least 5 km apart.
+2. The primary itinerary should be the fastest one.
+
+11 Incident reporting
+1. Incidents shall be reported to the movement control centre without delay.
+2. A convoy commander may change the route after an incident if the change is reported at once.
+
+Annex A Speed limits for Class C roads
+1. On Class C roads the convoy shall not exceed 20 km/h.
+2. Heavy vehicles may use Class C roads only with an escort.

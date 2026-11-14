@@ -1,0 +1,13 @@
+SYNTHETIC TEST DOCUMENT. This is not NATO doctrine. All values are invented to test software.
+
+NATIONAL SUPPLEMENT TO THE ROAD MOVEMENT STANDARD (SYNTHETIC)
+
+[page 1]
+1 Speed and spacing
+1. Heavy vehicles shall not exceed 35 km/h on Class B roads.
+2. The time gap between convoys sharing a route shall be at least 10 min.
+3. A halt shall be made every 3 hours of driving.
+
+2 Administration
+1. The national movement control centre keeps the register of convoys.
+2. Requests for exceptions shall be sent to the national movement control centre.

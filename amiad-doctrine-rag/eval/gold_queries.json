@@ -1,0 +1,17 @@
+[
+ {"query": "maximum speed of heavy vehicles on Class B roads", "must_contain": ["shall not exceed 40 km/h on Class B", "shall not exceed 35 km/h on Class B"]},
+ {"query": "speed limit on Class C roads", "must_contain": ["On Class C roads the convoy shall not exceed 20 km/h"]},
+ {"query": "how fast may a convoy go in towns", "must_contain": ["In built-up areas the convoy shall not exceed 30 km/h"]},
+ {"query": "distance between serials", "must_contain": ["interval of at least 150 m"]},
+ {"query": "time gap between two convoys on the same route", "must_contain": ["time gap between convoys sharing a route shall be at least 10 min"]},
+ {"query": "how often must the convoy stop for a rest", "must_contain": ["halt shall be made every 2 hours", "halt shall be made every 3 hours"]},
+ {"query": "which bridges can a tank transporter use", "must_contain": ["MLC 100", "load class is lower than the MLC"]},
+ {"query": "tunnel clearance", "must_contain": ["clearance of at least 0.3 m"]},
+ {"query": "can fuel tankers drive through a town", "must_contain": ["Fuel tankers shall avoid towns"]},
+ {"query": "does hazardous cargo need an escort", "must_contain": ["Convoys carrying hazardous cargo shall be escorted"]},
+ {"query": "steepest slope allowed for heavy vehicles", "must_contain": ["gradients steeper than 12"]},
+ {"query": "minimum distance between two alternative itineraries", "must_contain": ["at least 5 km apart"]},
+ {"query": "minimum road width for heavy vehicles", "must_contain": ["Heavy vehicles shall not use roads narrower than 4.5 m"]},
+ {"query": "what is a halt", "must_contain": ["A halt is a planned stop"]},
+ {"query": "reduce speed at night", "must_contain": ["At night the maximum speed should be reduced by 10 km/h"]}
+]

@@ -1,0 +1,12 @@
+SYNTHETIC TEST DOCUMENT. This is not NATO doctrine. It mimics a general doctrine text that holds principles but no numeric rules.
+
+PRINCIPLES OF MOVEMENT AND TRANSPORTATION (SYNTHETIC)
+
+[page 1]
+1 Principles
+1. Movement and transportation planning must be kept as simple as possible.
+2. Plans should be flexible and responsive to changes in the operational situation.
+3. Commanders must report significant delays to the next higher headquarters within 2 hours.
+4. The exercise normally lasts 5 days and has historically involved 12 nations.
+5. Transport capacity must be used efficiently to support the objective.
+6. Road transport is flexible and can reach most destinations, but its carrying capacity over long distances is limited.

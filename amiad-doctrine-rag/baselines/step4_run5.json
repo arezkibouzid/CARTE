@@ -1,0 +1,933 @@
+{
+ "all": {
+  "SEG.MLC|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|16|150.0|MLC|crossing of bridges by extremely heavy vehicles (i": {
+   "dest": "advisory",
+   "class": "threshold_trigger",
+   "id": "R-9aa04d"
+  },
+  "SEG.MLC|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|16|120.0|MLC|this case-by-case assessment is highly recommended": {
+   "dest": "blocked",
+   "class": "recommendation",
+   "id": "R-a5bf95"
+  },
+  "SEG.MLC|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|17|150.0|MLC|thirty-two hypothetical vehicles (16 tracked vehic": {
+   "dest": "blocked",
+   "class": "threshold_trigger",
+   "id": "R-40adc8"
+  },
+  "SEG.MLC|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|17|4.0|MLC|thirty-two hypothetical vehicles (16 tracked vehic": {
+   "dest": "blocked",
+   "class": "threshold_trigger",
+   "id": "R-e68199"
+  },
+  "SEG.MLC|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|19|150.0|MLC|a detailed analysis procedure or the approach as o": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-b0fced"
+  },
+  "SEG.HEIGHT|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|27|4.5|m|the desirable minimum headroom for bridges is 4.50": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-836a90"
+  },
+  "SEG.WIDTH|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|30|2.75|m|the following are the desirable minimum clear road": {
+   "dest": "blocked",
+   "class": "recommendation",
+   "id": "R-6f8a7b"
+  },
+  "SEG.WIDTH|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|30|5.5|m|narrow bridges: bridges narrower than 5.50 m shall": {
+   "dest": "blocked",
+   "class": "mandatory_constraint",
+   "id": "R-994d22"
+  },
+  "NET.GAP|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|30|0.25|m|through truss brid ges: for through truss bridges ": {
+   "dest": "blocked",
+   "class": "mandatory_constraint",
+   "id": "R-2f6589"
+  },
+  "SEG.HEIGHT|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|30|0.3|m|through truss brid ges: for through truss bridges ": {
+   "dest": "blocked",
+   "class": "mandatory_constraint",
+   "id": "R-f6984f"
+  },
+  "SEG.SPEED|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|83|5.0|km/h|they are guided and their speed must not exceed 5 ": {
+   "dest": "blocked",
+   "class": "mandatory_constraint",
+   "id": "R-766f5b"
+  },
+  "NET.GAP|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|83|30.5|m|this value (which must never be lower than 30.5 m)": {
+   "dest": "blocked",
+   "class": "mandatory_constraint",
+   "id": "R-54c11a"
+  },
+  "PRO.ESCORT|NP_allied_joint_doctrine_for_movement_AJP-4.4|45|None|None|the following factors affect the suitability of in": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-6fbe6f"
+  },
+  "SEG.WIDTH|STANAG_2015|19|3.5|m|the average width of a lane required for the movem": {
+   "dest": "advisory",
+   "class": "descriptive_value",
+   "id": "R-216cd7"
+  },
+  "SEG.WIDTH|STANAG_2015|20|6.0|m|by referring to table 2-1 it can be seen that a wi": {
+   "dest": "blocked",
+   "class": "mandatory_constraint",
+   "id": "R-066ac4"
+  },
+  "SEG.WIDTH|STANAG_2015|20|5.5|m|by referring to table 2-1 it can be seen that a wi": {
+   "dest": "blocked",
+   "class": "descriptive_value",
+   "id": "R-e03b91"
+  },
+  "SEG.GRADE|STANAG_2015|32|7.0|%|methods of recording percent of slope (stanag 2253": {
+   "dest": "advisory",
+   "class": "descriptive_value",
+   "id": "R-c17187"
+  },
+  "SEG.GRADE|STANAG_2015|35|7.0|%|it should be remembered that slopes of 7 percent o": {
+   "dest": "blocked",
+   "class": "threshold_trigger",
+   "id": "R-92261a"
+  },
+  "SEG.TURN|STANAG_2015|36|2.0|m|2-13) is based on the formula- r = e2/sm +m/2 c - ": {
+   "dest": "advisory",
+   "class": "descriptive_value",
+   "id": "R-02d7a2"
+  },
+  "SEG.HEIGHT|STANAG_2015|38|4.3|m|overhead clearance less than 4.3 meters (14 ft) is": {
+   "dest": "advisory",
+   "class": "threshold_trigger",
+   "id": "R-90e934"
+  },
+  "SEG.WEIGHT|STANAG_2015|71|3.0|t|standard military self-propelled vehicles with a g": {
+   "dest": "advisory",
+   "class": "threshold_trigger",
+   "id": "R-0c59a6"
+  },
+  "NET.GAP|STANAG_2015|74|30.5|m|only normal convoy discipline is imposed; that is,": {
+   "dest": "constraint",
+   "class": "conditional_requirement",
+   "id": "R-730a70"
+  },
+  "SEG.SPEED|STANAG_2015|74|40.0|km/h|only normal convoy discipline is imposed; that is,": {
+   "dest": "constraint",
+   "class": "conditional_requirement",
+   "id": "R-017fda"
+  },
+  "NET.GAP|STANAG_2015|75|50.0|m|caution crossings require that vehicles remain on ": {
+   "dest": "constraint",
+   "class": "conditional_requirement",
+   "id": "R-783908"
+  },
+  "SEG.SPEED|STANAG_2015|75|12.0|km/h|caution crossings require that vehicles remain on ": {
+   "dest": "constraint",
+   "class": "conditional_requirement",
+   "id": "R-42057a"
+  },
+  "SEG.SPEED|STANAG_2015|75|5.0|km/h|risk crossings require that vehicles remain over t": {
+   "dest": "constraint",
+   "class": "conditional_requirement",
+   "id": "R-98f179"
+  },
+  "SEG.WEIGHT|STANAG_2015|130|3.0|t|class numbers must be assigned to all selfpropelle": {
+   "dest": "advisory",
+   "class": "threshold_trigger",
+   "id": "R-0970f7"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|54|2.0|t|it can pull a pls trailer that also has a 16 1/2 t": {
+   "dest": "blocked",
+   "class": "descriptive_value",
+   "id": "R-231531"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|54|33.0|t|it can pull a pls trailer that also has a 16 1/2 t": {
+   "dest": "blocked",
+   "class": "descriptive_value",
+   "id": "R-e3b514"
+  },
+  "NET.GAP|STANAG_2174_alternative|71|50.0|m|normally, the gap will be 25 to 50 meters in urban": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-a5a196"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|73|None|None|besides convoy control and organization, convoy co": {
+   "dest": "blocked",
+   "class": "ambiguous_or_incomplete",
+   "id": "R-893162"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|74|None|None|although these teams do not normally escort convoy": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-478b0a"
+  },
+  "SCH.HALT|STANAG_2174_alternative|75|15.0|min|short halts will normally last 10 to 15 minutes.": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-1c3faa"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|78|None|None|convoy escort and security elements are usually th": {
+   "dest": "blocked",
+   "class": "recommendation",
+   "id": "R-044965"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|78|None|None|escorts should be placed to allow maximum protecti": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-32eb65"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|78|None|None|in placing escorts, the commander must consider th": {
+   "dest": "blocked",
+   "class": "ambiguous_or_incomplete",
+   "id": "R-3a25a7"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|78|None|None|a convoy may be provided mp or combat force escort": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-8ef293"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|78|None|None|since it is easier for vehicles to move forward, s": {
+   "dest": "blocked",
+   "class": "mandatory_constraint",
+   "id": "R-21e226"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|78|None|None|if only one escort vehicle is provided, it should ": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-fd5825"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|81|None|None|prior approval from higher headquarters must be re": {
+   "dest": "blocked",
+   "class": "mandatory_constraint",
+   "id": "R-93d5ae"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|83|None|None|if a civilian police escort is not available, mps ": {
+   "dest": "blocked",
+   "class": "recommendation",
+   "id": "R-afba6d"
+  },
+  "SEG.SPEED|STANAG_2174_alternative|83|50.0|mph|the maximum speed authorized for military vehicles": {
+   "dest": "constraint",
+   "class": "mandatory_constraint",
+   "id": "R-a13098"
+  },
+  "SEG.HEIGHT|STANAG_2174_alternative|92|350.0|m|if they attack from higher than 350 meters, small ": {
+   "dest": "advisory",
+   "class": "descriptive_value",
+   "id": "R-0cc587"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|99|None|None|escort personnel should notify the march element c": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-f358a3"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|100|None|None|\u2022 move through the kill zone, if possible. \u2022 stop ": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-0569bc"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|101|None|None|armored escort vehicles must not block convoy vehi": {
+   "dest": "constraint",
+   "class": "mandatory_constraint",
+   "id": "R-0cbc34"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|101|None|None|since escort vehicles may have left the road to at": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-df10d9"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|101|None|None|a motor transport convoy with a limited escort is ": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-a51c22"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|101|None|None|the security escort must take care in assaulting t": {
+   "dest": "blocked",
+   "class": "mandatory_constraint",
+   "id": "R-cc4acb"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|134|None|None|according to ar 50-6, shipments of certain categor": {
+   "dest": "blocked",
+   "class": "mandatory_constraint",
+   "id": "R-4cee08"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|135|None|None|when escort vehicles are required, they either mus": {
+   "dest": "constraint",
+   "class": "conditional_requirement",
+   "id": "R-6886bc"
+  },
+  "NET.GAP|STANAG_2174_alternative|154|6.0|m|it must be legible from ground level at a minimum ": {
+   "dest": "blocked",
+   "class": "conditional_requirement",
+   "id": "R-b82eaf"
+  },
+  "SCH.HALT|STANAG_2174_alternative|156|10.0|min|short halts made by columns normally are to last a": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-6f12a4"
+  },
+  "SCH.HALT|STANAG_2174_alternative|156|30.0|min|long halts made by columns for at least 30 minutes": {
+   "dest": "advisory",
+   "class": "threshold_trigger",
+   "id": "R-3563cf"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|171|18.0|t|country: da type of vehicles single vehicle traile": {
+   "dest": "blocked",
+   "class": "ambiguous_or_incomplete",
+   "id": "R-3dec10"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|171|32.0|t|if the two front axles are steering, and the axle ": {
+   "dest": "blocked",
+   "class": "conditional_requirement",
+   "id": "R-550762"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|171|8.0|t|for each single axle the permissible axle load may": {
+   "dest": "blocked",
+   "class": "conditional_requirement",
+   "id": "R-d05252"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|171|8.0|t|the permissible axle load for each single axle may": {
+   "dest": "blocked",
+   "class": "mandatory_constraint",
+   "id": "R-54b45d"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|171|1.3|t|the total amount of permissible axle load may not ": {
+   "dest": "blocked",
+   "class": "threshold_trigger",
+   "id": "R-5e7e27"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|171|22.0|t|the total amount of permissible axle load may not ": {
+   "dest": "blocked",
+   "class": "conditional_requirement",
+   "id": "R-b690ad"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|171|9.0|t|if the total permissible axle load is exceeding 16": {
+   "dest": "blocked",
+   "class": "conditional_requirement",
+   "id": "R-4f00df"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|171|16.0|t|if the total permissible axle load is exceeding 16": {
+   "dest": "blocked",
+   "class": "conditional_requirement",
+   "id": "R-6e0327"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|171|8.0|t|if the total permissible axle load is less than 16": {
+   "dest": "blocked",
+   "class": "conditional_requirement",
+   "id": "R-a17f2f"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|171|16.0|t|if the total permissible axle load is less than 16": {
+   "dest": "blocked",
+   "class": "conditional_requirement",
+   "id": "R-cb70c1"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|172|19.0|t|double axle load, for motor vehicles taking into c": {
+   "dest": "blocked",
+   "class": "conditional_requirement",
+   "id": "R-93298c"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|172|26.0|t|country: fr type of vehicles single vehicle prime ": {
+   "dest": "blocked",
+   "class": "ambiguous_or_incomplete",
+   "id": "R-977e14"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|172|9.5|t|double axle load, for motor vehicles taking into c": {
+   "dest": "blocked",
+   "class": "conditional_requirement",
+   "id": "R-9da7f9"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|172|40.0|t|5 axles : 40,0 t figure 12: special movement regul": {
+   "dest": "blocked",
+   "class": "ambiguous_or_incomplete",
+   "id": "R-e0e874"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|172|21.0|t|header: co, untry: fr, type of vehicles single veh": {
+   "dest": "blocked",
+   "class": "ambiguous_or_incomplete",
+   "id": "R-87c4eb"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|172|32.0|t|header: co, untry: fr, type of vehicles single veh": {
+   "dest": "blocked",
+   "class": "ambiguous_or_incomplete",
+   "id": "R-89067a"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|172|13.0|t|header: co, untry: fr, type of vehicles single veh": {
+   "dest": "blocked",
+   "class": "ambiguous_or_incomplete",
+   "id": "R-91e7ab"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|172|26.0|t|header: co, untry: fr, type of vehicles single veh": {
+   "dest": "blocked",
+   "class": "ambiguous_or_incomplete",
+   "id": "R-c4e06f"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|173|4.0|t|axle distance more than 1.30 m to 1.40 m 24.0 t if": {
+   "dest": "blocked",
+   "class": "threshold_trigger",
+   "id": "R-96e849"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|173|5.0|t|vehicles with not more than 2 axles: (a) vehicles ": {
+   "dest": "blocked",
+   "class": "mandatory_constraint",
+   "id": "R-06ce51"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|173|32.0|t|vehicles with not more than 2 axles: (a) vehicles ": {
+   "dest": "blocked",
+   "class": "mandatory_constraint",
+   "id": "R-531fe5"
+  },
+  "NET.DISTINCT|STANAG_2174_alternative|176|1.5|m|country: sp *11 max. load per single axle 13 t max": {
+   "dest": "blocked",
+   "class": "threshold_trigger",
+   "id": "R-8c62b2"
+  },
+  "NET.DISTINCT|STANAG_2174_alternative|176|1.35|m|country: sp *11 max. load per single axle 13 t max": {
+   "dest": "blocked",
+   "class": "threshold_trigger",
+   "id": "R-f087fa"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|176|21.0|t|country: sp *11 max. load per single axle 13 t max": {
+   "dest": "blocked",
+   "class": "threshold_trigger",
+   "id": "R-96dbf7"
+  },
+  "SEG.WEIGHT|STANAG_2174_alternative|176|13.0|t|country: sp *11 max. load per single axle 13 t max": {
+   "dest": "blocked",
+   "class": "threshold_trigger",
+   "id": "R-a6dfae"
+  },
+  "SEG.WIDTH|STANAG_2174_alternative|179|3.5|m|the width of lane normally required for wheeled ve": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-b85d14"
+  },
+  "NET.GAP|STANAG_2174_alternative|191|100.0|m|(3) where possible, the light will be oriented tha": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-d4501b"
+  },
+  "NET.GAP|STANAG_2174_alternative|192|10.0|km|however, the distance between the first warning pa": {
+   "dest": "constraint",
+   "class": "mandatory_constraint",
+   "id": "R-cdccce"
+  },
+  "SEG.WIDTH|STANAG_2174_alternative|223|20.0|ft|oklahoma width: no access provisions but allowed o": {
+   "dest": "blocked",
+   "class": "mandatory_constraint",
+   "id": "R-cf69bc"
+  },
+  "SCH.HALT|STANAG_2174_alternative|254|15.0|min|if 10 minutes is to be allowed for the rest halt, ": {
+   "dest": "blocked",
+   "class": "ambiguous_or_incomplete",
+   "id": "R-af9cb5"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|262|None|None|a military convoy can be defined as one of the fol": {
+   "dest": "blocked",
+   "class": "ambiguous_or_incomplete",
+   "id": "R-0a8ee4"
+  },
+  "PRO.ESCORT|STANAG_2174_alternative|297|None|None|in instances where such action is necessary, infor": {
+   "dest": "advisory",
+   "class": "recommendation",
+   "id": "R-4d0284"
+  },
+  "EVID.UNCLASSIFIED|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|24|3.0|t|the mlc of vehicles (or trailers or vehicle trains": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-cb5b07"
+  },
+  "EVID.UNCLASSIFIED|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|27|30.5|m|bridges shall be rated for vehicles of the appropr": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-ad367c"
+  },
+  "EVID.UNCLASSIFIED|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|35|2.5|m|it should be noted that these criteria assume a wa": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-1b54ad"
+  },
+  "EVID.UNCLASSIFIED|AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION|35|20.0|%|approximately 20 % reserve of buoyancy in still wa": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-42cdd1"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2015|21|20.0|ft|(5) it should be noted that 20 feet of traveled wa": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-61ae4c"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2015|54|4.3|m|fordable depths for vehicular traffic can be incre": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-3494ec"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2015|55|4.8|m|1 depths up to 4.8 meters can be negotiated with d": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-f7cead"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2015|130|2.0|t|trailers with a rated capacity of less than li/2 t": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-8952e8"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2015|154|2.0|ft|the part of the soil most important to crosscountr": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-7ef33d"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2015|155|1.0|m|in those locations where snow accumulates to depth": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-53a112"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2015|160|1000.0|ft|for all other conditions, these values should be c": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-29421e"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2015|160|10.0|%|in the computation of the runway length a 10 perce": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-99575c"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2015|192|200.0|m|the first warning panel is preferably located betw": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-0dfe6a"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2015|192|500.0|m|the first warning panel is preferably located betw": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-64358d"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2015|192|15.0|h|the system of lighting must remain operational for": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-a087db"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|20|88.0|m|both positions are required to ensure that senior ": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-0afd00"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|42|1.0|ft|the depth may vary in the same swamp from between ": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-1e1ec4"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|51|None|None|(fm 55-15 contains guidance on motor transport pla": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-582d35"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|63|20.0|h|vehicles engaged in line haul/relay operations may": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-fe060d"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|72|None|None|fewer guides, escorts, and route markers are neede": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-9fb6c6"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|74|None|None|the advance party officer, trail party officer, pa": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-23e61a"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|78|None|None|if available, escort and security elements are use": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-5fe112"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|78|None|None|escort and security elements.": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-c9940b"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|78|None|None|the presence of mps or other escorts does not reli": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-57b76c"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|81|None|None|when contemplating hardening vehicles for escort a": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-6acdd7"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|81|None|None|state and local police or mp escort vehicles do no": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-93858e"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|83|None|None|however, military escorts have no authority to ins": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-b83912"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|86|50.0|%|convoy vehicles should not occupy more than 50 per": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-335e01"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|87|100.0|ft|reflectors should be placed in the following order": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-94c462"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|87|500.0|ft|during the time that lights are required (sunset t": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-fbc492"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|87|300.0|ft|\u2022 one reflector on the traffic side of the vehicle": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-8922f2"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|100|None|None|take the following actions to reduce the effective": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-c9c047"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|101|None|None|it relies on supporting air, artillery, escorts, a": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-d6af74"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|101|None|None|security/escort troops from vehicles that have pas": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-e22b95"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|101|None|None|when a security escort is provided and a combat em": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-f25bae"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|113|90.0|m|the mess area should be at least 100 yards (90 met": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-6dd658"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|113|8.0|%|latrines should be able to accommodate at least 8 ": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-d31f52"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|123|None|None|this could include use of ground guides, reduced s": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-94896f"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|135|None|None|the rear escort vehicle has a wide load ahead sign": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-007994"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|135|None|None|escort vehicles.": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-5f2df2"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|137|None|None|escort requirements section ii - vehicle and load ": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-4b8fef"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|176|12.0|m|a trailer with at least 4 wheels (and one which is": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-384201"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|176|24.0|m|for a large motor coach fitted with seating for mo": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-5ed663"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|176|10.6|m|for a large motor coach fitted with seating for mo": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-f9d5cb"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|189|2.0|m|signs shall be placed on that side of the road use": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-41b4f0"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|189|0.6|m|signs shall be placed on that side of the road use": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-7dc64a"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|189|150.0|m|hazard signs should be placed approximately 150 m ": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-b4ef87"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|192|1.0|km|the first, preferably at a distance varying betwee": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-cc9ad9"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|207|24.0|h|for priority one cargo, during times of tension, a": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-782b28"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|226|6.0|ft|oregon--allows triple trailer combinations up to 1": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-996779"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|226|105.0|ft|oregon--allows triple trailer combinations up to 1": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-b6281f"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|226|90.0|ft|combinations exceeding 90 feet must obtain an oper": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-e7b34f"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|227|98.0|ft|utah--under annual permits, triple trailer combina": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-08621f"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|227|77.0|ft|under quarterly or annual permits, two-unit combin": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-4960b2"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|227|95.0|ft|utah--under annual permits, triple trailer combina": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-4dbe73"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|227|92.0|ft|also under quarterly or annual permits, three-unit": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-69152c"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|227|61.0|ft|washington--the state will allow doubles, trailers": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-a35e90"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|227|68.0|ft|washington--the state will allow doubles, trailers": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-fa3b91"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|231|36.0|ft|* 68,000 may be carried on tandem axles spaced at ": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-0b5220"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|262|None|None|five or fewer vehicles operating as a column, with": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-849ee1"
+  },
+  "EVID.UNCLASSIFIED|STANAG_2174_alternative|263|10.0|min|convoy commanders must be aware that another convo": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence",
+   "id": "R-8a8dd2"
+  }
+ },
+ "reviewed": {
+  "R-59ad2f": {
+   "dest": "advisory",
+   "class": "threshold_trigger"
+  },
+  "R-80ccc3": {
+   "dest": "blocked",
+   "class": "recommendation"
+  },
+  "R-0c9a75": {
+   "dest": "advisory",
+   "class": "recommendation"
+  },
+  "R-f57d8f": {
+   "dest": "advisory",
+   "class": "recommendation"
+  },
+  "R-ff5aec": {
+   "dest": "blocked",
+   "class": "recommendation"
+  },
+  "R-f9d90b": {
+   "dest": "blocked",
+   "class": "mandatory_constraint"
+  },
+  "R-b63cb8": {
+   "dest": "blocked",
+   "class": "mandatory_constraint"
+  },
+  "R-61f1fd": {
+   "dest": "blocked",
+   "class": "mandatory_constraint"
+  },
+  "R-8667bc": {
+   "dest": "blocked",
+   "class": "mandatory_constraint"
+  },
+  "R-84b827": {
+   "dest": "advisory",
+   "class": "descriptive_value"
+  },
+  "R-c26908": {
+   "dest": "blocked",
+   "class": "descriptive_value"
+  },
+  "R-e62bd2": {
+   "dest": "blocked",
+   "class": "mandatory_constraint"
+  },
+  "R-0b5a44": {
+   "dest": "advisory",
+   "class": "descriptive_value"
+  },
+  "R-3c77d4": {
+   "dest": "advisory",
+   "class": "threshold_trigger"
+  },
+  "R-c97c26": {
+   "dest": "advisory",
+   "class": "threshold_trigger"
+  },
+  "R-70215e": {
+   "dest": "advisory",
+   "class": "threshold_trigger"
+  },
+  "R-c70c3d": {
+   "dest": "blocked",
+   "class": "descriptive_value"
+  },
+  "R-cb32f3": {
+   "dest": "blocked",
+   "class": "ambiguous_or_incomplete"
+  },
+  "R-d5d39c": {
+   "dest": "advisory",
+   "class": "descriptive_value"
+  },
+  "R-4799a8": {
+   "dest": "advisory",
+   "class": "recommendation"
+  },
+  "R-586490": {
+   "dest": "blocked",
+   "class": "conditional_requirement"
+  },
+  "R-0f1675": {
+   "dest": "advisory",
+   "class": "recommendation"
+  },
+  "R-6d5004": {
+   "dest": "advisory",
+   "class": "threshold_trigger"
+  },
+  "R-cc3d24": {
+   "dest": "blocked",
+   "class": "conditional_requirement"
+  },
+  "R-783ab7": {
+   "dest": "blocked",
+   "class": "conditional_requirement"
+  },
+  "R-c2b688": {
+   "dest": "blocked",
+   "class": "conditional_requirement"
+  },
+  "R-08c844": {
+   "dest": "blocked",
+   "class": "threshold_trigger"
+  },
+  "R-251729": {
+   "dest": "blocked",
+   "class": "conditional_requirement"
+  },
+  "R-a061b3": {
+   "dest": "blocked",
+   "class": "conditional_requirement"
+  },
+  "R-b46764": {
+   "dest": "blocked",
+   "class": "ambiguous_or_incomplete"
+  },
+  "R-af39fa": {
+   "dest": "blocked",
+   "class": "threshold_trigger"
+  },
+  "R-9de8ae": {
+   "dest": "advisory",
+   "class": "recommendation"
+  },
+  "R-4024da": {
+   "dest": "blocked",
+   "class": "ambiguous_or_incomplete"
+  },
+  "R-ee1886": {
+   "dest": "unclassified_evidence",
+   "class": "unclassified_evidence"
+  },
+  "R-d6349b": {
+   "dest": "advisory",
+   "class": "recommendation"
+  },
+  "R-e8ac48": {
+   "dest": "constraint",
+   "class": "conditional_requirement"
+  },
+  "R-f96ded": {
+   "dest": "constraint",
+   "class": "conditional_requirement"
+  },
+  "R-9f5947": {
+   "dest": "constraint",
+   "class": "conditional_requirement"
+  },
+  "R-34c95e": {
+   "dest": "constraint",
+   "class": "conditional_requirement"
+  },
+  "R-053302": {
+   "dest": "constraint",
+   "class": "conditional_requirement"
+  },
+  "R-e8e209": {
+   "dest": "constraint",
+   "class": "mandatory_constraint"
+  },
+  "R-e46765": {
+   "dest": "advisory",
+   "class": "recommendation"
+  },
+  "R-df59fa": {
+   "dest": "blocked",
+   "class": "mandatory_constraint"
+  },
+  "R-a627d8": {
+   "dest": "advisory",
+   "class": "recommendation"
+  },
+  "R-020d96": {
+   "dest": "blocked",
+   "class": "recommendation"
+  },
+  "R-3e51c7": {
+   "dest": "constraint",
+   "class": "conditional_requirement"
+  },
+  "R-e85feb": {
+   "dest": "constraint",
+   "class": "mandatory_constraint"
+  },
+  "R-f2c86d": {
+   "dest": "blocked",
+   "class": "ambiguous_or_incomplete"
+  }
+ }
+}

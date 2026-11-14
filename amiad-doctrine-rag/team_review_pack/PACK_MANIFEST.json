@@ -1,0 +1,46 @@
+{
+ "pack_id": "d6bbc9d77f",
+ "created_at": "2026-11-13T00:06:40+00:00",
+ "candidates": 138,
+ "by_destination": {
+  "blocked": 51,
+  "constraint": 16,
+  "advisory": 28,
+  "unclassified_evidence": 43
+ },
+ "by_priority": {
+  "1": 53,
+  "2": 15,
+  "3": 66,
+  "4": 4
+ },
+ "files": {
+  "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION_part1of1.csv": {
+   "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+   "rows": 17,
+   "priority_1": 10
+  },
+  "NP_allied_joint_doctrine_for_movement_AJP-4.4_part1of1.csv": {
+   "document": "NP_allied_joint_doctrine_for_movement_AJP-4.4",
+   "rows": 1,
+   "priority_1": 0
+  },
+  "STANAG_2015_part1of1.csv": {
+   "document": "STANAG_2015",
+   "rows": 31,
+   "priority_1": 13
+  },
+  "STANAG_2174_alternative_part1of2.csv": {
+   "document": "STANAG_2174_alternative",
+   "rows": 60,
+   "priority_1": 30
+  },
+  "STANAG_2174_alternative_part2of2.csv": {
+   "document": "STANAG_2174_alternative",
+   "rows": 29,
+   "priority_1": 0
+  }
+ },
+ "delimiter": ";",
+ "note": "Edit only the files in by_document, one person per file. review_MASTER.csv is for reading and searching."
+}

@@ -1,0 +1,88 @@
+STEP 4 STABILITY CHECK
+
+run 1: 138 rules | run 2: 138 rules
+   rules_draft.json   identical
+   skipped.json       identical
+   signoff.csv        identical
+   same rule ids: yes
+   same class and destination for every id: yes
+   audit entries written by the second run: 0
+   duplicate ids in the draft: none
+
+verdict: STABLE (identical outputs)
+
+FINAL COUNTS BY DESTINATION (138 candidates: 129 automatic, 9 hand-typed)
+   complete constraints (can be accepted normally) ..  16   (hand-typed among them: 7)
+   blocked constraints and ambiguous evidence .......  51
+   non-binding evidence (advice, trigger, description)  28
+   unclassified evidence (meaning not established) ..  43   (31% of all)
+
+blocked, by reason (country-specific rules are blocked as 'country_unresolved', never rejected):
+   country_unresolved         12
+   ambiguous_wording          11
+   refers_back                7
+   table_row                  6
+   text_damaged               4
+   missing_applicability      4
+   merged_provisions          2
+   exception_nearby           2
+   limited_by_previous        1
+   qualifier_not_recorded     1
+   starts_mid_sentence        1
+
+classes: {'threshold_trigger': 15, 'recommendation': 21, 'mandatory_constraint': 17, 'conditional_requirement': 23, 'descriptive_value': 8, 'ambiguous_or_incomplete': 11, 'unclassified_evidence': 43}
+
+UNCLASSIFIED EVIDENCE, GROUPED BY REASON (reason | unit | wording hint)
+   measurement, no template fits                 ft       no wording hint          17
+   measurement, no template fits                 m        no wording hint          15
+   measurement, no template fits                 %        no wording hint          4
+   measurement, no template fits                 h        no wording hint          3
+   measurement, no template fits                 t        no wording hint          2
+   measurement, no template fits                 km       no wording hint          1
+   measurement, no template fits                 min      no wording hint          1
+
+SAMPLE (up to 3 per group, first by page) to judge: relevant or noise?
+
+  [measurement, no template fits | ft | no wording hint] 17 candidate(s)
+     STANAG_2015 p21 20.0 ft: (5) It should be noted that 20 feet of traveled way limits this route to single flow traffic without a width obstruction.
+     STANAG_2015 p154 2.0 ft: The part of the soil most important to crosscountry mobility is the top layer, particularly from .15 to .30 meters (6 to 12 inches) in depth although soil to a depth of .
+     STANAG_2015 p160 1000.0 ft: For all other conditions, these values should be corrected for temperature (above 59°F), altitude above 1,000 feet, effective gradient, and safety factor.
+
+  [measurement, no template fits | m | no wording hint] 15 candidate(s)
+     AEP-3.12.1.5-MILIT p27 30.5 m: Bridges shall be rated for vehicles of the appropriate classification in convoys with a minimum longitudinal 30.50 m spacing between ground contact points.
+     AEP-3.12.1.5-MILIT p35 2.5 m: It should be noted that these criteria assume a water depth of 2.50 m or more under the bottom surface of the equipment being used when loaded to the cla ssified capacity
+     STANAG_2015 p54 4.3 m: Fordable depths for vehicular traffic can be increased by suitable waterproofing, or in the case of modern tanks, by the addition of deep water fording kits which permit 
+
+  [measurement, no template fits | % | no wording hint] 4 candidate(s)
+     AEP-3.12.1.5-MILIT p35 20.0 %: Approximately 20 % reserve of buoyancy in still water is recommended a nd distribution between flotation units may be considered.
+     STANAG_2015 p160 10.0 %: In the computation of the runway length a 10 percent increase in length must be provided for each 1,000-foot increase in altitude above an altitude of 1,000 feet.
+     STANAG_2174_altern p86 50.0 %: Convoy vehicles should not occupy more than 50 percent of the truck parking space at any time.
+
+  [measurement, no template fits | h | no wording hint] 3 candidate(s)
+     STANAG_2015 p192 15.0 h: The system of lighting must remain operational for a minimum of 15 hours without refueling or change of batteries.
+     STANAG_2174_altern p63 20.0 h: Vehicles engaged in line haul/relay operations may operate up to 20 hours a day over extended periods.
+     STANAG_2174_altern p207 24.0 h: For Priority ONE cargo, during times of tension, and in wartime it should be submitted if possible 24 hours before the start of the movement.
+
+  [measurement, no template fits | t | no wording hint] 2 candidate(s)
+     AEP-3.12.1.5-MILIT p24 3.0 t: The MLC of vehicles (or trailers or vehicle trains) of a total loaded mass of 3 tonnes or less will be optional.
+     STANAG_2015 p130 2.0 t: Trailers with a rated capacity of less than li/2 tons will normally be combined with their towing vehicles for classification purposes although optional class numbers may
+
+  [measurement, no template fits | km | no wording hint] 1 candidate(s)
+     STANAG_2174_altern p192 1.0 km: The first, preferably at a distance varying between 1 km (1,100 yards) and 500 m (550 yards). b.
+
+  [measurement, no template fits | min | no wording hint] 1 candidate(s)
+     STANAG_2174_altern p263 10.0 min: Convoy commanders must be aware that another convoy could be scheduled as close as 10 minutes behind or in front of their convoy.
+
+by document and page (is it a flood?):
+   STANAG_2174_alternative    p227  8
+   STANAG_2015                p192  3
+   STANAG_2174_alternative    p87   3
+   STANAG_2174_alternative    p176  3
+   STANAG_2174_alternative    p189  3
+   AEP-3.12.1.5-MILITARY-LO   p35   2
+   STANAG_2015                p160  2
+   STANAG_2174_alternative    p113  2
+   AEP-3.12.1.5-MILITARY-LO   p24   1
+   AEP-3.12.1.5-MILITARY-LO   p27   1
+
+written: work_doctrine\unclassified_evidence.csv
