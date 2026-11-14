@@ -1,0 +1,46 @@
+{
+ "git": {
+  "commit": "ba57c197145513a6d5e1ec64f8b1b359cd0277ea",
+  "branch": "feat/orders-rules-chatbot",
+  "dirty": false,
+  "diff_sha256": null
+ },
+ "python": "3.10.12",
+ "packages": {
+  "numpy": "2.2.6",
+  "scipy": "1.15.3",
+  "shapely": "2.1.2",
+  "networkx": "3.4.2",
+  "geopandas": "1.1.4",
+  "pyproj": "3.7.1",
+  "rasterio": "1.4.4",
+  "torch": "2.14.1",
+  "fastapi": "0.162.5",
+  "scikit-learn": "1.7.2",
+  "matplotlib": "3.10.9"
+ },
+ "host": "par2dc5-ai-prd-cl01login01",
+ "cpu": {
+  "model": "Intel(R) Xeon(R) Gold 6430",
+  "hardware_threads": 128,
+  "sockets": 2,
+  "threads_available_to_job": 128,
+  "tdp_w_per_socket": 270,
+  "watts_per_thread_estimate": 4.22
+ },
+ "memory": {
+  "total_gb": 251.4,
+  "available_gb": 221.5
+ },
+ "gpus": [],
+ "slurm_job": null,
+ "slurm_cpus": null,
+ "threads": {
+  "OMP_NUM_THREADS": null,
+  "MKL_NUM_THREADS": null,
+  "OPENBLAS_NUM_THREADS": null
+ },
+ "command": "llm_compare.py --quick --budgets 6000,16000",
+ "started": "2026-11-14 10:42:26",
+ "energy_method": "estimated from CPU time x TDP per thread"
+}

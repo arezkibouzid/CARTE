@@ -1,0 +1,29 @@
+test,orders,position,budget,target_in_context,raw_ok,final_ok,mode,seconds,calls,prompt_tokens,est_tokens,omitted_blocks,depth,expected,raw_stale,final_stale,annexes,text,raw_errors,method,coords
+needle,10,first,6000,True,True,True,model,42.79,1,5139,4921,0,,,,,,,,,
+needle,10,first,16000,True,True,True,model,65.0,1,9500,8735,0,,,,,,,,,
+needle,10,middle,6000,True,True,True,model,38.58,1,5139,4921,0,,,,,,,,,
+needle,10,middle,16000,True,True,True,model,47.97,1,9500,8735,0,,,,,,,,,
+needle,10,last,6000,True,True,True,model,30.84,1,5140,4922,0,,,,,,,,,
+needle,10,last,16000,True,True,True,model,48.95,1,9501,8736,0,,,,,,,,,
+needle,40,first,6000,True,True,True,model,35.1,1,6888,6000,15,,,,,,,,,
+needle,40,first,16000,True,True,True,model,71.17,1,11937,12095,0,,,,,,,,,
+needle,40,middle,6000,True,True,True,model,53.64,1,6806,5933,16,,,,,,,,,
+needle,40,middle,16000,True,True,True,model,73.75,1,11938,12096,0,,,,,,,,,
+needle,40,last,6000,False,False,False,model,43.86,1,6806,5933,16,,,,,,,,,
+needle,40,last,16000,True,True,True,model,73.95,1,11938,12096,0,,,,,,,,,
+chain,,,6000,,True,True,model,69.76,1,5734,5167,0,5,50 km/h,False,False,,,,,
+chain,,,16000,,True,True,model,108.78,1,9890,11194,0,5,50 km/h,False,False,,,,,
+chain,,,6000,,True,True,model,75.13,1,7061,5994,3,15,30 km/h,False,False,,,,,
+chain,,,16000,,True,True,model,106.44,1,12768,12887,0,15,30 km/h,False,False,,,,,
+conflicts,,,6000,,True,True,model,54.56,1,5467,5135,0,,,,,3,,,,
+conflicts,,,16000,,True,True,model,66.36,1,9145,10554,0,,,,,3,,,,
+text,,,,,True,True,,7.03,1,911,,,,,,,,"De PD1 à PA1, le plus rapide.",[],model,[]
+text,,,,,True,True,,6.83,1,938,,,,,,,,"Départ PD4, arrivée PA4, en passant par WP1 puis WP2, le plus court.",[],model,[]
+text,,,,,True,True,,6.57,1,918,,,,,,,,Rejoindre PA1 depuis PD1 sans dépasser 60 km/h.,[],model,[]
+text,,,,,True,True,,6.55,1,932,,,,,,,,"Le convoi part de PD4 et doit être à PA4, vitesse maximale 70 km/h, itinéraire le plus rapide.",[],model,[]
+text,,,,,True,True,,7.37,1,1085,,,,,,,,"Aller de 48.957, 4.364 à 48.773, 5.160 par 49.090, 4.897, le plus court, 80 km/h.",[],model,"[""C1"", ""C2"", ""C3""]"
+text,,,,,True,True,,6.6,1,924,,,,,,,,"Partir de PD2, passer par WP3 et finir à PA2.",[],model,[]
+text,,,,,True,True,,6.5,1,915,,,,,,,,Le plus court de PD3 vers PA3 avec un aller-retour.,[],model,[]
+text,,,,,True,False,,14.96,2,919,,,,,,,,"PD1 -> PA1, limite 50 km/h, en évitant DA2.",[],rules,[]
+text,,,,,True,True,,7.27,1,957,,,,,,,,"Depuis PA4, rejoindre PD4 en passant par WP4, WP3, WP2 et WP1 dans cet ordre.",[],model,[]
+text,,,,,True,True,,6.49,1,921,,,,,,,,"Convoi de PD2 à PA2 : le plus rapide, 40 km/h maximum.",[],model,[]

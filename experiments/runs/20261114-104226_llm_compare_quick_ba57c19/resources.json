@@ -1,0 +1,51 @@
+{
+ "wall_s": 1192.48,
+ "cpu_s": 25.86,
+ "peak_rss_mb": 2044.1,
+ "cpu_energy_j": 109.1,
+ "cpu_energy_method": "estimated",
+ "phases": {
+  "network + route": {
+   "calls": 1,
+   "wall_s": 8.964,
+   "cpu_s": 16.901,
+   "cpu_energy_j": 71.3,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1023.5
+  },
+  "needle": {
+   "calls": 12,
+   "wall_s": 625.605,
+   "cpu_s": 0.25,
+   "cpu_energy_j": 0.8,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1023.6
+  },
+  "chain": {
+   "calls": 4,
+   "wall_s": 360.108,
+   "cpu_s": 0.051,
+   "cpu_energy_j": 0.2,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1023.6
+  },
+  "conflicts": {
+   "calls": 2,
+   "wall_s": 120.923,
+   "cpu_s": 0.03,
+   "cpu_energy_j": 0.1,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1023.6
+  },
+  "text": {
+   "calls": 10,
+   "wall_s": 76.17,
+   "cpu_s": 0.028,
+   "cpu_energy_j": 0.0,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1023.6
+  }
+ },
+ "status": "ok",
+ "error": null
+}

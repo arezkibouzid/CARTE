@@ -414,7 +414,9 @@ no precomputed raster, the back end (`unet_dir` in `interface/backend/amiad_api.
 GPU checkpoint's on a test crop. The language model is the same everywhere, Qwen3-VL-8B (the best of the comparison, section
 3.6). `deploy/llm_launch.py` serves it with vLLM on a GPU; on CPU only, as the official 4-bit build (Q4_K_M) with
 llama.cpp when it is installed: on 32 cores a written order in 7 s and a chat answer in about 50 s, within the app's
-90 s timeout, so the chat stays usable without a GPU (transformers in bfloat16, the fallback: 22 s and about 9 minutes). Qwen3-VL-4B can be chosen for CPU
+90 s timeout, so the chat stays usable without a GPU (transformers in bfloat16, the fallback: 22 s and about 9 minutes). Quality of the 4-bit build on the same questions as section 3.6 (run `20261114-104226_llm_compare_quick`, CPU,
+budgets 6,000 and 16,000): written orders 10/10, retrieval 6/6 at 16,000 (5/6 at 6,000, where the order was cut), value
+in force 4/4 and never a replaced one, conflicts 2/2; mean 61 s per chat answer, 7.6 s per written order. Qwen3-VL-4B can be chosen for CPU
 (`AMIAD_CPU_MODEL`): 14 s per written order, but it misstated rule statuses more often.
 
 ## 6. Civilian applicability and U-Net transfer learning

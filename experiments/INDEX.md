@@ -23,6 +23,7 @@ Derived analyses (each names its source run): `analysis/lambda_choice.json`, `an
 | `20261114-073416_context_stress_21e1fd5` | ok | context_stress.py  | 20 | 145.74 | 2043.6 | 41.9 (estimated) | par2dc5-ai-prd-cl01dgx01 job 8052 | 21e1fd5 +dirty | context_stress.png |
 | `20261114-095731_rag_reproduce_8d81bab` | ok | rag_reproduce.py  | 6 | 16.48 | 134.1 | 46.2 (estimated) | par2dc5-ai-prd-cl01login01  | 8d81bab +dirty |  |
 | `20261114-100253_rag_reproduce_94f9a64` | ok | rag_reproduce.py  | 6 | 16.7 | 130.5 | 46.2 (estimated) | par2dc5-ai-prd-cl01login01  | 94f9a64 +dirty |  |
+| `20261114-104226_llm_compare_quick_ba57c19` | ok | llm_compare.py  (quick) | 28 | 1192.48 | 2044.1 | 109.1 (estimated) | par2dc5-ai-prd-cl01login01  | ba57c19 |  |
 
 ## Earlier experiments (kept in `outputs/`, reported in `docs/`)
 
