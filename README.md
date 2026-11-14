@@ -35,11 +35,11 @@ road reading priced in, and every decision explained. *Carte* is French for map.
 they are today's data, not the organisers' snapshot.
 
 **GPU or not, chosen automatically.** `interface/run.sh --llm` (or `python deploy/llm_launch.py`) starts the language
-model on what the machine has: Qwen3-VL-8B, the best measured, with vLLM on a GPU (131,072 tokens) or with
-`deploy/cpu_llm_server.py` on CPU only (same weights, JSON grammar and image input). Missing weights are downloaded from
-Hugging Face. On the cluster: `sbatch deploy/serve_llm.sbatch` (GPU) or `deploy/serve_llm_cpu.sbatch`.
-Measured on 32 cores: a written order in 22 s (0.7 s on an H100; 14 s with `AMIAD_CPU_MODEL=Qwen/Qwen3-VL-4B-Instruct`,
-less reliable); a chat answer of a few hundred words takes about 9 minutes, so on CPU the chat gives the deterministic answer after `COA_LLM_TIMEOUT`
+model on what the machine has: Qwen3-VL-8B, the best measured, with vLLM on a GPU (131,072 tokens); on CPU only, the
+same model as the official 4-bit build with llama.cpp when `llama-server` is installed (`deploy/README.md`), else with
+`deploy/cpu_llm_server.py` (transformers, bfloat16). Missing weights are downloaded from Hugging Face. On the cluster: `sbatch deploy/serve_llm.sbatch` (GPU) or `deploy/serve_llm_cpu.sbatch`.
+Measured on 32 cores with the transformers path: a written order in 22 s (0.7 s on an H100); a chat answer of a few
+hundred words takes about 9 minutes (the llama.cpp path is meant to cut this; not measured yet), so on CPU the chat gives the deterministic answer after `COA_LLM_TIMEOUT`
 (90 s). Routing, the solver's explanations and the rule engine never need a GPU.
 
 **U-Net outputs fetched from Hugging Face.** When a model's probability raster is missing (no release archive), the app

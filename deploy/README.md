@@ -1,5 +1,35 @@
 # deploy
 
+## CARTE: the local language model, GPU or CPU
+
+One model everywhere, **Qwen3-VL-8B-Instruct** (Apache 2.0, reads images), chosen by `llm_launch.py` from what the
+machine has. It writes `outputs/orders/llm_endpoints.json`, the file the app reads.
+
+| machine | how the model runs | started by |
+|---|---|---|
+| GPU (H100 here) | vLLM, bfloat16, 131,072-token window | `sbatch deploy/serve_llm.sbatch`, or `interface/run.sh --llm` |
+| CPU only, llama.cpp installed | `llama-server`, official 4-bit build `Qwen/Qwen3-VL-8B-Instruct-GGUF` (Q4_K_M, 5.0 GB) + image encoder (mmproj F16, 1.2 GB), 32,768 tokens | `sbatch deploy/serve_llm_cpu.sbatch`, or `interface/run.sh --llm` |
+| CPU only, no llama.cpp | `cpu_llm_server.py` (transformers, bfloat16): a written order in 22 s, a chat answer in about 9 min on 32 cores, so the chat uses its deterministic answer | same, automatic fallback |
+
+Missing weights are downloaded from Hugging Face into `$AMIAD_MODELS` (default `~/extraction/models`).
+`--cpu-backend llamacpp|transformers` (or `AMIAD_CPU_BACKEND`) forces a CPU path; `AMIAD_CPU_MODEL=Qwen/Qwen3-VL-4B-Instruct`
+uses the smaller model on the transformers path.
+
+**Install llama.cpp (CPU).** `llm_launch.py` looks for `llama-server` on the PATH, in `$AMIAD_LLAMA_SERVER`, or in
+`~/ext/llama.cpp/build/bin/`. To build it on Linux (CMake 3.14+, a C++17 compiler; release tag of your choice):
+
+```bash
+git clone --depth 1 --branch <release tag> https://github.com/ggml-org/llama.cpp ~/ext/llama.cpp
+cd ~/ext/llama.cpp
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=ON -DGGML_CUDA=OFF -DLLAMA_CURL=OFF
+cmake --build build --target llama-server -j 16
+```
+
+(`pip install cmake ninja` if CMake is missing; on a Mac `brew install llama.cpp`.) Then
+`python deploy/llm_launch.py --dry-run` should print `CPU: Qwen/Qwen3-VL-8B-Instruct with llama.cpp (Q4_K_M)`.
+
+## Background: the hackathon setup (Mistral Small 3.2)
+
 ## Overview
 
 How to run COA-Net's language model locally. Every model role (L1 to L9) goes to one open model, Mistral Small 3.2 24B (Apache 2.0, takes images), served on a machine the team controls through an OpenAI-compatible endpoint. No hosted API is needed, and doctrine and orders do not leave that machine.

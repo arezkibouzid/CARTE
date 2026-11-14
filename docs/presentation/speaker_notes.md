@@ -76,7 +76,7 @@ How much data does it take? The network was pretrained on Swiss Siegfried maps; 
 
 ## 19. Routing needs only a CPU; the GPU is used once, offline  (0:25)
 
-Frugality in three numbers. Every route runs on one CPU core in a seventh of a second, about one joule, no GPU. A GPU is needed once per new sheet, 15 seconds, and an 8-gigabyte card is enough. Training happens once per new kind of map: 1.3 GPU-hours; the language model is never trained and is optional. To deploy routing: two cores and 4 gigabytes.
+Frugality in three numbers. Every route runs on one CPU core in a seventh of a second, about one joule, no GPU. A GPU is used once per new sheet, 15 seconds, and an 8-gigabyte card is enough; without one, the published weights run on the CPU in about a minute. Training happens once per new kind of map: 1.3 GPU-hours; the language model is never trained and is optional, the same model on a GPU or, as a 4-bit build, on a CPU. To deploy routing: two cores and 4 gigabytes.
 
 ## 20. What CARTE brings, and where it stops  (0:20)
 
