@@ -1,0 +1,11 @@
+{
+ "_note": "Extra labels written by the assistant for the BM25 vs hybrid comparison, after reading each rule and each exercise. They are a proxy for expert judgement: the project lead should review and edit them. 'relevant' = should be retained. 'acceptable' = borderline, counts neither as a hit nor as an error. 'irrelevant' = retaining it is an error. 'status' = the group the rule must be in. These add to eval/expected_relevance.json (verified rules plus 'relevant_unverified' there count as relevant).",
+ "exercises": {
+  "11": { "irrelevant": ["DR-0200", "DR-0213", "DR-0214"] },
+  "23": { "relevant": ["DR-0213", "DR-0214"], "acceptable": ["DR-0157", "DR-0099"], "irrelevant": ["DR-0203", "DR-0207", "DR-0142", "DR-0086", "DR-0154"], "status": { "DR-0099": "not_applicable" } },
+  "24": { "relevant": ["DR-0211", "DR-0213", "DR-0207"], "acceptable": ["DR-0214", "DR-0209", "DR-0210", "DR-0155", "DR-0099"], "irrelevant": ["DR-0045"], "status": { "DR-0099": "not_applicable" } },
+  "25": { "relevant": ["DR-0211", "DR-0200", "DR-0201", "DR-0202", "DR-0203", "DR-0171", "DR-0170", "DR-0207"], "acceptable": ["DR-0209", "DR-0213", "DR-0214", "DR-0210", "DR-0141", "DR-0148", "DR-0155", "DR-0099"] },
+  "26": { "relevant": ["DR-0213"], "acceptable": ["DR-0207"] },
+  "27": { "irrelevant": ["DR-0200", "DR-0201", "DR-0202", "DR-0203"] }
+ }
+}

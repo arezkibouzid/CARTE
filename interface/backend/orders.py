@@ -25,8 +25,16 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 EXTRACTION_DIR = REPO / "extraction"
-RAG_DIR = REPO / "RAG"
-RULES_CSV = RAG_DIR / "rules" / "doctrine_final_unique_rules.csv"
+# The doctrine rules and their search come from the reproducible pipeline (amiad-doctrine-rag/: PDFs -> passages ->
+# candidates -> team review -> 214 rules, quote check; experiments/rag_reproduce.py reruns it). RAG/ is the earlier copy
+# of the same files (identical rules), used when the pipeline folder is absent.
+_PIPE = REPO / "amiad-doctrine-rag"
+RAG_DIR = _PIPE if (_PIPE / "rules_final").exists() else REPO / "RAG"
+RULES_CSV = RAG_DIR / ("rules_final" if RAG_DIR == _PIPE else "rules") / "doctrine_final_unique_rules.csv"
+SEARCH_DIR = RAG_DIR / "search"
+QUOTE_CHECK = _PIPE / "rules_final" / "quote_check.csv"  # each rule's quote searched in the source passages
+QUOTE_FR = {"found_on_page": "citation retrouvée à la page indiquée", "found_next_page": "citation retrouvée à la page voisine",
+            "start_and_end_found": "début et fin de la citation retrouvés", "not_found": "citation non retrouvée dans le texte lu (à comparer au PDF)"}
 DATA = REPO / "outputs" / "orders"
 STORE = DATA / "extractions"  # one extraction JSON per order (3.2 from the bundle, or 2.0 / uploaded)
 PAGES = DATA / "pages"  # extraction/prepare.py output
@@ -221,7 +229,7 @@ def _node() -> str:
 
 
 def rank_rules(x: dict, policy: str = "lenient") -> dict:
-    """The RAG's own searcher on the order (``node RAG/search/rank_extraction.js``), cached by input content."""
+    """The RAG's own searcher on the order (``node <RAG_DIR>/search/rank_extraction.js``), cached by input content."""
     v2 = to_rag_v2(x)
     raw = json.dumps(v2, ensure_ascii=False, sort_keys=True)
     key = hashlib.sha1((raw + policy + str(RULES_CSV.stat().st_mtime)).encode()).hexdigest()
@@ -232,7 +240,7 @@ def rank_rules(x: dict, policy: str = "lenient") -> dict:
     work.mkdir(parents=True, exist_ok=True)
     inp = work / "rag_input.json"
     inp.write_text(raw, encoding="utf-8")
-    p = subprocess.run([_node(), str(RAG_DIR / "search" / "rank_extraction.js"), str(RULES_CSV), str(inp), "--out", str(work),
+    p = subprocess.run([_node(), str(SEARCH_DIR / "rank_extraction.js"), str(RULES_CSV), str(inp), "--out", str(work),
                         "--policy", policy], capture_output=True, text=True, timeout=60)
     outs = list(work.glob("exercise_*_relevant_rules.json"))
     if p.returncode != 0 or not outs:
@@ -261,6 +269,24 @@ def link_rules(rules: list[dict], facts: list[dict], objective: str | None = Non
         r["linked_facts"] = list(dict.fromkeys(hits))[:4]
 
 
+def quote_checks() -> dict[str, dict]:
+    """rule_id -> the pipeline's quote check (``index_check``: found_on_page, found_next_page, start_and_end_found,
+    not_found; and the team's ``quote_match_pdf``: yes, partly, or empty when not recorded)."""
+    if not QUOTE_CHECK.exists():
+        return {}
+    key = QUOTE_CHECK.stat().st_mtime
+    if _quotes.get("key") != key:
+        import csv
+
+        rows = csv.DictReader(QUOTE_CHECK.open(encoding="utf-8-sig"))
+        _quotes.update(key=key, data={r["rule_id"]: {"index_check": r["index_check"], "quote_match_pdf": r.get("quote_match_pdf") or None}
+                                      for r in rows})
+    return _quotes["data"]
+
+
+_quotes: dict = {}
+
+
 def analysis(order_id: str, policy: str = "lenient") -> dict:
     """Extraction + ranked rules, grouped as explicitly applicable / potentially relevant / not applicable."""
     x = load_order(order_id)
@@ -268,8 +294,10 @@ def analysis(order_id: str, policy: str = "lenient") -> dict:
     res = rank_rules(x, policy)
     rules = res["rules"]
     link_rules(rules, facts, res.get("exercise_objective"))
+    qc = quote_checks()
     for r in rules:
         r["group"] = STATUS_GROUP.get(r["applicability_status"], "potential")
+        r["quote_check"] = qc.get(r["rule_id"])
     return {"order": order_id, "exercise_id": str(x.get("exercise_id")), "schema_version": x.get("schema_version"),
             "review_status": x.get("review_status"), "extraction": x.get("_amiad"), "task_types": x.get("task_types"),
             "objective": res.get("exercise_objective"), "facts": facts, "issues": x.get("issues", []),
@@ -367,7 +395,8 @@ Règles strictes :
 def _rule_line(r: dict) -> str:
     grp = {"applicable": "applicable", "potential": "potentiellement pertinente", "not_applicable": "non applicable"}[r["group"]]
     src = r.get("source") or {}
-    return (f"{r['rule_id']} [{grp}; {r.get('rule_class')}; vérifiée: {r.get('verification_status')}] "
+    q = QUOTE_FR.get((r.get("quote_check") or {}).get("index_check"), "citation non contrôlée")
+    return (f"{r['rule_id']} [{grp}; {r.get('rule_class')}; vérifiée: {r.get('verification_status')}; {q}] "
             f"valeur: {r.get('rule_value')} | portée: {r.get('rule_scope')} | texte: {_clean(r.get('rule_text'))[:400]} | "
             f"lien avec l'ordre: {_clean(r.get('matched_exercise_requirement'))[:200]} (fragments {', '.join(r.get('linked_facts') or []) or 'aucun'}) | "
             f"utilité: {r.get('how_it_helps')} | à vérifier: {'; '.join(r.get('check') or [])[:300]} | "

@@ -10,6 +10,7 @@ Reproducible ablations and stress tests of the AMIAD pipeline. Results: [`INDEX.
 | `imagery_ablation.py` | U-Net zero-shot vs fine-tuned × 9 kinds of input imagery, out of fold | 1 GPU (`run_gpu.sh`) |
 | `context_stress.py` | many orders, chains of FRAGOs, token budgets, conflicts: what the chat's context keeps | CPU + the app's model |
 | `llm_compare.py` | one model on long contexts: retrieval among 10–400 orders, chains, conflicts, written orders, at 6k–100k tokens | `run_llm_compare.sh` (serves the model on 1 GPU) or CPU + the app's model |
+| `rag_reproduce.py` | doctrine rules (`amiad-doctrine-rag/`): rebuilds the extraction, quote check and rule finder and compares them with the committed files; runs the pipeline's tests; checks the app uses those rules | CPU (1 min) |
 | `index.py` | rewrites `INDEX.md` from `runs/` | anywhere |
 | `common.py` | run folder, environment, resources and energy, never overwriting | — |
 

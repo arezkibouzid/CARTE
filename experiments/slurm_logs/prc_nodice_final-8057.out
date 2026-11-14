@@ -1,0 +1,54 @@
+NVIDIA H100 80GB HBM3, 81559 MiB
+node par2dc5-ai-prd-cl01dgx01, driver CUDA 12, python .venv128/bin/python
+imagenet1k False
+PRC weights: 410 tensors, missing 0, unexpected 0
+extra sheet S1: (14875, 12816), road pixels 8.3%
+fold -1 step 250/12000: loss 3.039, 19 s
+fold -1 step 500/12000: loss 1.036, 37 s
+fold -1 step 750/12000: loss 0.713, 55 s
+fold -1 step 1000/12000: loss 0.731, 73 s
+fold -1 step 1250/12000: loss 0.530, 91 s
+fold -1 step 1500/12000: loss 0.524, 109 s
+fold -1 step 1750/12000: loss 0.566, 127 s
+fold -1 step 2000/12000: loss 0.496, 145 s
+fold -1 step 2250/12000: loss 0.488, 164 s
+fold -1 step 2500/12000: loss 0.523, 183 s
+fold -1 step 2750/12000: loss 0.628, 202 s
+fold -1 step 3000/12000: loss 0.416, 221 s
+fold -1 step 3250/12000: loss 0.462, 239 s
+fold -1 step 3500/12000: loss 0.406, 259 s
+fold -1 step 3750/12000: loss 0.419, 278 s
+fold -1 step 4000/12000: loss 0.478, 296 s
+fold -1 step 4250/12000: loss 0.392, 314 s
+fold -1 step 4500/12000: loss 0.368, 333 s
+fold -1 step 4750/12000: loss 0.428, 352 s
+fold -1 step 5000/12000: loss 0.458, 371 s
+fold -1 step 5250/12000: loss 0.393, 390 s
+fold -1 step 5500/12000: loss 0.338, 409 s
+fold -1 step 5750/12000: loss 0.441, 427 s
+fold -1 step 6000/12000: loss 0.363, 446 s
+fold -1 step 6250/12000: loss 0.404, 465 s
+fold -1 step 6500/12000: loss 0.449, 484 s
+fold -1 step 6750/12000: loss 0.500, 502 s
+fold -1 step 7000/12000: loss 0.469, 521 s
+fold -1 step 7250/12000: loss 0.490, 540 s
+fold -1 step 7500/12000: loss 0.306, 558 s
+fold -1 step 7750/12000: loss 0.435, 577 s
+fold -1 step 8000/12000: loss 0.365, 596 s
+fold -1 step 8250/12000: loss 0.440, 615 s
+fold -1 step 8500/12000: loss 0.407, 634 s
+fold -1 step 8750/12000: loss 0.298, 653 s
+fold -1 step 9000/12000: loss 0.463, 672 s
+fold -1 step 9250/12000: loss 0.361, 691 s
+fold -1 step 9500/12000: loss 0.344, 710 s
+fold -1 step 9750/12000: loss 0.452, 729 s
+fold -1 step 10000/12000: loss 0.350, 747 s
+fold -1 step 10250/12000: loss 0.373, 764 s
+fold -1 step 10500/12000: loss 0.361, 783 s
+fold -1 step 10750/12000: loss 0.348, 801 s
+fold -1 step 11000/12000: loss 0.434, 820 s
+fold -1 step 11250/12000: loss 0.468, 837 s
+fold -1 step 11500/12000: loss 0.373, 856 s
+fold -1 step 11750/12000: loss 0.298, 874 s
+fold -1 step 12000/12000: loss 0.373, 892 s
+final done in 892 s

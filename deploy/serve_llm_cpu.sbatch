@@ -1,6 +1,7 @@
 #!/bin/bash
-# The language model on CPU only (no GPU requested): deploy/cpu_llm_server.py, same weights and JSON grammar as the GPU
-# server, one request at a time. Writes the endpoint file the app reads, so the app needs no other change.
+# The language model on CPU only (no GPU requested): deploy/cpu_llm_server.py with Qwen3-VL-4B (AMIAD_CPU_MODEL to change),
+# same family, JSON grammar and image input as the GPU server (Qwen3-VL-8B), one request at a time. Writes the
+# endpoint file the app reads, so the app needs no other change.
 #   sbatch deploy/serve_llm_cpu.sbatch                                   (replaces the GPU server for the app)
 #   AMIAD_ENDPOINT_FILE=outputs/orders/llm_endpoints_cpu.json sbatch deploy/serve_llm_cpu.sbatch   (side by side, tests)
 # Without Slurm: python deploy/cpu_llm_server.py --port 8010, then COA_LLM_BASE_URL=http://127.0.0.1:8010/v1 interface/run.sh
@@ -19,7 +20,8 @@ export CUDA_VISIBLE_DEVICES=""
 cd "$REPO"
 HOST=$(hostname -f)
 PORT=$("$PY" -c 'import socket; s=socket.socket(); s.bind(("0.0.0.0",0)); print(s.getsockname()[1]); s.close()')
-"$PY" -u deploy/cpu_llm_server.py --model "$MODELS/Qwen3-VL-8B-Instruct" --host 0.0.0.0 --port "$PORT" \
+CPU_MODEL="${AMIAD_CPU_MODEL:-Qwen3-VL-4B-Instruct}"   # CPU: the 4B (half the 8B's weights, about twice as fast); GPU: 8B
+"$PY" -u deploy/cpu_llm_server.py --model "$MODELS/$CPU_MODEL" --name "Qwen/$CPU_MODEL" --host 0.0.0.0 --port "$PORT" \
   --threads "${SLURM_CPUS_PER_TASK:-32}" --max-len 32768 &
 PID=$!
 trap 'kill $PID 2>/dev/null || true; rm -f "$EP"' EXIT
@@ -28,7 +30,7 @@ for i in $(seq 1 200); do
   kill -0 $PID 2>/dev/null || { echo "server stopped"; exit 1; }
   sleep 3
 done
-printf '{"job": "%s", "device": "cpu", "extraction": {"base_url": "http://%s:%s/v1", "model": "Qwen/Qwen3-VL-8B-Instruct"}, "explanation": {"base_url": "http://%s:%s/v1", "model": "Qwen/Qwen3-VL-8B-Instruct"}}\n' \
-  "$SLURM_JOB_ID" "$HOST" "$PORT" "$HOST" "$PORT" > "$EP"
+printf '{"job": "%s", "device": "cpu", "extraction": {"base_url": "http://%s:%s/v1", "model": "Qwen/%s"}, "explanation": {"base_url": "http://%s:%s/v1", "model": "Qwen/%s"}}\n' \
+  "$SLURM_JOB_ID" "$HOST" "$PORT" "$CPU_MODEL" "$HOST" "$PORT" "$CPU_MODEL" > "$EP"
 echo "ready: $(cat "$EP")"
 wait

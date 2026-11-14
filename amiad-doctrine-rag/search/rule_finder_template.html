@@ -1,0 +1,532 @@
+<title>Exercise Rule Finder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#f7f9f8; --panel:#ffffff; --ink:#18221f; --ink2:#3b4a46; --muted:#6b7a75; --line:#e7ecea; --soft:#f2f6f5;
+  --accent:#0f6b63; --accent-ink:#ffffff; --accent-soft:#e4f2f0;
+  --ok:#17663c; --ok-bg:#e5f4ec; --info:#2a5b8a; --info-bg:#e6eff9; --warn:#8a5a00; --warn-bg:#fcf1d9; --bad:#8a2b2b; --bad-bg:#f9e6e4; --none:#5d6b6f; --none-bg:#edf0f1;
+  --mark:#fff1a8;
+  --font:'Inter','Segoe UI Variable Text','Segoe UI',system-ui,-apple-system,sans-serif;
+  --shadow:0 1px 2px rgba(20,40,35,.04),0 4px 14px rgba(20,40,35,.04);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1514; --panel:#152120; --ink:#e7efed; --ink2:#c2d0cc; --muted:#98ada8; --line:#26373a; --soft:#1b2b2a; --accent:#4cc2b4; --accent-ink:#06211e; --accent-soft:#16312f;
+  --ok:#76d8a2; --ok-bg:#16301f; --info:#8dbbe6; --info-bg:#172a3b; --warn:#ebc063; --warn-bg:#37290d; --bad:#f0a5a0; --bad-bg:#3a1f1e; --none:#a6b5b8; --none-bg:#243130; --mark:#5b4b00; --shadow:none; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1514; --panel:#152120; --ink:#e7efed; --ink2:#c2d0cc; --muted:#98ada8; --line:#26373a; --soft:#1b2b2a; --accent:#4cc2b4; --accent-ink:#06211e; --accent-soft:#16312f;
+  --ok:#76d8a2; --ok-bg:#16301f; --info:#8dbbe6; --info-bg:#172a3b; --warn:#ebc063; --warn-bg:#37290d; --bad:#f0a5a0; --bad-bg:#3a1f1e; --none:#a6b5b8; --none-bg:#243130; --mark:#5b4b00; --shadow:none; color-scheme:dark}
+/* human review of relevance: separate from the score and from applicability */
+.rv{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;border-top:1px dashed var(--line);padding-top:10px;margin-top:2px}
+.rv .lbl{font-size:12px;color:var(--muted);margin-right:2px}
+.rv button{border:1px solid var(--line);background:var(--panel);color:var(--ink2);border-radius:8px;padding:3px 11px;font-size:12px;cursor:pointer}
+.rv button:hover{border-color:var(--accent)}
+.rv button[aria-pressed="true"].d-relevant{background:var(--ok-bg);border-color:var(--ok);color:var(--ok);font-weight:600}
+.rv button[aria-pressed="true"].d-irrelevant{background:var(--bad-bg);border-color:var(--bad);color:var(--bad);font-weight:600}
+.rv button[aria-pressed="true"].d-unsure{background:var(--warn-bg);border-color:var(--warn);color:var(--warn);font-weight:600}
+.rv input{flex:1 1 160px;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:3px 9px;font-size:12px}
+.drow .rv{grid-column:2 / -1;border-top:0;padding-top:0}
+.fbbar{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-top:10px;font-size:12px;color:var(--muted)}
+.fbbar input{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:4px 9px;font-size:13px;width:150px}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{margin:0;font-family:var(--font);text-wrap:balance}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:244px minmax(0,1fr);min-height:100vh}
+
+/* left column */
+.side{background:var(--panel);border-right:1px solid var(--line);padding:20px 12px 14px;display:flex;flex-direction:column;gap:14px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{font-weight:700;font-size:17px;letter-spacing:-.01em;padding:0 8px}
+.brand small{display:block;font-weight:400;font-size:12px;color:var(--muted);letter-spacing:0}
+.grp{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:10px 8px 3px}
+#exlist{display:flex;flex-direction:column;gap:1px}
+.ex{display:flex;gap:10px;align-items:baseline;text-align:left;border:0;background:transparent;border-radius:8px;padding:7px 8px;cursor:pointer;width:100%}
+.ex:hover{background:var(--soft)}
+.ex[aria-current="true"]{background:var(--accent-soft);color:var(--accent)}
+.ex .n{font-weight:700;min-width:30px}
+.ex .t{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ex[aria-current="true"] .t{color:inherit}
+.srcbox{margin-top:auto;border-top:1px solid var(--line);padding:12px 8px 0;display:grid;gap:6px}
+.status{font-size:12px;color:var(--muted);line-height:1.5}
+.linkbtn{border:0;background:none;color:var(--accent);padding:0;cursor:pointer;text-align:left;font-size:12px;text-decoration:underline}
+
+/* main */
+.main{padding:28px clamp(18px,4vw,48px) 64px;display:flex;flex-direction:column;gap:20px;max-width:980px;width:100%}
+.head h1{font-size:26px;font-weight:700;letter-spacing:-.02em}
+.head .sub{color:var(--muted);margin-top:2px}
+details.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+details.panel>summary{cursor:pointer;padding:12px 16px;font-weight:600;font-size:14px;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px}
+details.panel>summary::-webkit-details-marker{display:none}
+details.panel>summary .hint{font-weight:400;font-size:12px;color:var(--muted);flex:1}
+details.panel>summary::after{content:"Show";font-weight:400;font-size:12px;color:var(--accent)}
+details.panel[open]>summary::after{content:"Hide"}
+.pbody{padding:0 16px 16px;display:grid;gap:12px}
+textarea{width:100%;min-height:150px;border:1px solid var(--line);background:var(--bg);border-radius:9px;padding:10px 12px;resize:vertical;line-height:1.55;font-size:14px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:7px 16px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.note{font-size:13px;color:var(--muted)}
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px 16px}
+.fact{display:grid;gap:3px}
+.fact label{font-size:12px;color:var(--muted)}
+.fact select,.fact input{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 8px;width:100%}
+.read{font-size:13px;color:var(--ink2);background:var(--soft);border-radius:9px;padding:8px 12px}
+.reqs{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.reqs li{font-size:14px;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
+.kchip{font-size:11px;border-radius:999px;padding:0 8px;background:var(--accent-soft);color:var(--accent)}
+
+/* summary */
+.tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;text-decoration:none;color:inherit;box-shadow:var(--shadow);display:grid;gap:2px}
+.tile:hover{border-color:var(--accent)}
+.tile b{font-size:30px;line-height:1.1;font-weight:700;letter-spacing:-.02em}
+.tile span{font-size:13px;color:var(--ink2)}
+.tile small{font-size:12px;color:var(--muted);line-height:1.4}
+.tile.t-applicable b{color:var(--ok)} .tile.t-potential b{color:var(--info)} .tile.t-advisory b{color:var(--ink2)} .tile.t-unverified b{color:var(--warn)} .tile.t-not_applicable b{color:var(--none)}
+.zero{background:var(--warn-bg);color:var(--warn);border-radius:12px;padding:12px 16px;font-size:14px}
+.thr{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:13px;color:var(--ink2)}
+.thr select{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:5px 8px}
+.imp{font-size:12px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:1px 9px;white-space:nowrap}
+.lower{border:1px dashed var(--line);border-radius:12px;padding:10px 14px}
+.lower>summary{cursor:pointer;font-size:13px;color:var(--accent);list-style:none}
+.lower>summary::-webkit-details-marker{display:none}
+.lower>summary::before{content:"+ "}
+.lower[open]>summary::before{content:"- "}
+.lower>.stack{display:grid;gap:12px;margin-top:12px}
+.errbox{background:var(--bad-bg);color:var(--bad);border-radius:12px;padding:12px 16px;font-size:14px;overflow-wrap:anywhere}
+.safe{font-size:13px;color:var(--ink2);background:var(--soft);border-radius:10px;padding:10px 14px}
+
+/* sections */
+.sec{display:grid;gap:12px;scroll-margin-top:16px}
+.sec>h2{font-size:18px;font-weight:700;letter-spacing:-.01em;display:flex;gap:10px;align-items:baseline}
+.sec>h2 .cnt{font-size:13px;font-weight:500;color:var(--muted)}
+.sec>.hint{font-size:13px;color:var(--muted);margin-top:-8px}
+.none{color:var(--muted);font-size:14px;background:var(--panel);border:1px dashed var(--line);border-radius:10px;padding:10px 14px}
+
+/* rule card */
+.rule{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:12px;min-width:0;box-shadow:var(--shadow)}
+.rule.k-applicable{border-top:3px solid var(--ok)}
+.rule.k-potential{border-top:3px solid var(--info)}
+.rule.k-advisory{border-top:3px solid var(--line)}
+.rule.k-unverified{border-top:3px solid var(--warn)}
+.rule.k-not_applicable{border-top:3px solid var(--line);background:var(--bg)}
+.score{font-size:13px;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:1px 11px;white-space:nowrap}
+.score small{font-weight:500;color:var(--muted)}
+.view{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:13px;color:var(--ink2)}
+.view select{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:5px 8px}
+.bars{display:grid;gap:4px;font-size:13px}
+.bars .pr{display:grid;grid-template-columns:150px 1fr 56px;gap:8px;align-items:center}
+.bars .bar{display:block;height:7px;width:100%;margin:0;background:var(--soft);border-radius:4px;overflow:hidden}
+.bars .bar i{display:block;height:100%;background:var(--accent)}
+.bars .neg{color:var(--bad)}
+.o-notrel{background:var(--none-bg);color:var(--none)}
+.rhead{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.rid{font-weight:700;font-size:15px}
+.sp{flex:1}
+.badge{font-size:12px;font-weight:500;border-radius:999px;padding:2px 10px;background:var(--none-bg);color:var(--none);white-space:nowrap}
+.b-ok{background:var(--ok-bg);color:var(--ok)} .b-warn{background:var(--warn-bg);color:var(--warn)} .b-bad{background:var(--bad-bg);color:var(--bad)} .b-info{background:var(--info-bg);color:var(--info)}
+.limit{display:flex;flex-wrap:wrap;gap:2px 12px;align-items:baseline}
+.limit b{font-size:19px;font-weight:700;letter-spacing:-.01em}
+.limit span{color:var(--ink2)}
+.quote{margin:0;background:var(--soft);border-radius:10px;padding:10px 14px;font-size:14px;line-height:1.6;overflow-wrap:anywhere;color:var(--ink2)}
+.warnbox{font-size:13px;background:var(--warn-bg);color:var(--warn);border-radius:9px;padding:7px 12px}
+.source{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px;color:var(--muted)}
+.source b{color:var(--ink2);font-weight:600}
+.dl{display:grid;gap:10px;margin:0}
+.dl>div{display:grid;grid-template-columns:150px minmax(0,1fr);gap:4px 14px;font-size:14px}
+.dl dt{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding-top:2px}
+.dl dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.cl{margin:6px 0 0;padding:0;list-style:none;display:grid;gap:4px;font-size:13px}
+.cl li{padding-left:20px;position:relative}
+.cl li::before{position:absolute;left:0;font-weight:700}
+.cl .met::before{content:"✓";color:var(--ok)} .cl .unk::before{content:"?";color:var(--warn)} .cl .chk::before{content:"·";color:var(--muted)} .cl .con::before{content:"✗";color:var(--bad)}
+.cl .unk{color:var(--ink)} .cl .chk{color:var(--muted)}
+.state{font-weight:600}
+.checks{margin:0;padding-left:18px}.checks li{margin:1px 0}
+.badge.b-warn{background:var(--warn-bg);color:var(--warn)}.badge.b-ok{background:var(--ok-bg);color:var(--ok)}
+.s-applies{color:var(--ok)} .s-unknown{color:var(--info)} .s-adv{color:var(--ink2)}
+.more>summary{cursor:pointer;font-size:13px;color:var(--accent);list-style:none}
+.more>summary::-webkit-details-marker{display:none}
+.more>summary::before{content:"+ "}
+.more[open]>summary::before{content:"- "}
+.moreb{display:grid;gap:8px;margin-top:8px;font-size:13px;color:var(--ink2)}
+.terms{display:flex;flex-wrap:wrap;gap:5px}
+.term{font-size:12px;background:var(--soft);border-radius:6px;padding:1px 8px}
+.term em{font-style:normal;color:var(--muted);margin-left:4px}
+mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 2px}
+
+/* diagnostics */
+.diag{display:grid;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel)}
+.drow{display:grid;grid-template-columns:42px 82px 118px minmax(0,1fr);gap:4px 12px;padding:8px 12px;border-top:1px solid var(--line);font-size:13px;align-items:baseline}
+.drow:first-child{border-top:0}
+.drow .rk{color:var(--muted)}
+.drow .id{font-weight:600}
+.drow .why{color:var(--ink2);overflow-wrap:anywhere}
+.drow .why small{display:block;color:var(--muted);font-size:12px}
+.o{font-size:11px;font-weight:600;border-radius:999px;padding:1px 8px;text-align:center;background:var(--none-bg);color:var(--none)}
+.o-enforceable{background:var(--ok-bg);color:var(--ok)} .o-conditional{background:var(--info-bg);color:var(--info)} .o-advisory{background:var(--soft);color:var(--ink2)} .o-unverified{background:var(--warn-bg);color:var(--warn)}
+@media (max-width:980px){.tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:640px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr}
+  .side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:14px 12px 10px}
+  #exlist{flex-direction:row;overflow-x:auto;padding-bottom:4px}
+  .ex{width:auto;flex:none;border:1px solid var(--line)}
+  .ex .t,.grp{display:none}
+  .srcbox{margin-top:0}
+  .main{padding-top:20px}
+  .dl>div{grid-template-columns:1fr}
+  .drow{grid-template-columns:34px 76px minmax(0,1fr)}
+  .drow .o{grid-column:3;justify-self:start}
+  .drow .why{grid-column:1/-1}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand">Rule Finder<small>Doctrine rules for an exercise</small></div>
+    <nav id="exlist" aria-label="Exercises"></nav>
+    <div class="srcbox">
+      <div class="status" id="status"></div>
+      <button class="linkbtn" id="pickcsv" type="button">Load another rules CSV</button>
+      <input id="csvfile" type="file" accept=".csv,text/csv" hidden>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="head"><h1 id="title">Find the rules for an exercise</h1><div class="sub" id="sub">Pick an exercise on the left, or paste your own description.</div><div class="row" style="margin-top:10px"><button class="btn" id="dl" type="button" disabled>Download rules as JSON</button></div>
+      <div class="fbbar" id="fbbar"><label for="reviewer">Reviewer</label><input id="reviewer" placeholder="your name (optional)"><button class="btn" id="dlfb" type="button" disabled>Feedback CSV, this exercise</button><button class="btn" id="dlfball" type="button" disabled>Feedback CSV, all my reviews</button><span id="fbcount" aria-live="polite"></span></div>
+      <div class="fbbar"><label for="policy">Rule policy</label><select id="policy"><option value="lenient">Checks (new): unknown conditions and unverified quotes are notes</option><option value="strict">Strict (old): unverified rules held apart, unknown conditions cap a rule</option></select></div></header>
+
+    <details class="panel" id="desc">
+      <summary>Exercise description<span class="hint">objectives, constraints, operational context</span></summary>
+      <div class="pbody">
+        <textarea id="stmt" aria-label="Exercise description" placeholder="Paste the objectives, constraints, vehicle characteristics and route requirements of the exercise."></textarea>
+        <div class="row"><button class="btn primary" id="go" type="button">Find rules</button><button class="linkbtn" id="clear" type="button">Clear</button><button class="linkbtn" id="pickjson" type="button">Load team extraction JSON</button><input id="jsonfile" type="file" accept=".json,application/json" multiple hidden></div>
+        <div class="read" id="jsonnote" aria-live="polite"></div>
+      </div>
+    </details>
+
+    <details class="panel" id="factsPanel">
+      <summary>Known facts<span class="hint">what you know from the map or the vehicles. Left on "unknown", a condition is unknown, never false.</span></summary>
+      <div class="pbody">
+        <div class="facts">
+          <div class="fact"><label for="f-country">Country of the exercise</label><select id="f-country"><option value="">Automatic</option><option>France</option><option>Germany</option><option>Denmark</option><option>Spain</option><option>United Kingdom</option><option>United States</option></select></div>
+          <div class="fact"><label for="f-bridges">The route crosses a classified bridge</label><select id="f-bridges"><option value="unknown">Unknown</option><option value="yes">Yes</option><option value="no">No</option></select></div>
+          <div class="fact"><label for="f-express">The route includes an expressway</label><select id="f-express"><option value="">Unknown</option><option value="yes">Yes</option><option value="no">No</option></select></div>
+          <div class="fact"><label for="f-halts">Halts are planned</label><select id="f-halts"><option value="">Unknown</option><option value="yes">Yes</option><option value="no">No</option></select></div>
+          <div class="fact"><label for="f-halt">Longest planned halt (minutes)</label><input id="f-halt" type="number" min="0" step="1" placeholder="unknown"></div>
+          <div class="fact"><label for="f-vmlc">Vehicle MLC</label><input id="f-vmlc" type="number" min="0" step="1" placeholder="unknown"></div>
+          <div class="fact"><label for="f-bmlc">Lowest bridge MLC on the route</label><input id="f-bmlc" type="number" min="0" step="1" placeholder="unknown"></div>
+        </div>
+        <div class="read" id="derived"></div>
+      </div>
+    </details>
+
+    <div id="out" style="display:grid;gap:24px;min-width:0"></div>
+  </main>
+</div>
+
+<script>
+/*ENGINE*/
+/*DATA*/
+const $ = id => document.getElementById(id);
+function h(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs||{})){ if (v==null||v===false) continue; if (k==='class') e.className=v; else if (k==='text') e.textContent=v; else e.setAttribute(k,v===true?'':v); }
+  for (const c of kids.flat()){ if (c==null||c===false) continue; e.append(c.nodeType?c:document.createTextNode(String(c))); }
+  return e;
+}
+const RM = window.RuleMatch, RS = window.RuleSelect, EA = window.ExtractionAdapter;
+let matcher = null, current = null, viewMode = 'grouped';
+const CLS = {mandatory_constraint:'Mandatory constraint', conditional_requirement:'Conditional requirement', recommendation:'Recommendation', threshold_trigger:'Threshold trigger', descriptive_value:'Descriptive value'};
+const GROUPS = [
+  {key:'applicable', title:'Applicable', hint:'Verified mandatory rules whose conditions are all confirmed by the exercise or by your known facts.', empty:'None. No verified mandatory rule has every condition confirmed. Enter what you know under "Known facts" and the rules are re-evaluated.', tile:'verified, every condition confirmed'},
+  {key:'potential', title:'Potentially applicable', hint:'Verified mandatory rules that bear on the exercise. They apply only if the missing information turns out to be true.', empty:'None.', tile:'verified, information missing'},
+  {key:'advisory', title:'Advisory and background', hint:'Verified recommendations, thresholds and descriptions, plus rules the exercise already covers with its own limit. Context, never a constraint.', empty:'None.', tile:'verified, not a constraint'},
+  {key:'unverified', title:'Unverified', hint:'Relevant to the exercise, but the quote has not been verified against the PDF. Verify these first. They are not used as constraints.', empty:'None.', tile:'relevant, not verified yet'},
+  {key:'not_applicable', title:'Not applicable', hint:'Relevant to a requirement of the exercise, but a condition of the rule is contradicted (for example another country). Kept for completeness.', empty:'None.', tile:'a condition is contradicted'}
+];
+let strictPolicy = false;       // false = new policy (checks, no verification gate); true = old behaviour
+const GROUP_TEXT = {
+  lenient: {
+    applicable:['Mandatory rules the exercise does not contradict. Conditions the exercise does not state are listed as "check" lines, and an unverified quote is flagged on the card.','None. No mandatory rule bears on this exercise without being held back.','mandatory, not contradicted'],
+    potential:['Mandatory rules held back from "Applicable": their planning role is not recognised, or tonnes cannot be compared with MLC until the vehicle MLC is known.','None.','held back, see the check lines'],
+    unverified:['Not used with this policy: the verification status is shown on each card and in its check lines instead.','None.','shown on the cards']
+  },
+  strict: {
+    applicable:['Verified mandatory rules whose conditions are all confirmed by the exercise or by your known facts.','None. No verified mandatory rule has every condition confirmed. Enter what you know under "Known facts" and the rules are re-evaluated.','verified, every condition confirmed'],
+    potential:['Verified mandatory rules that bear on the exercise. They apply only if the missing information turns out to be true.','None.','verified, information missing'],
+    unverified:['Relevant to the exercise, but the quote has not been verified against the PDF. Verify these first. They are not used as constraints.','None.','relevant, not verified yet']
+  }
+};
+const STATUS_TEXT = {applicable:'Applicable', potential:'Potentially applicable', advisory:'Advisory', unverified:'Unverified', not_applicable:'Not applicable', not_relevant:'Not relevant'};
+
+function setMatcher(csvText, name){
+  const rows = RM.parseCsv(csvText);
+  if (!rows.length || rows[0].rule_id===undefined || rows[0].evidence_quote===undefined) throw new Error('This CSV has no rule_id and evidence_quote columns.');
+  matcher = new RM.Matcher(rows);
+  const all = matcher.rules.length, v = matcher.rules.filter(r=>r.verified).length, u = matcher.rules.filter(r=>!r.reviewed).length;
+  $('status').replaceChildren(h('b',{text:all+' rules'}), ' from '+name+'. '+v+' verified, '+(all-v-u)+' partly verified, '+u+' not verified.'+(typeof DATA!=='undefined'&&DATA.built?' Built '+DATA.built+'.':''));
+}
+function userFacts(){
+  return { country:$('f-country').value, bridges_on_route:$('f-bridges').value, expressway_on_route:$('f-express').value, halts_planned:$('f-halts').value,
+    longest_halt_min:$('f-halt').value, vehicle_mlc:$('f-vmlc').value, bridge_mlc_min:$('f-bmlc').value };
+}
+function resetFacts(){ ['f-country','f-express','f-halts','f-halt','f-vmlc','f-bmlc'].forEach(i=>$(i).value=''); $('f-bridges').value='unknown'; }
+function mark(text, terms){
+  const frag = document.createDocumentFragment(); const set = new Set(terms);
+  text.split(/([A-Za-z0-9]+(?:[./-][A-Za-z0-9]+)*)/).forEach(part=>{
+    if (/^[A-Za-z0-9]/.test(part) && RM.tokens(part).some(t=>set.has(t))) frag.append(h('mark',{text:part})); else frag.append(part);
+  });
+  return frag;
+}
+function verifyBadge(i){
+  if (i.verification==='verified') return h('span',{class:'badge b-ok',text:'✓ Verified'});
+  if (i.verification==='partly') return h('span',{class:'badge b-warn',text:'Partly verified'});
+  return h('span',{class:'badge b-bad',text:'Not verified'});
+}
+function limitLine(r){
+  const hasNum = r.val && (r.val.qs.length || r.val.range);
+  const head = hasNum ? r.valueText.replace(/\s*;\s*.*$/,'') : 'No numeric limit';
+  return h('div',{class:'limit'}, h('b',{text:head}), r.scope?h('span',{text:r.scope}):null);
+}
+function dlRow(label, content){ return h('div',{}, h('dt',{text:label}), h('dd',{}, content)); }
+function condList(i){
+  const items = [];
+  i.conds.forEach(c=>{
+    if (c.status==='MET') items.push(h('li',{class:'met',text:'Confirmed: '+c.label+(c.why?' ('+c.why+')':'')}));
+    else if (c.status==='UNKNOWN') items.push(h('li',{class:'unk',text:'Missing: '+c.need}));
+    else items.push(h('li',{class:'con',text:'Contradicted: '+(c.tag==='country'?c.why:c.label+' ('+c.why+')')}));
+  });
+  i.missing.filter(m=>!i.conds.some(c=>c.need===m)).forEach(m=>items.push(h('li',{class:'unk',text:'Missing: '+m})));
+  i.unchecked.forEach(u=>items.push(h('li',{class:'chk',text:'Also stated by the rule, not checked: '+u})));
+  return items.length?h('ul',{class:'cl'},items):h('span',{class:'note',text:'The rule states no condition.'});
+}
+function partsBlock(i){
+  const P = i.parts, M = RS.SCORE_PARTS;
+  const row = (label, v, max) => h('div',{class:'pr'}, h('span',{text:label}), h('span',{class:'bar'}, h('i',{style:'width:'+Math.round(100*v/max)+'%'})), h('span',{text:v+' / '+max}));
+  const out = h('div',{class:'bars'}, row('Search similarity', P.search, M.search), row('Exercise requirement', P.requirement, M.requirement), row('Constraint match', P.constraint, M.constraint), row('Scope and conditions', P.scope, M.scope), row('Added guidance', P.guidance, M.guidance));
+  P.penalties.forEach(p=>out.append(h('div',{class:'pr neg'}, h('span',{text:'Penalty'}), h('span',{text:p.reason}), h('span',{text:'-'+p.points}))));
+  out.append(h('div',{class:'note',text:'Normalized ranking score, 0 to 100. It is not a probability that the rule applies.'}));
+  return out;
+}
+/* ---- human review: Relevant / Irrelevant / Unsure. Kept in this browser (localStorage, optional) and exported as CSV. Never changes a score, a group or the rules CSV. ---- */
+const DECISIONS = [['relevant','Relevant'],['irrelevant','Irrelevant'],['unsure','Unsure']];
+const APPL = { applicable:'applicable', potential:'potentially_applicable', advisory:'advisory_background', unverified:'unverified', not_applicable:'not_applicable', not_relevant:'not_relevant' };
+const REVKEY = 'rulefinder.reviews.v1:' + (DATA.csvName||'');
+let reviews = {};
+try { reviews = JSON.parse(localStorage.getItem(REVKEY) || '{}') || {}; } catch(e){ reviews = {}; }
+try { const nm = localStorage.getItem('rulefinder.reviewer'); if (nm) setTimeout(()=>{ const el=document.getElementById('reviewer'); if (el) el.value = nm; }, 0); } catch(e){}
+function exKey(){ return current ? current.n : 'custom'; }
+function saveReviews(){ try { localStorage.setItem(REVKEY, JSON.stringify(reviews)); } catch(e){} }
+function snap(i){
+  return { exercise_id: exKey(), exercise_objective: current ? current.t : 'Custom description', rule_id: i.id, shown_as: i.relevant ? 'relevant' : 'not_relevant', rank: i.relevanceRank || '', relevance_score: i.relevance,
+    applicability_status: APPL[i.status] || i.status, verification_status: i.verification, pdf_document: i.rule.doc, pdf_page: i.rule.page, search_mode: 'bm25', rules_file: DATA.csvName || '' };
+}
+function updateFbCount(){
+  const all = Object.values(reviews).filter(r=>r.decision), cur = all.filter(r=>r.exercise_id===exKey()).length;
+  const c = $('fbcount'); if (c) c.textContent = cur + ' reviewed in this exercise, ' + all.length + ' in total. Saved in this browser only: download the CSV to keep it.';
+  const b = $('dlfb'), a = $('dlfball'); if (b) b.disabled = !lastRes; if (a) a.disabled = !all.length;
+}
+function reviewStrip(i){
+  const k = exKey() + '|' + i.id, cur = reviews[k] || {};
+  const wrap = h('div',{class:'rv',role:'group','aria-label':'Your review of '+i.id});
+  wrap.append(h('span',{class:'lbl',text:'Your review of relevance'}));
+  const btns = DECISIONS.map(([v,l])=>{
+    const b = h('button',{type:'button',class:'d-'+v,'aria-pressed':String(cur.decision===v),text:l});
+    b.addEventListener('click',()=>{
+      const was = (reviews[k]||{}).decision; const r = reviews[k] = Object.assign({}, reviews[k], snap(i), { decision: was===v ? '' : v, comment: note.value, reviewer: $('reviewer').value, reviewed_at: new Date().toISOString() });
+      btns.forEach((x,j)=>x.setAttribute('aria-pressed', String(r.decision===DECISIONS[j][0])));
+      if (!r.decision && !r.comment) delete reviews[k];
+      saveReviews(); updateFbCount();
+    });
+    return b;
+  });
+  const note = h('input',{type:'text',placeholder:'comment (optional)','aria-label':'Comment on '+i.id,value:cur.comment||''});
+  note.addEventListener('change',()=>{ if (!reviews[k]) reviews[k] = Object.assign({}, snap(i), { decision:'' }); reviews[k].comment = note.value; reviews[k].reviewer = $('reviewer').value; reviews[k].reviewed_at = new Date().toISOString(); saveReviews(); updateFbCount(); });
+  btns.forEach(b=>wrap.append(b)); wrap.append(note);
+  return wrap;
+}
+const FB_COLS = ['exercise_id','exercise_objective','rule_id','shown_as','rank','relevance_score','applicability_status','verification_status','review_decision','reviewer','comment','pdf_document','pdf_page','search_mode','rules_file','reviewed_at'];
+function csvCell(v){ v = v==null ? '' : String(v); return /[",\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+function feedbackCsv(scope){
+  const rows = [];
+  if (scope==='current'){
+    const seen = new Set();
+    lastRes.relevant.forEach(i=>{ seen.add(i.id); const r = reviews[exKey()+'|'+i.id] || {}; rows.push(Object.assign(snap(i), { review_decision: r.decision||'unreviewed', reviewer: r.reviewer || $('reviewer').value, comment: r.comment||'', reviewed_at: r.reviewed_at||'' })); });
+    Object.values(reviews).filter(r=>r.exercise_id===exKey() && r.decision && !seen.has(r.rule_id)).forEach(r=>rows.push(Object.assign({}, r, { review_decision: r.decision })));   // rules the page showed as not relevant but the reviewer marked
+  } else Object.values(reviews).filter(r=>r.decision).forEach(r=>rows.push(Object.assign({}, r, { review_decision: r.decision })));
+  return '\ufeff' + FB_COLS.join(',') + '\n' + rows.map(r=>FB_COLS.map(c=>csvCell(r[c])).join(',')).join('\n') + '\n';
+}
+function downloadFeedback(scope){
+  if (scope==='current' && !lastRes) return;
+  const name = scope==='current' ? 'exercise_'+exKey()+'_feedback.csv' : 'all_exercises_feedback.csv';
+  const url = URL.createObjectURL(new Blob([feedbackCsv(scope)], { type: 'text/csv;charset=utf-8' }));
+  const a = h('a', { href: url, download: name }); document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+function ruleCard(i, terms, total){
+  const r = i.rule, st = i.status;
+  const q = h('blockquote',{class:'quote'}); q.append(mark(r.quote, terms));
+  const stText = st==='applicable' ? (i.check && i.check.length ? 'Applies unless a check below fails.' : 'Applies now: every condition is confirmed.') : st==='potential' ? 'Not enforced: some conditions are unknown.' : st==='advisory' ? (i.redundant ? 'Background: the exercise already states a stricter or equal limit.' : 'Guidance only: not a constraint.') : st==='unverified' ? 'Not used as a constraint: the quote is not verified against the PDF.' : st==='not_applicable' ? 'Not applicable: a condition is contradicted.' : 'Not relevant to this exercise.';
+  const terms2 = i.why.slice(0,10);
+  return h('article',{class:'rule k-'+(st==='not_relevant'?'not_applicable':st)},
+    h('div',{class:'rhead'}, h('span',{class:'rid',text:r.id}), h('span',{class:'badge'+(r.hard?' b-info':''),text:CLS[r.cls]||r.cls}), verifyBadge(i), h('span',{class:'badge',text:STATUS_TEXT[st]}), h('span',{class:'sp'}),
+      h('span',{class:'score',title:'Normalized ranking score from 0 to 100. Not a probability.'}, 'Relevance '+i.relevance+'/100 ', h('small',{text:i.relevanceRank?'#'+i.relevanceRank+' of '+total:'not relevant'}))),
+    limitLine(r), q,
+    i.warnings.length?h('div',{class:'warnbox',text:i.warnings.join(' ')}):null,
+    h('div',{class:'source'}, h('span',{}, h('b',{text:r.doc}), ', PDF page '+r.page)),
+    h('dl',{class:'dl'},
+      dlRow('Exercise requirement', i.addresses.length?h('div',{}, i.addresses.map(x=>h('div',{text:'“'+x+'”'}))):'None recognised'),
+      dlRow('How it could contribute', i.helps),
+      dlRow('Applicability', h('div',{}, h('span',{class:'state s-'+(st==='applicable'?'applies':st==='potential'?'unknown':'adv'),text:stText}), condList(i))),
+      (i.check && i.check.length) ? dlRow('Checks', h('ul',{class:'checks'}, i.check.map(x=>h('li',{text:x.replace(/^check: /,'')})))) : null,
+      i.numeric ? dlRow('Number check', h('div',{}, h('span',{class:'badge '+(i.numeric.flag==='exceeds'?'b-warn':i.numeric.flag==='ok'?'b-ok':'b-info'),text:({ok:'OK','exceeds':'Exceeds the limit',stricter:'Rule is stricter','no value':'No value'})[i.numeric.flag]}), ' ', i.numeric.message)) : null,
+      i.reasons.length?dlRow('Note', h('div',{}, i.reasons.map(x=>h('div',{text:x})))):null,
+      i.similarTo.length?dlRow('Overlaps with', i.similarTo.join(', ')+' (same requirement, kept)'):null),
+    h('details',{class:'more'}, h('summary',{text:'Score breakdown and how it was found'}), h('div',{class:'moreb'}, partsBlock(i),
+      h('div',{class:'note',text:'BM25 rank #'+i.rank+', score '+i.score.toFixed(1)+'. Shared words: '}), h('div',{class:'terms'}, terms2.map(([t,s])=>h('span',{class:'term'}, t, h('em',{text:s.toFixed(1)})))),
+      r.notes?h('div',{}, h('b',{text:'Reviewer note: '}), r.notes):null)),
+    reviewStrip(i));
+}
+function section(g, list, terms, total){
+  const s = h('section',{class:'sec',id:'sec-'+g.key}, h('h2',{}, g.title, h('span',{class:'cnt',text:'('+list.length+')'})), h('div',{class:'hint',text:g.hint}));
+  if (list.length) list.forEach(i=>s.append(ruleCard(i,terms,total))); else s.append(h('div',{class:'none',text:g.empty}));
+  return s;
+}
+function diagRow(i){
+  const why = i.reasons.length ? i.reasons : ['Not recognised as bearing on a requirement of this exercise.'];
+  const w = h('div',{class:'why'}, why[0]);
+  if (i.parts.penalties.length) w.append(h('small',{text:'Penalties: '+i.parts.penalties.map(p=>p.reason+' (-'+p.points+')').join('; ')}));
+  w.append(h('small',{text:i.aspect.label+' · '+i.rule.doc+' p.'+i.rule.page+' · '+(CLS[i.rule.cls]||i.rule.cls)+' · '+(i.verification==='verified'?'verified':i.verification==='partly'?'partly verified':'not verified')}));
+  return h('div',{class:'drow'}, h('span',{class:'rk',text:'#'+i.rank}), h('span',{class:'id',text:i.id}), h('span',{class:'o o-notrel',text:'Score '+i.relevance}), w, reviewStrip(i));
+}
+let lastRes = null;
+function download(){
+  if (!lastRes) return;
+  const id = current ? current.n : 'custom', obj = current ? current.t : 'Custom description';
+  const data = RS.exportRules(lastRes, { id, objective: obj, rulesFile: DATA.csvName });
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  const a = h('a', { href: url, download: 'exercise_' + id + '_relevant_rules.json' }); document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function run(){
+  const out = $('out');
+  try { runInner(); }
+  catch(e){ out.replaceChildren(h('div',{class:'errbox'}, h('b',{text:'Something went wrong while ranking rules. '}), 'Send this message to the person who built the page: ', h('code',{text:String(e && e.message || e)}), ' (browser: '+navigator.userAgent.slice(0,90)+')')); console.error(e); }
+}
+function compatible(){
+  if (!RM) return 'rulematch.js is not inside the page. Replace build_finder.py in tools with the new version, make sure rulematch.js and ruleselect.js are in tools, then rebuild the page.';
+  if (!RS || !RS.rank) return 'The new ruleselect.js is not inside the page. Replace ruleselect.js, build_finder.py and rule_finder_template.html in tools with the new versions, then rebuild: py -3 tools\\build_finder.py rules_final -o rule_finder.html';
+  const need = ['FAMILY','TO_BASE','base','origMap','cleanExercise','Matcher','quantities','conceptOf'];
+  const miss = need.filter(k=>!RM[k]);
+  if (miss.length) return 'rulematch.js is an old version (missing '+miss.join(', ')+'). Replace it with the new rulematch.js in tools, then rebuild the page.';
+  try { new RegExp('(?<=a)b'); } catch(e){ return 'This browser is too old (it does not support regular-expression lookbehind). Use a recent Chrome, Edge or Firefox.'; }
+  return '';
+}
+function runInner(){
+  const text = $('stmt').value; const out = $('out'); out.replaceChildren();
+  if (!matcher){ out.append(h('div',{class:'none',text:'No rules loaded.'})); return; }
+  if (!text.trim()){ out.append(h('div',{class:'none',text:'Pick an exercise on the left, or open "Exercise description" and paste one.'})); $('derived').textContent=''; return; }
+  const res = RS.rank(matcher, text, userFacts(), { policy: strictPolicy ? 'strict' : 'lenient' });
+  lastRes = res; $('dl').disabled = false; updateFbCount();
+  const f = res.facts, bits = [];
+  bits.push(f.country.value ? 'country: '+f.country.value+' ('+f.country.source+')' : 'country: unknown');
+  if (f.mass_t!=null) bits.push('mass: '+f.mass_t+' t'); if (f.vehicle_mlc!=null) bits.push('vehicle MLC: '+f.vehicle_mlc);
+  bits.push('bridge on route: '+f.bridges_on_route); bits.push('expressway: '+f.expressway_on_route); bits.push('halts: '+f.halts_planned);
+  $('derived').textContent = 'Read from the exercise and your input: ' + bits.join(' · ') + '.';
+  const c = res.counts, terms = res.query, total = c.relevant;
+  const GT = GROUP_TEXT[strictPolicy ? 'strict' : 'lenient'];
+  GROUPS.forEach(g=>{ if (GT[g.key]) { g.hint = GT[g.key][0]; g.empty = GT[g.key][1]; g.tile = GT[g.key][2]; } });
+  out.append(h('div',{class:'tiles'}, GROUPS.map(g=>h('a',{class:'tile t-'+g.key,href:'#sec-'+g.key}, h('b',{text:String(c[g.key])}), h('span',{text:g.title}), h('small',{text:g.tile})))));
+  out.append(h('div',{class:'safe',text:total+' relevant rules out of '+c.retrieved+' retrieved by BM25 (corpus: '+c.corpus+'), ordered by relevance score. The score runs from 0 to 100 and is a normalized ranking score, NOT a probability that the rule applies. Relevance and applicability are separate: the group a rule is in says whether it can be used. Nothing relevant is hidden; rules that do not bear on the exercise are listed under "Not relevant".'}));
+  const sel = h('select',{id:'view','aria-label':'View'}, [['grouped','Grouped by applicability'],['single','One list, all relevant rules by relevance']].map(([v,l])=>h('option',{value:v,text:l,selected:viewMode===v})));
+  sel.addEventListener('change',()=>{ viewMode = sel.value; run(); });
+  out.append(h('div',{class:'view'}, h('label',{for:'view',text:'View'}), sel));
+  out.append(h('details',{class:'panel'}, h('summary',{}, 'How the relevance score is built', h('span',{class:'hint',text:'five parts and penalties, all visible'})), h('div',{class:'pbody'},
+    h('ul',{class:'reqs'}, [['Search similarity (0 to 20)','BM25 compared with the typical top score of this exercise (median of the best 5), so one very high rule does not push the others down.'],
+      ['Exercise requirement (0 to 30)','The rule serves a requirement the exercise states: all its needs met 30, some 12, none 0.'],
+      ['Constraint match (0 to 25)','Same quantity as a number the exercise gives 25; serves a requirement without a shared number 15.'],
+      ['Scope and conditions (0 to 15)','All conditions confirmed 15; unknown conditions lower it; a contradicted condition gives 0.'],
+      ['Added guidance (0 to 10)','A rule that adds something scores higher; one the exercise already covers with its own limit scores 0.'],
+      ['Penalties','Emergency or exceptional procedure -30; a same-looking number that serves no requirement -25; same unit but a different quantity -20; already covered by the exercise own limit -15; a contradicted condition -20; tonnes against MLC -5; a rule whose role is not recognised is kept only on a shared phrase and capped at 70.']].map(([a,b])=>h('li',{}, h('b',{text:a+': '}), b))),
+    h('div',{class:'note',text:strictPolicy ? 'Verification does not change the score. It decides the group (Unverified).' : 'Verification does not change the score or the group with this policy. It is shown on each card and listed in its check lines.'}))));
+  const reqBox = h('details',{class:'panel'}, h('summary',{}, 'Requirements read from the exercise', h('span',{class:'hint',text:res.requirements.length+' statements'})),
+    h('div',{class:'pbody'}, h('ul',{class:'reqs'}, res.requirements.map(r=>h('li',{}, h('span',{text:r.text}), r.kinds.map(k=>h('span',{class:'kchip',text:RS.KIND_LABEL[k]||k})))))));
+  out.append(reqBox);
+  if (viewMode==='single'){
+    out.append(h('section',{class:'sec',id:'sec-all'}, h('h2',{}, 'All relevant rules', h('span',{class:'cnt',text:'('+total+')'})), h('div',{class:'hint',text:'Descending relevance score. The status badge on each card says whether it can be used.'}),
+      res.relevant.length?res.relevant.map(i=>ruleCard(i,terms,total)):h('div',{class:'none',text:'No rule bears on this exercise.'})));
+  } else {
+    GROUPS.forEach(g=>out.append(section(g, res.groups[g.key], terms, total)));
+  }
+  const nr = res.notRelevant.slice().sort((x,y)=>x.rank-y.rank);
+  out.append(h('details',{class:'panel',id:'sec-notrel'}, h('summary',{}, 'Not relevant / Retrieval diagnostics', h('span',{class:'hint',text:nr.length+' retrieved rules that do not bear on this exercise, in BM25 order, with their score and reason'})), h('div',{class:'pbody'},
+    h('div',{class:'note',text:'Query words: '+res.queryWords.join(' ')+(res.expansion?'. Words added for the requirements found: '+res.expansion+'.':'')+' Bare numbers are left out on purpose: 80 tonnes and MLC 80 are not the same thing. '+(c.corpus-c.retrieved)+' rules of the corpus were not retrieved.'}),
+    h('div',{class:'diag'}, nr.length?nr.map(diagRow):h('div',{class:'drow'},'None')))));
+}
+const FACT_IDS = {longest_halt_min:'f-halt', country:'f-country', vehicle_mlc:'f-vmlc', bridge_mlc_min:'f-bmlc'};
+function pick(ex){
+  current = ex; $('stmt').value = ex.text; $('title').textContent = 'Exercise '+ex.n; $('sub').textContent = ex.t;
+  $('desc').open = false; resetFacts();
+  Object.keys(ex.user||{}).forEach(k=>{ if (FACT_IDS[k]) $(FACT_IDS[k]).value = ex.user[k]; });
+  $('jsonnote').textContent = ex.note || '';
+  document.querySelectorAll('.ex').forEach(b=>b.setAttribute('aria-current', b.dataset.n===ex.n?'true':'false'));
+  run(); window.scrollTo({top:0});
+}
+function buildList(){
+  const box = $('exlist'); box.replaceChildren();
+  DATA.exercises.forEach(ex=>{
+    if (ex.n==='11') box.append(h('div',{class:'grp',text:'Exercises 11 to 20'}));
+    if (ex.n==='21') box.append(h('div',{class:'grp',text:'Exercises 21 to 27'}));
+    const b = h('button',{class:'ex',type:'button','data-n':ex.n,'aria-current':'false'}, h('span',{class:'n',text:ex.n}), h('span',{class:'t',text:ex.t}));
+    b.addEventListener('click',()=>pick(ex)); box.append(b);
+  });
+  const c = h('button',{class:'ex',type:'button','data-n':'custom','aria-current':'false'}, h('span',{class:'n',text:'+'}), h('span',{class:'t',text:'My own description'}));
+  c.addEventListener('click',()=>{ current=null; $('stmt').value=''; resetFacts(); $('title').textContent='Your own description'; $('sub').textContent='Paste an exercise below and click Find rules.'; $('desc').open=true; $('stmt').focus();
+    document.querySelectorAll('.ex').forEach(b=>b.setAttribute('aria-current', b.dataset.n==='custom'?'true':'false')); run(); });
+  box.append(c);
+}
+(function init(){
+  buildList();
+  const bad = compatible();
+  if (bad){ $('out').replaceChildren(h('div',{class:'errbox',text:bad})); $('status').textContent='Not started.'; return; }
+  try { setMatcher(DATA.csv, DATA.csvName); } catch(e){ $('status').textContent = String(e.message||e); }
+  $('go').addEventListener('click',()=>{ if (!current){ $('title').textContent='Your own description'; $('sub').textContent='Rules ranked for the text you pasted.'; } else if ($('stmt').value !== current.text){ $('title').textContent='Exercise '+current.n+' (edited)'; $('sub').textContent='Rules ranked for your edited text.'; } run(); });
+  $('clear').addEventListener('click',()=>{ $('stmt').value=''; run(); $('stmt').focus(); });
+  ['f-country','f-bridges','f-express','f-halts','f-halt','f-vmlc','f-bmlc'].forEach(id=>$(id).addEventListener('change',run));
+  $('policy').addEventListener('change', ()=>{ strictPolicy = $('policy').value==='strict'; run(); });
+  $('dl').addEventListener('click', download);
+  $('dlfb').addEventListener('click', ()=>downloadFeedback('current'));
+  $('dlfball').addEventListener('click', ()=>downloadFeedback('all'));
+  $('reviewer').addEventListener('change', ()=>{ try { localStorage.setItem('rulefinder.reviewer', $('reviewer').value); } catch(e){} });
+  updateFbCount();
+  $('pickjson').addEventListener('click',()=>$('jsonfile').click());
+  $('jsonfile').addEventListener('change',async e=>{
+    const files=[...e.target.files]; e.target.value=''; let last=null; const msgs=[];
+    for (const f of files){
+      try {
+        if (!EA) throw new Error('extraction_adapter.js is not inside the page. Put it in tools and rebuild.');
+        const r = EA.fromExtraction(JSON.parse((await f.text()).replace(/^\uFEFF/,'')));
+        if (r.error){ msgs.push(f.name+': '+r.error); continue; }
+        const n = r.id, ex = {n, t:r.objective||r.subtitle||'team extraction', text:r.text, user:r.user, from:'json'};
+        const nt = r.notes, bits = [f.name+': '+(r.text.split('\n').length)+' lines read'];
+        if (nt.ignored.length) bits.push(nt.ignored.length+' context or example item(s) not used');
+        if (nt.uncertain.length) bits.push(nt.uncertain.length+' marked uncertain by the team');
+        if (nt.noCoords.length) bits.push('no coordinates for: '+nt.noCoords.join('; '));
+        if (nt.issues.length) bits.push('open issues: '+nt.issues.join('; '));
+        ex.note = bits.join(' | ');
+        const k = DATA.exercises.findIndex(x=>x.n===n); if (k>=0) DATA.exercises[k]=ex; else DATA.exercises.push(ex);
+        last = ex;
+      } catch(err){ msgs.push(f.name+': cannot read this file ('+(err.message||err)+')'); }
+    }
+    buildList(); if (last) pick(last); $('jsonnote').textContent = [last&&last.note].concat(msgs).filter(Boolean).join('  ||  ');
+  });
+  $('pickcsv').addEventListener('click',()=>$('csvfile').click());
+  $('csvfile').addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f) return; try{ setMatcher(await f.text(), f.name); run(); }catch(err){ $('status').textContent=String(err.message||err); } });
+  run();
+})();
+</script>

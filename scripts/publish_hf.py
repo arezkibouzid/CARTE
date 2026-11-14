@@ -5,8 +5,9 @@
     python scripts/publish_hf.py --repo USER/carte-unet --push     # uploads, PRIVATE repository
     python scripts/publish_hf.py --repo USER/carte-unet --push --public   # uploads, public
 
-What is published: the two final fine-tuned networks as safetensors (``carte_unet_2sheets`` = Hackathon + Scenario 1
-sheets, 12,000 steps; ``carte_unet_1sheet`` = Hackathon sheet only, 6,000 steps), ``config.json`` (architecture, input,
+What is published: the final fine-tuned networks as safetensors (``carte_unet_2sheets`` = Hackathon + Scenario 1
+sheets, 12,000 steps; ``carte_unet_2sheets_nodice``, the same without the Dice loss, the app's default;
+``carte_unet_1sheet`` = Hackathon sheet only, 6,000 steps), ``config.json`` (architecture, input,
 the 7 outputs) and a model card with the measured results. Not published: the scans, the labels, the U-Net rasters
 (derived from the scans). The architecture code is the ProbRoadClass repository (MIT), see the card.
 """
@@ -24,6 +25,8 @@ PRC_COMMIT = "09e04bb87a306e46acbf37c0df74ba28628365a1"
 MODELS = {
     "carte_unet_2sheets": {"source": "prc_mix12k_final.pt", "config": "prc_mix12k_config.json",
                            "trained_on": "Hackathon sheet + Scenario 1 sheet (IGN 1:100,000 scans), BD TOPO roads as labels, half the tiles from each"},
+    "carte_unet_2sheets_nodice": {"source": "prc_mix12k_nodice_final.pt", "config": "prc_mix12k_nodice_config.json",
+                                  "trained_on": "as carte_unet_2sheets, without the Dice loss (finds more roads: the app's default)"},
     "carte_unet_1sheet": {"source": "prc_finetuned_final.pt", "config": "prc_finetuned_config.json",
                           "trained_on": "Hackathon sheet (IGN 1:100,000 scan), BD TOPO roads as labels"},
 }
@@ -55,6 +58,7 @@ trained on Swiss Siegfried maps) on French IGN 1:100,000 scans, with a second he
 | file | trained on | steps |
 |---|---|---|
 | `carte_unet_2sheets.safetensors` | {t2} | {s2} |
+| `carte_unet_2sheets_nodice.safetensors` | {t3} | {s3} |
 | `carte_unet_1sheet.safetensors` | {t1} | {s1} |
 
 `config.json`: architecture, input, outputs. Each file: about 61 MB, bfloat16 inference on GPU or CPU.
@@ -83,7 +87,7 @@ models; inference about 15 s per sheet on an H100.
 ```bash
 git clone {prc_git} && git -C ProbRoadClass-DeepLearning checkout {prc_commit}
 git clone <CARTE repository> CARTE && cd CARTE && pip install -e ".[real,hub]" torch
-python scripts/fetch_data.py --unet --hf-repo {repo}           # downloads the weights
+python scripts/fetch_data.py --unet --hf-repo {repo}   # downloads the weights
 python scripts/prc_unet.py infer --tif SHEET.tif --model outputs/hf/carte_unet_2sheets.safetensors \\
     --prc-repo ../ProbRoadClass-DeepLearning --dest out/ [--device cpu] [--method tta]
 ```
@@ -141,14 +145,14 @@ def build(out: Path, repo: str, license_: str, license_note: str, prc_repo: str)
     t = {n: m["trained_on"] for n, m in MODELS.items()}
     (out / "README.md").write_text(CARD.format(
         license=license_, t2=t["carte_unet_2sheets"], s2=f"{cfgs['carte_unet_2sheets']['steps']:,}", t1=t["carte_unet_1sheet"],
-        s1=f"{cfgs['carte_unet_1sheet']['steps']:,}", prc_git=PRC_GIT, prc_commit=PRC_COMMIT, repo=repo or "USER/carte-unet",
+        s1=f"{cfgs['carte_unet_1sheet']['steps']:,}", t3=t["carte_unet_2sheets_nodice"], s3=f"{cfgs['carte_unet_2sheets_nodice']['steps']:,}", prc_git=PRC_GIT, prc_commit=PRC_COMMIT, repo=repo or "USER/carte-unet",
         license_note=license_note, hashes="; ".join(f"`{k}` {v}" for k, v in hashes.items())), encoding="utf-8")
     return out
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--repo", help="USER/NAME of the model repository")
+    ap.add_argument("--repo", default="arezkibouzid/carte-unet", help="USER/NAME of the model repository")
     ap.add_argument("--out", type=Path, default=REPO / "outputs/hf/carte-unet")
     ap.add_argument("--license", default="mit")
     ap.add_argument("--license-note", default="Weights released under the MIT licence, as the base network. They were "

@@ -13,11 +13,48 @@
       "cache": "outputs/hackathon100k/cache",
       "default_model": "nodice",
       "models": [
-        {"id": "nodice", "label": "Couverture maximale", "description": "Trouve le plus de routes ; itinéraires les plus proches de BD TOPO et d'OSM (recommandé).", "raster": "outputs/hackathon100k/prc/mix12k_nodice"},
-        {"id": "nodice_tta", "label": "Compromis", "description": "Bon équilibre couverture / précision (8 orientations moyennées).", "raster": "outputs/hackathon100k/prc/mix12k_nodice_tta"},
-        {"id": "mix12k_tta", "label": "Précision maximale", "description": "Réseau le plus sûr et le plus connecté, un peu moins complet.", "raster": "outputs/hackathon100k/prc/mix12k_tta"},
-        {"id": "mix12k", "label": "Référence", "description": "Modèle de référence (entraînement avec Dice).", "raster": "outputs/hackathon100k/prc/mix12k"}
+        {
+          "id": "nodice",
+          "label": "Couverture maximale",
+          "description": "Trouve le plus de routes ; itinéraires les plus proches de BD TOPO et d'OSM (recommandé).",
+          "raster": "outputs/hackathon100k/prc/mix12k_nodice",
+          "hf": {
+            "file": "carte_unet_2sheets_nodice.safetensors",
+            "tta": false
+          }
+        },
+        {
+          "id": "nodice_tta",
+          "label": "Compromis",
+          "description": "Bon équilibre couverture / précision (8 orientations moyennées).",
+          "raster": "outputs/hackathon100k/prc/mix12k_nodice_tta",
+          "hf": {
+            "file": "carte_unet_2sheets_nodice.safetensors",
+            "tta": true
+          }
+        },
+        {
+          "id": "mix12k_tta",
+          "label": "Précision maximale",
+          "description": "Réseau le plus sûr et le plus connecté, un peu moins complet.",
+          "raster": "outputs/hackathon100k/prc/mix12k_tta",
+          "hf": {
+            "file": "carte_unet_2sheets.safetensors",
+            "tta": true
+          }
+        },
+        {
+          "id": "mix12k",
+          "label": "Référence",
+          "description": "Modèle de référence (entraînement avec Dice).",
+          "raster": "outputs/hackathon100k/prc/mix12k",
+          "hf": {
+            "file": "carte_unet_2sheets.safetensors",
+            "tta": false
+          }
+        }
       ]
     }
-  ]
+  ],
+  "hf_repo": "arezkibouzid/carte-unet"
 }

@@ -1,0 +1,4 @@
+﻿Vehicle,Combined VTL with trailer
+Data (mass),Truck laden: 27 t Trailer laden: 18 t
+Provisional MLC,MLC = (27+18)×1.25 = 56.25 p
+Final temporary MLC,MLC VTLR = 56 temp

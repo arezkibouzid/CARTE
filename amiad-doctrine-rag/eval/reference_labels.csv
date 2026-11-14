@@ -1,0 +1,10 @@
+document,page,template,value,unit,expected_class,reason
+STANAG_2015,74,NET.GAP,30.5,m,conditional_requirement,"Only normal convoy discipline: minimum spacing between vehicles (condition: normal convoy discipline)"
+STANAG_2015,74,SEG.SPEED,40,km/h,conditional_requirement,"Only normal convoy discipline: maximum speed (condition: normal convoy discipline)"
+STANAG_2015,75,NET.GAP,50,m,conditional_requirement,"Caution crossings: spacing between vehicles (condition: caution crossing)"
+STANAG_2015,75,SEG.SPEED,12,km/h,conditional_requirement,"Caution crossings: speed not to exceed"
+STANAG_2015,75,SEG.SPEED,5,km/h,conditional_requirement,"Risk crossings: speed not to exceed"
+STANAG_2174_alternative,84,SEG.SPEED,50,mph,mandatory_constraint,"Maximum speed authorized on expressways"
+STANAG_2174_alternative,263,NET.GAP,10,min,descriptive_value,"Awareness that a convoy could be scheduled 10 minutes behind: not a gap rule (must be aware)"
+STANAG_2015,38,SEG.HEIGHT,4.3,m,threshold_trigger,"Clearance below 4.3 m is classified as an obstruction (classification threshold, not a movement limit)"
+AEP-3.12.1.5,83,NET.GAP,30.5,m,conditional_requirement,"Floating bridge: distance between vehicles never lower than 30.5 m. Starts with 'This value': needs the previous sentence, so it must be blocked as incomplete until a person completes it"

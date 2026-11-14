@@ -26,7 +26,8 @@ predicted by a model that never saw it in training.
                   ──► Dijkstra (SciPy, per leg), all waypoint orders, distinct round trip, convoy deconfliction
                   ──► route + facts + decision log + segment trace (alternatives, verdicts, limits)
                   ──► checks against BD TOPO / OSM routes (never change the route)
- operational orders (PDF) ──► extraction (Qwen3-VL-8B) ──► rule search (RAG, deterministic statuses)
+ NATO doctrine (5 PDFs) ──► passages ──► candidate rules ──► team review ──► 214 rules + quote check (docrag, no LLM)
+ operational orders (PDF) ──► extraction (Qwen3-VL-8B) ──► rule search (BM25 over the 214 rules, deterministic statuses)
                           ──► explanations + chat (trace answers first, local LLM under a token budget)
 ```
 
@@ -39,7 +40,8 @@ predicted by a model that never saw it in training.
 | constrained distinct itineraries | `interface/backend/constrained.py`, `src/coa_net/exercise.py` | CPU, threads |
 | API (FastAPI) | `interface/backend/amiad_api.py` | CPU |
 | route chat, context budget | `interface/backend/route_chat.py` | CPU (+ optional LLM) |
-| orders, rules, explanations | `interface/backend/orders.py`, `extraction/`, `RAG/` | CPU + Node.js (+ optional LLM) |
+| doctrine → rules (reproducible) | `amiad-doctrine-rag/` (`docrag`, `rules_final/`, `search/`) | CPU, Python + Node.js |
+| orders, rules, explanations | `interface/backend/orders.py`, `extraction/`, `amiad-doctrine-rag/` | CPU + Node.js (+ optional LLM) |
 | interface (React, MapLibre) | `interface/src/` | browser |
 | experiments | `experiments/` | Slurm (CPU / 1 GPU) |
 
@@ -274,6 +276,44 @@ run folder):
 - **Limit seen:** with 20 real orders (32,000 tokens and hundreds of rules), the model twice called applicable rules « not
   applicable »; the status check rejected both and the deterministic answer was given (43 s, two calls).
 
+### 3.7 Doctrine rules: from the NATO documents to 214 checked rules
+
+The rules the app applies to an order come from a separate, deterministic pipeline (`amiad-doctrine-rag/`, package
+`docrag`; no language model at any step: patterns and BM25, same input, same output):
+
+| step | what | result |
+|---|---|---|
+| 1. read | 5 public NATO / allied documents (AEP-3.12.1.5, AJP-4.4, AJP-4.6, STANAG 2015, STANAG 2174 alternative), 813 pages, cut into passages that keep document, page and paragraph; reading quality rated per document (the two scanned field manuals: *medium*, every rule from them compared with the PDF page) | 3,486 passages; 78 tables to CSV; figure pages flagged, not read |
+| 2. extract | one pattern per rule type (number + unit + "shall not exceed", "at least"...); a candidate is kept only if its quote is word for word in the source; each one classified (constraint, blocked, advice, unclassified) | 138 candidates; 1,407 rule-like sentences skipped, each with a reason; 10 contradictions between documents listed, not settled |
+| 3. review | per-document review files and a reviewer guide: open the PDF page, check number, unit, direction and scope, then accept / correct / reject / unsure; a blocked rule can only be corrected | `team_review_pack/` |
+| 4. final rules | reviewed candidates + route rules + rules added for exercises 21 to 27, never modified by a tool | `rules_final/doctrine_final_unique_rules.csv`: 214 rules, DR-0001 to DR-0214 |
+| 5. rule finder | for an order: BM25 over the 214 rules, a 0-100 ranking score from five readable parts, applicability kept apart from relevance (`applicable`, `potentially_applicable`, `advisory_background`, `not_applicable`), a to-do list (`check`) and a comparison of each limit with the order's numbers (`number_check`) | exercise 22B: 13 relevant rules, 10 verified |
+
+**How the rules were validated.** All 214 were validated by the team against the PDF pages. In the files: 100 rules
+carry a recorded review (`verification_status`, `quote_match_pdf`), 77 with the quote confirmed on the PDF and 23 with a
+quote that matches only partly. The automatic quote check of all 214 rules (`tools/check_final_quotes.py`) finds **196
+quotes in the source text** (186 on the stated page, 6 on the next page, 4 by start and end) and **18 not found**, mostly
+in the scanned STANAG 2174 (OCR spelling, tables, figures). The extractor's safety chain (two runs byte-identical, 64
+checks: a blocked rule cannot be approved or exported) is saved in `evidence/`.
+
+**Reproduced here** (run `20261114-095731_rag_reproduce`, `experiments/rag_reproduce.py`, 17 s on CPU; every step
+rerun in the run folder and compared with what is committed):
+- the 5 PDFs are not in the repository (`doctrine/SOURCES.md` gives names and SHA-256); without them step 1 is not
+  rerun, and the index's vector files (not stored either) are rebuilt from the saved 3,486 passages;
+- step 2 from those passages: **138/138 candidates identical** (the team's review history aside), conflicts and skipped
+  sentences identical;
+- the quote check: identical to `rules_final/quote_check.csv` (196 found, 18 not found);
+- the rule finder on exercise 22B: identical output, 13 rules;
+- the pipeline's own tests: 193 passed, 4 skipped (Python) and 62 passed (rule finder);
+- with the PDFs in `amiad-doctrine-rag/doctrine/`, the same script checks their hashes and rebuilds step 1 (the
+  pipeline's authors report the AEP index identical, 315 of 315 passages).
+
+**In the app.** `interface/backend/orders.py` reads the rules file and runs the rule finder of `amiad-doctrine-rag/`
+(the earlier copy in `RAG/` is identical and only used when the pipeline folder is absent; `tests/test_rag_pipeline.py`
+checks both). Every rule shown carries its quote check: the language model sees it in each rule line ("citation
+retrouvée à la page indiquée"... "non retrouvée, à comparer au PDF"), and the Orders tab marks the 18 unconfirmed
+quotes « citation non retrouvée » next to « non vérifiée ».
+
 ## 4. Flexibility and scenario simulation
 
 Nothing below required a new hard-coded rule in the solver: every scenario is data passed to the same cost-and-Dijkstra
@@ -362,8 +402,18 @@ Energy measurement method:
 | **+ U-Net inference on new sheets** | 1 CUDA GPU with 8 GB VRAM (7.9 GB measured at batch 16; a smaller batch needs less, not measured) | 1 GPU ≥ 16 GB (e.g. L4 / A10 / A100 / H100): 15–60 s per sheet |
 | **+ fine-tuning** | 1 GPU ≥ 24 GB, 64 GB RAM, about 2 h on a mid-range GPU (estimate) | 1–2 H100: 31 min for 4 folds with 2 GPUs (measured) |
 | **+ local LLM** (optional) | 1 GPU ≥ 24 GB for Qwen3-VL-8B in bf16 (17 GB weights + KV cache) | 40 GB reserved on an H100 (as deployed: 121k-token KV cache, 4 concurrent requests) |
+| **local LLM without GPU** | Qwen3-VL-4B on 32 cores, 16 GB RAM (`deploy/llm_launch.py` picks it when no GPU is found): written orders 14 s; chat answers about 9 min, so the chat falls back to the deterministic answer | a GPU (above) |
+| **U-Net without GPU** | weights fetched from Hugging Face, rasters computed on CPU: about 3 Mpx/s on 16 cores, a sheet in about 70 s (8× with TTA) | a GPU: 15 s per sheet |
 
 The browser needs WebGL (MapLibre); the front end is 1 MB of JavaScript.
+
+**Where the models come from.** The U-Net weights are published on Hugging Face (`arezkibouzid/carte-unet`, three
+final models in safetensors: two sheets, two sheets without Dice, one sheet; `scripts/publish_hf.py`). When a sheet has
+no precomputed raster, the back end (`unet_dir` in `interface/backend/amiad_api.py`) downloads the model named in
+`sheets.json`, runs it on the sheet (GPU if available, else CPU) and keeps the raster; the CPU output is identical to the
+GPU checkpoint's on a test crop. The language model is chosen by `deploy/llm_launch.py`: Qwen3-VL-8B on a GPU (the best
+of the comparison, section 3.6), Qwen3-VL-4B on CPU only (half the weights; it misstated rule statuses more often in our
+earlier comparison, and on CPU a chat answer still takes minutes, so the deterministic answer is what users get).
 
 ## 6. Civilian applicability and U-Net transfer learning
 
@@ -529,6 +579,7 @@ the relative criterion.
   sbatch -J routing_ablation experiments/run_cpu.sh experiments/routing_ablation.py [--groups network cost explain]
   sbatch -J stress_test      experiments/run_cpu.sh experiments/stress_test.py [--tests ...] [--quick]
   sbatch -J imagery_ablation experiments/run_gpu.sh experiments/imagery_ablation.py
+  .venv/bin/python experiments/rag_reproduce.py     # doctrine rules: extraction, quote check, rule finder, tests
   .venv/bin/python experiments/index.py
   ```
   Random draws use fixed seeds (`--seed`, default 2026). The inputs are referenced in each `config.json`. Data files
@@ -540,7 +591,7 @@ the relative criterion.
 - **Tests.**
   - `tests/test_route_explain.py`: the uncertainty cost flips a route on a synthetic network, the trace's alternatives
     and verdicts, trace answers, the context budget, rule questions, and scenarios never overwritten.
-  - Full suite: 143 passed, 2 skipped.
+  - Full suite: 162 passed, 2 skipped (and the doctrine pipeline's own 193 + 62, section 3.7).
   - `interface/scripts/ui_smoke.py` drives the interface headless: routes, explanation, chat, OSM complement,
     extraction, 8 convoys and a scenario save, with no JavaScript error.
 
@@ -564,6 +615,10 @@ the relative criterion.
   claim (section 3.2). The deterministic answers remain the reference.
 - **Energy is estimated for CPUs** (no RAPL access). GPU energy is metered for inference only. Fine-tuning and LLM
   energy are bounded by TDP, not measured.
+- **Doctrine rules.** Two of the five documents are scanned manuals: 18 rule quotes are not found in their text layer
+  and must be compared with the PDF page; tables and figures are not interpreted (rules from them were typed by hand);
+  the completed review sheets are not in the repository (100 of 214 rules carry a recorded review); some topics are thin
+  (junction traffic control: 3 rules). The PDFs themselves are not stored, so step 1 is reproduced only with them.
 - **Map semantics.** Width, load class, height clearance and road names are not read from the map. The rules that
   depend on them can only be flagged "to check".
 - **Civilian adaptation was not run.** Section 6.3 measures sensitivity to imagery changes on IGN maps only. Aerial or

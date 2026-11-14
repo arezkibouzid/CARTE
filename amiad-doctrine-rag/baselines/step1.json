@@ -1,0 +1,154 @@
+{
+ "when": "2026-11-12T21:02:24",
+ "work": "work_doctrine",
+ "chunks": {
+  "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION": {
+   "chunks": 459,
+   "pages": 90,
+   "chars_min": 20,
+   "chars_median": 154,
+   "chars_max": 5273
+  },
+  "NP_allied_joint_doctrine_for_movement_AJP-4.4": {
+   "chunks": 474,
+   "pages": 55,
+   "chars_min": 20,
+   "chars_median": 107,
+   "chars_max": 2182
+  },
+  "NP_allied_joint_doctrine_joint_logistic_support_group_AJP-4.6": {
+   "chunks": 345,
+   "pages": 52,
+   "chars_min": 20,
+   "chars_median": 146,
+   "chars_max": 2233
+  },
+  "STANAG_2015": {
+   "chunks": 1530,
+   "pages": 261,
+   "chars_min": 18,
+   "chars_median": 202,
+   "chars_max": 2467
+  },
+  "STANAG_2174_alternative": {
+   "chunks": 1488,
+   "pages": 312,
+   "chars_min": 6,
+   "chars_median": 307,
+   "chars_max": 2201
+  }
+ },
+ "rules": {
+  "total": 49,
+  "by_template": {
+   "SEG.MLC": 3,
+   "SEG.HEIGHT": 4,
+   "SEG.WIDTH": 6,
+   "NET.GAP": 7,
+   "SEG.SPEED": 5,
+   "SEG.GRADE": 1,
+   "SEG.WEIGHT": 11,
+   "PRO.ESCORT": 9,
+   "SCH.HALT": 3
+  },
+  "by_document": {
+   "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION": 10,
+   "STANAG_2015": 12,
+   "STANAG_2174_alternative": 27
+  },
+  "by_origin": {
+   "pattern": 40,
+   "manual": 9
+  },
+  "ids": [
+   "R-020d96",
+   "R-053302",
+   "R-08c844",
+   "R-0b5a44",
+   "R-0c9a75",
+   "R-0f1675",
+   "R-251729",
+   "R-34c95e",
+   "R-3c77d4",
+   "R-3e51c7",
+   "R-4024da",
+   "R-4799a8",
+   "R-586490",
+   "R-59ad2f",
+   "R-61f1fd",
+   "R-6ab635",
+   "R-6d5004",
+   "R-70215e",
+   "R-783ab7",
+   "R-80ccc3",
+   "R-84b827",
+   "R-8667bc",
+   "R-9de8ae",
+   "R-9f5947",
+   "R-a061b3",
+   "R-a627d8",
+   "R-af39fa",
+   "R-b46764",
+   "R-b63cb8",
+   "R-c26908",
+   "R-c2b688",
+   "R-c70c3d",
+   "R-c97c26",
+   "R-cb32f3",
+   "R-cc3d24",
+   "R-d5d39c",
+   "R-d6349b",
+   "R-df59fa",
+   "R-e46765",
+   "R-e62bd2",
+   "R-e85feb",
+   "R-e8ac48",
+   "R-e8e209",
+   "R-ee1886",
+   "R-f2c86d",
+   "R-f57d8f",
+   "R-f96ded",
+   "R-f9d90b",
+   "R-ff5aec"
+  ]
+ },
+ "skipped": {
+  "total": 1460,
+  "by_reason": {
+   "normative sentence, no rule template matched (revi": 742,
+   "number found but no modal verb (not a requirement)": 452,
+   "table content, not extracted automatically (transc": 79,
+   "requirement with a number but no rule template mat": 61,
+   "graphic page (symbols or figures), not extracted": 44,
+   "numbers only inside an example, not a rule": 19,
+   "requirement points to 2 (value elsewhere)": 11,
+   "requirement points to 3 (value elsewhere)": 10
+  }
+ },
+ "conflicts": 5,
+ "manual_reference": {
+  "rows": 9,
+  "found": 9,
+  "missing": []
+ },
+ "retrieval": {
+  "gold_queries_aep_ajp.json": {
+   "bm25": {
+    "questions": 38,
+    "recall@3": 0.816,
+    "recall@5": 0.842,
+    "recall@8": 0.868,
+    "recall@10": 0.895,
+    "mrr": 0.674
+   },
+   "hybrid": {
+    "questions": 38,
+    "recall@3": 0.711,
+    "recall@5": 0.763,
+    "recall@8": 0.868,
+    "recall@10": 0.868,
+    "mrr": 0.655
+   }
+  }
+ }
+}

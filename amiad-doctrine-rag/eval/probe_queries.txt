@@ -1,0 +1,13 @@
+# Exploratory queries from exercises 11 to 20. No gold answer yet: run tools\search_probe.py, read the top passages,
+# then the right ones become gold entries. One query per line.
+route adapted to heights up to 4.50 m bridges and tunnels
+vehicle height limit for a route, bridge and tunnel clearance
+route adapted to loads up to 80 tonnes bridges
+military load classification 80 tonnes vehicle crossing a bridge
+maximum speed of a convoy on the road
+distance between vehicles in a convoy
+two routes at least 10 km apart, alternative routes
+penetration route and lateral route of a military road network
+alternate routing when a route is blocked
+acceleration lane and deceleration lane on a route
+speed limit on a bridge crossing

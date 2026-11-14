@@ -1,0 +1,167 @@
+[
+ {
+  "query": "What is the desirable minimum headroom for bridges?",
+  "must_contain": [
+   "desirable minimum headroom for bridges is 4.50 m"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   27
+  ],
+  "note": "ex13-17: heights up to 4.50 m"
+ },
+ {
+  "query": "What overhead clearance counts as an obstruction to traffic flow?",
+  "must_contain": [
+   "Overhead clearance less than 4.3 meters"
+  ],
+  "document": "STANAG_2015",
+  "pages": [
+   38
+  ],
+  "note": "ex13-17: heights up to 4.50 m"
+ },
+ {
+  "query": "What is the minimum bridge width for two-way traffic?",
+  "must_contain": [
+   "narrower than 5.50 m shall not be rated for two-way traffic"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   30
+  ],
+  "note": "ex11-12: road network, two-way"
+ },
+ {
+  "query": "What is the standard convoy spacing used in military load classification?",
+  "must_contain": [
+   "standard convoy spacing used in STANAG 2021"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   18
+  ],
+  "note": "ex11-19: convoy gap"
+ },
+ {
+  "query": "What gap between vehicles is used for a close convoy formation?",
+  "must_contain": [
+   "25 to 50 M"
+  ],
+  "document": "STANAG_2174_alternative",
+  "pages": [
+   72
+  ],
+  "note": "ex11-19: convoy gap"
+ },
+ {
+  "query": "What is the maximum speed for guided vehicles on a bridge?",
+  "must_contain": [
+   "speed must not exceed 5 km/h"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   83
+  ],
+  "note": "ex11-19: convoy speed"
+ },
+ {
+  "query": "Which grade does the symbol with four arrowheads indicate?",
+  "must_contain": [
+   "four arrowheads represent a grade 14 percent"
+  ],
+  "document": "STANAG_2015",
+  "pages": [
+   33
+  ],
+  "note": "ex11-20: gradient"
+ },
+ {
+  "query": "At what distances are the blackout warning panels placed?",
+  "must_contain": [
+   "between 1 km (1,100 yards) and 500 m"
+  ],
+  "document": "STANAG_2174_alternative",
+  "pages": [
+   192
+  ],
+  "note": "ex11-19: convoy at night"
+ },
+ {
+  "query": "What is the maximum weight for vehicles with more than 2 axles in the allowed loads table?",
+  "must_contain": [
+   "buses which are con structed as articulated vehicles 28.0 t"
+  ],
+  "document": "STANAG_2174_alternative",
+  "pages": [
+   173
+  ],
+  "note": "ex15-19: loads up to 80 t"
+ },
+ {
+  "query": "Are acceleration lanes provided at rest areas for convoys?",
+  "must_contain": [
+   "acceleration lanes are provided at rest areas"
+  ],
+  "document": "STANAG_2174_alternative",
+  "pages": [
+   86
+  ],
+  "note": "ex20: lane"
+ },
+ {
+  "query": "What is a lateral route in a military road maneuver network?",
+  "must_contain": [
+   "A lateral route is part of a military road maneuver network which runs generally parallel to the FEBA"
+  ],
+  "document": "STANAG_2015",
+  "pages": [
+   18
+  ],
+  "note": "ex20: lateral routes"
+ },
+ {
+  "query": "What is an axial route in a military road network?",
+  "must_contain": [
+   "An axial route is part of a military road maneuver network which leads to and runs generally perpendicular to the FEBA"
+  ],
+  "document": "STANAG_2015",
+  "pages": [
+   18
+  ],
+  "note": "ex20: penetration (axial) routes"
+ },
+ {
+  "query": "What distance do close columns keep between vehicles?",
+  "must_contain": [
+   "Close columns maintain a distance of less than 80 meters between vehicles"
+  ],
+  "document": "STANAG_2174_alternative",
+  "pages": [
+   96
+  ],
+  "note": "ex11-19: convoy gap"
+ },
+ {
+  "query": "Where should vehicles move to exit an expressway?",
+  "must_contain": [
+   "move vehicles to the deceleration lane"
+  ],
+  "document": "STANAG_2174_alternative",
+  "pages": [
+   85
+  ],
+  "note": "ex20: lane"
+ },
+ {
+  "query": "What is a blocked route?",
+  "must_contain": [
+   "A blocked route is a route on which the flow of traffic has become temporarily impossible"
+  ],
+  "document": "STANAG_2015",
+  "pages": [
+   18
+  ],
+  "note": "ex11-12: avoid blocked or restricted roads"
+ }
+]

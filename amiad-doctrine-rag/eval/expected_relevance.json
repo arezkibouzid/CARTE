@@ -1,0 +1,633 @@
+{
+ "_note": "Expected relevance labels for exercises 11-20 and 24, written by the assistant from reading the 199 final rules, BEFORE the selection code was written. They are a proxy for expert judgement, not an independent ground truth: the project lead should review and edit them. 'relevant' lists VERIFIED rules (reviewed, quote matches the PDF) that genuinely contribute; 'same_as' lists duplicates that count as the same rule. 'relevant_unverified' lists rules that would contribute if verified (used only to prioritise PDF checks). 'must_exclude' lists look-alike rules whose appearance in the final list is a false-applicability error.",
+ "policy": [
+  "A rule is relevant when it serves a requirement stated by the exercise (same planning quantity or concept), its scope does not contradict the exercise, and it adds knowledge beyond what the statement already fixes.",
+  "Bridge-crossing speed and spacing rules are relevant only when the exercise has a load-class requirement (tonnes or MLC) or the route is known to cross a bridge.",
+  "Rules that apply only to exceptional or emergency procedures are not relevant unless the exercise points to them.",
+  "Advisory rules are relevant only as guidance, never as constraints."
+ ],
+ "exercises": {
+  "11": {
+   "relevant": [],
+   "relevant_unverified": [],
+   "must_exclude": [
+    {
+     "id": "DR-0001",
+     "why": "50 mph is 80.5 km/h; the exercise already caps speed at 80 km/h, so the rule adds nothing"
+    }
+   ]
+  },
+  "12": {
+   "relevant": [],
+   "relevant_unverified": [],
+   "must_exclude": [
+    {
+     "id": "DR-0001",
+     "why": "50 mph is 80.5 km/h; the exercise already caps speed at 80 km/h, so the rule adds nothing"
+    }
+   ]
+  },
+  "13": {
+   "relevant": [
+    {
+     "id": "DR-0008",
+     "bucket": "advisory",
+     "why": "Doctrine's desirable bridge headroom is 4.50 m, the same figure as the exercise height limit. It tells the planner how bridge headroom is treated (marked, rating unchanged).",
+     "same_as": [
+      "DR-0124"
+     ]
+    },
+    {
+     "id": "DR-0025",
+     "bucket": "advisory",
+     "why": "Defines overhead clearance under 4.3 m on routes, tunnels and underpasses as an obstruction. 4.3 m is below the 4.50 m vehicle height, so it is not the passability limit, and the planner must not use it as one."
+    }
+   ],
+   "relevant_unverified": [
+    "DR-0174",
+    "DR-0175"
+   ],
+   "must_exclude": [
+    {
+     "id": "DR-0001",
+     "why": "50 mph is 80.5 km/h; the exercise already caps speed at 80 km/h, so the rule adds nothing"
+    },
+    {
+     "id": "DR-0079",
+     "why": "3.50 m / 4.0 m are lane widths, not vehicle height"
+    }
+   ]
+  },
+  "14": {
+   "relevant": [
+    {
+     "id": "DR-0008",
+     "bucket": "advisory",
+     "why": "Doctrine's desirable bridge headroom is 4.50 m, the same figure as the exercise height limit. It tells the planner how bridge headroom is treated (marked, rating unchanged).",
+     "same_as": [
+      "DR-0124"
+     ]
+    },
+    {
+     "id": "DR-0025",
+     "bucket": "advisory",
+     "why": "Defines overhead clearance under 4.3 m on routes, tunnels and underpasses as an obstruction. 4.3 m is below the 4.50 m vehicle height, so it is not the passability limit, and the planner must not use it as one."
+    }
+   ],
+   "relevant_unverified": [
+    "DR-0174",
+    "DR-0175"
+   ],
+   "must_exclude": [
+    {
+     "id": "DR-0001",
+     "why": "50 mph is 80.5 km/h; the exercise already caps speed at 80 km/h, so the rule adds nothing"
+    },
+    {
+     "id": "DR-0079",
+     "why": "lane widths, not vehicle height"
+    }
+   ]
+  },
+  "15": {
+   "relevant": [
+    {
+     "id": "DR-0029",
+     "bucket": "conditional",
+     "why": "Normal bridge crossing is capped at 40 km/h, stricter than the 80 km/h cap of the exercise. Applies only if the route crosses a classified bridge and vehicle MLC <= bridge MLC.",
+     "same_as": [
+      "DR-0031"
+     ]
+    }
+   ],
+   "relevant_unverified": [
+    "DR-0168",
+    "DR-0183",
+    "DR-0169"
+   ],
+   "must_exclude": [
+    {
+     "id": "DR-0007",
+     "why": "3 tonnes is the limit below which MLC classification is optional; the exercise load is 80 t"
+    },
+    {
+     "id": "DR-0063",
+     "why": "Danish tonnes-per-axle rule, exercise is in France"
+    },
+    {
+     "id": "DR-0064",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0065",
+     "why": "Danish total-weight rule"
+    },
+    {
+     "id": "DR-0066",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0067",
+     "why": "Danish total axle load rule"
+    },
+    {
+     "id": "DR-0068",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0073",
+     "why": "German tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0074",
+     "why": "Spanish tandem-axle rule"
+    },
+    {
+     "id": "DR-0075",
+     "why": "Spanish axle rule"
+    },
+    {
+     "id": "DR-0001",
+     "why": "50 mph is 80.5 km/h; the exercise already caps speed at 80 km/h, so the rule adds nothing"
+    }
+   ]
+  },
+  "16": {
+   "relevant": [
+    {
+     "id": "DR-0029",
+     "bucket": "conditional",
+     "why": "Normal bridge crossing is capped at 40 km/h, stricter than the 80 km/h cap of the exercise. Applies only if the route crosses a classified bridge and vehicle MLC <= bridge MLC.",
+     "same_as": [
+      "DR-0031"
+     ]
+    }
+   ],
+   "relevant_unverified": [
+    "DR-0168",
+    "DR-0183",
+    "DR-0169"
+   ],
+   "must_exclude": [
+    {
+     "id": "DR-0007",
+     "why": "3 tonnes is the limit below which MLC classification is optional; the exercise load is 80 t"
+    },
+    {
+     "id": "DR-0063",
+     "why": "Danish tonnes-per-axle rule, exercise is in France"
+    },
+    {
+     "id": "DR-0064",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0065",
+     "why": "Danish total-weight rule"
+    },
+    {
+     "id": "DR-0066",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0067",
+     "why": "Danish total axle load rule"
+    },
+    {
+     "id": "DR-0068",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0073",
+     "why": "German tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0074",
+     "why": "Spanish tandem-axle rule"
+    },
+    {
+     "id": "DR-0075",
+     "why": "Spanish axle rule"
+    },
+    {
+     "id": "DR-0001",
+     "why": "50 mph is 80.5 km/h; the exercise already caps speed at 80 km/h, so the rule adds nothing"
+    }
+   ]
+  },
+  "17": {
+   "relevant": [
+    {
+     "id": "DR-0008",
+     "bucket": "advisory",
+     "why": "Doctrine's desirable bridge headroom is 4.50 m, the same figure as the exercise height limit. It tells the planner how bridge headroom is treated (marked, rating unchanged).",
+     "same_as": [
+      "DR-0124"
+     ]
+    },
+    {
+     "id": "DR-0025",
+     "bucket": "advisory",
+     "why": "Defines overhead clearance under 4.3 m on routes, tunnels and underpasses as an obstruction. 4.3 m is below the 4.50 m vehicle height, so it is not the passability limit, and the planner must not use it as one."
+    },
+    {
+     "id": "DR-0029",
+     "bucket": "conditional",
+     "why": "Normal bridge crossing is capped at 40 km/h, stricter than the 80 km/h cap of the exercise. Applies only if the route crosses a classified bridge and vehicle MLC <= bridge MLC.",
+     "same_as": [
+      "DR-0031"
+     ]
+    }
+   ],
+   "relevant_unverified": [
+    "DR-0168",
+    "DR-0183",
+    "DR-0169",
+    "DR-0174",
+    "DR-0175"
+   ],
+   "must_exclude": [
+    {
+     "id": "DR-0007",
+     "why": "3 tonnes is the limit below which MLC classification is optional; the exercise load is 80 t"
+    },
+    {
+     "id": "DR-0063",
+     "why": "Danish tonnes-per-axle rule, exercise is in France"
+    },
+    {
+     "id": "DR-0064",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0065",
+     "why": "Danish total-weight rule"
+    },
+    {
+     "id": "DR-0066",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0067",
+     "why": "Danish total axle load rule"
+    },
+    {
+     "id": "DR-0068",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0073",
+     "why": "German tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0074",
+     "why": "Spanish tandem-axle rule"
+    },
+    {
+     "id": "DR-0075",
+     "why": "Spanish axle rule"
+    },
+    {
+     "id": "DR-0001",
+     "why": "50 mph is 80.5 km/h; the exercise already caps speed at 80 km/h, so the rule adds nothing"
+    }
+   ]
+  },
+  "18": {
+   "relevant": [
+    {
+     "id": "DR-0008",
+     "bucket": "advisory",
+     "why": "Doctrine's desirable bridge headroom is 4.50 m, the same figure as the exercise height limit. It tells the planner how bridge headroom is treated (marked, rating unchanged).",
+     "same_as": [
+      "DR-0124"
+     ]
+    },
+    {
+     "id": "DR-0025",
+     "bucket": "advisory",
+     "why": "Defines overhead clearance under 4.3 m on routes, tunnels and underpasses as an obstruction. 4.3 m is below the 4.50 m vehicle height, so it is not the passability limit, and the planner must not use it as one."
+    },
+    {
+     "id": "DR-0029",
+     "bucket": "conditional",
+     "why": "Normal bridge crossing is capped at 40 km/h, stricter than the 80 km/h cap of the exercise. Applies only if the route crosses a classified bridge and vehicle MLC <= bridge MLC.",
+     "same_as": [
+      "DR-0031"
+     ]
+    }
+   ],
+   "relevant_unverified": [
+    "DR-0168",
+    "DR-0183",
+    "DR-0169",
+    "DR-0174",
+    "DR-0175"
+   ],
+   "must_exclude": [
+    {
+     "id": "DR-0007",
+     "why": "3 tonnes is the limit below which MLC classification is optional; the exercise load is 80 t"
+    },
+    {
+     "id": "DR-0063",
+     "why": "Danish tonnes-per-axle rule, exercise is in France"
+    },
+    {
+     "id": "DR-0064",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0065",
+     "why": "Danish total-weight rule"
+    },
+    {
+     "id": "DR-0066",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0067",
+     "why": "Danish total axle load rule"
+    },
+    {
+     "id": "DR-0068",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0073",
+     "why": "German tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0074",
+     "why": "Spanish tandem-axle rule"
+    },
+    {
+     "id": "DR-0075",
+     "why": "Spanish axle rule"
+    },
+    {
+     "id": "DR-0001",
+     "why": "50 mph is 80.5 km/h; the exercise already caps speed at 80 km/h, so the rule adds nothing"
+    },
+    {
+     "id": "DR-0084",
+     "why": "10 km is the maximum distance between blackout warning signs, not a separation between routes"
+    },
+    {
+     "id": "DR-0043",
+     "why": "200-500 m distance of a warning panel before a light line, not a route separation"
+    },
+    {
+     "id": "DR-0085",
+     "why": "500 m-1 km distance of a warning panel before a light line"
+    }
+   ]
+  },
+  "19": {
+   "relevant": [
+    {
+     "id": "DR-0008",
+     "bucket": "advisory",
+     "why": "Doctrine's desirable bridge headroom is 4.50 m, the same figure as the exercise height limit. It tells the planner how bridge headroom is treated (marked, rating unchanged).",
+     "same_as": [
+      "DR-0124"
+     ]
+    },
+    {
+     "id": "DR-0025",
+     "bucket": "advisory",
+     "why": "Defines overhead clearance under 4.3 m on routes, tunnels and underpasses as an obstruction. 4.3 m is below the 4.50 m vehicle height, so it is not the passability limit, and the planner must not use it as one."
+    },
+    {
+     "id": "DR-0029",
+     "bucket": "conditional",
+     "why": "Normal bridge crossing is capped at 40 km/h, stricter than the 80 km/h cap of the exercise. Applies only if the route crosses a classified bridge and vehicle MLC <= bridge MLC.",
+     "same_as": [
+      "DR-0031"
+     ]
+    }
+   ],
+   "relevant_unverified": [
+    "DR-0168",
+    "DR-0183",
+    "DR-0169",
+    "DR-0174",
+    "DR-0175"
+   ],
+   "must_exclude": [
+    {
+     "id": "DR-0007",
+     "why": "3 tonnes is the limit below which MLC classification is optional; the exercise load is 80 t"
+    },
+    {
+     "id": "DR-0063",
+     "why": "Danish tonnes-per-axle rule, exercise is in France"
+    },
+    {
+     "id": "DR-0064",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0065",
+     "why": "Danish total-weight rule"
+    },
+    {
+     "id": "DR-0066",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0067",
+     "why": "Danish total axle load rule"
+    },
+    {
+     "id": "DR-0068",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0073",
+     "why": "German tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0074",
+     "why": "Spanish tandem-axle rule"
+    },
+    {
+     "id": "DR-0075",
+     "why": "Spanish axle rule"
+    },
+    {
+     "id": "DR-0001",
+     "why": "50 mph is 80.5 km/h; the exercise already caps speed at 80 km/h, so the rule adds nothing"
+    },
+    {
+     "id": "DR-0084",
+     "why": "10 km is the maximum distance between blackout warning signs, not a separation between routes"
+    },
+    {
+     "id": "DR-0043",
+     "why": "200-500 m distance of a warning panel before a light line, not a route separation"
+    },
+    {
+     "id": "DR-0085",
+     "why": "500 m-1 km distance of a warning panel before a light line"
+    }
+   ]
+  },
+  "20": {
+   "relevant": [
+    {
+     "id": "DR-0008",
+     "bucket": "advisory",
+     "why": "Doctrine's desirable bridge headroom is 4.50 m, the same figure as the exercise height limit. It tells the planner how bridge headroom is treated (marked, rating unchanged).",
+     "same_as": [
+      "DR-0124"
+     ]
+    },
+    {
+     "id": "DR-0025",
+     "bucket": "advisory",
+     "why": "Defines overhead clearance under 4.3 m on routes, tunnels and underpasses as an obstruction. 4.3 m is below the 4.50 m vehicle height, so it is not the passability limit, and the planner must not use it as one."
+    },
+    {
+     "id": "DR-0029",
+     "bucket": "conditional",
+     "why": "Normal bridge crossing is capped at 40 km/h, stricter than the 80 km/h cap of the exercise. Applies only if the route crosses a classified bridge and vehicle MLC <= bridge MLC.",
+     "same_as": [
+      "DR-0031"
+     ]
+    }
+   ],
+   "relevant_unverified": [
+    "DR-0168",
+    "DR-0183",
+    "DR-0169",
+    "DR-0174",
+    "DR-0175",
+    "DR-0170",
+    "DR-0171"
+   ],
+   "must_exclude": [
+    {
+     "id": "DR-0007",
+     "why": "3 tonnes is the limit below which MLC classification is optional; the exercise load is 80 t"
+    },
+    {
+     "id": "DR-0063",
+     "why": "Danish tonnes-per-axle rule, exercise is in France"
+    },
+    {
+     "id": "DR-0064",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0065",
+     "why": "Danish total-weight rule"
+    },
+    {
+     "id": "DR-0066",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0067",
+     "why": "Danish total axle load rule"
+    },
+    {
+     "id": "DR-0068",
+     "why": "Danish tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0073",
+     "why": "German tonnes-per-axle rule"
+    },
+    {
+     "id": "DR-0074",
+     "why": "Spanish tandem-axle rule"
+    },
+    {
+     "id": "DR-0075",
+     "why": "Spanish axle rule"
+    },
+    {
+     "id": "DR-0001",
+     "why": "50 mph is 80.5 km/h; the exercise already caps speed at 80 km/h, so the rule adds nothing"
+    }
+   ]
+  },
+  "24": {
+   "relevant": [
+    {
+     "id": "DR-0046",
+     "bucket": "advisory",
+     "why": "Doctrinal convoy gaps (time gaps and 25 to 50 m in built-up areas, 100 m in open country). Informs the exercise's 100 m vehicle gap, which the statement fixes for every area."
+    },
+    {
+     "id": "DR-0062",
+     "bucket": "advisory",
+     "why": "Short halts of at least 10 minutes, every 2 hours when possible: a planning input for a movement table.",
+     "same_as": [
+      "DR-0047"
+     ]
+    },
+    {
+     "id": "DR-0097",
+     "bucket": "advisory",
+     "why": "Schedule 15 minutes for a 10-minute rest halt: how a halt appears in a movement schedule."
+    },
+    {
+     "id": "DR-0061",
+     "bucket": "conditional",
+     "why": "Long halts of at least 30 minutes must be plotted on the movement graph. Applies only if the plan contains such a halt."
+    }
+   ],
+   "relevant_unverified": [
+    "DR-0145"
+   ],
+   "must_exclude": [
+    {
+     "id": "DR-0009",
+     "why": "30.5 m is a design assumption used to compute a bridge MLC rating, not a convoy gap"
+    },
+    {
+     "id": "DR-0030",
+     "why": "30.5 m minimum spacing on bridge crossings, not the ordinary 100 m convoy gap (and already met by 100 m)"
+    },
+    {
+     "id": "DR-0016",
+     "why": "spacing on floating bridges under Caution Crossing"
+    },
+    {
+     "id": "DR-0018",
+     "why": "spacing on floating bridges under Caution Crossing"
+    },
+    {
+     "id": "DR-0035",
+     "why": ">= 50 m spacing under Caution Crossing, an exceptional bridge procedure"
+    },
+    {
+     "id": "DR-0053",
+     "why": "warning reflector 100 ft behind a stopped vehicle, not a convoy gap"
+    },
+    {
+     "id": "DR-0054",
+     "why": "emergency reflectors for a stopped vehicle at night"
+    },
+    {
+     "id": "DR-0083",
+     "why": ">= 100 m is the visibility distance of light signals, not the gap between vehicles"
+    },
+    {
+     "id": "DR-0084",
+     "why": "10 km between blackout warning signs"
+    },
+    {
+     "id": "DR-0099",
+     "why": "scope is the U.S. MOBCON system; the exercise is in France"
+    },
+    {
+     "id": "DR-0001",
+     "why": "50 mph = 80.5 km/h, the exercise already caps speed at 80 km/h"
+    }
+   ]
+  }
+ }
+}

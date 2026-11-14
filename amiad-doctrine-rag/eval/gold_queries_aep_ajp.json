@@ -1,0 +1,383 @@
+[
+ {
+  "query": "What is the condition for a vehicle to cross a bridge?",
+  "must_contain": [
+   "less than or equal to the MLC of the bridge"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   15
+  ]
+ },
+ {
+  "query": "What is the military load classification number, and does it give the vehicle mass?",
+  "must_contain": [
+   "NOT REPRESENT THE MASS OF THE VEHICLE"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   15
+  ]
+ },
+ {
+  "query": "Which MLC range do the standard hypothetical vehicle classes cover?",
+  "must_contain": [
+   "MLC 150 inclusive. Additional characteristics"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   17
+  ]
+ },
+ {
+  "query": "How many hypothetical vehicles define the classes?",
+  "must_contain": [
+   "Thirty-two hypothetical vehicles"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   17
+  ]
+ },
+ {
+  "query": "How is a vehicle MLC above 150 designated?",
+  "must_contain": [
+   "designated MLC 150+"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   19
+  ]
+ },
+ {
+  "query": "Are bridges rated for both wheeled and tracked vehicles?",
+  "must_contain": [
+   "All bridges shall be rated for both wheeled and tracked vehicles"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   26
+  ]
+ },
+ {
+  "query": "What convoy spacing is used to rate bridges?",
+  "must_contain": [
+   "minimum longitudinal 30.50 m spacing"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   27
+  ]
+ },
+ {
+  "query": "How is a computed MLC rounded?",
+  "must_contain": [
+   "nearest whole figure (e.g., calculated MLC 56.2 rounded off to MLC 56"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   19
+  ]
+ },
+ {
+  "query": "How is the temporary MLC of a vehicle given in metric tonnes calculated?",
+  "must_contain": [
+   "1.25 if the total laden mass is expressed in metric Tonnes"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   23
+  ]
+ },
+ {
+  "query": "How is the MLC of two vehicles towed together combined?",
+  "must_contain": [
+   "nine-tenths of that sum"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   24
+  ]
+ },
+ {
+  "query": "Are vehicles of 3 tonnes or less required to have an MLC?",
+  "must_contain": [
+   "Baggage and other pole-type trailers with a rated capacity of 1.5 tonnes or less"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   24
+  ]
+ },
+ {
+  "query": "What headroom is desirable for a bridge?",
+  "must_contain": [
+   "The desirable minimum headroom for bridges is 4.50 m"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   27
+  ]
+ },
+ {
+  "query": "Can a bridge narrower than 5.50 m be rated for two-way traffic?",
+  "must_contain": [
+   "Bridges narrower than 5.50 m shall not be rated for two-way traffic"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   30
+  ]
+ },
+ {
+  "query": "What minimum roadway width is required for fixed civilian bridges?",
+  "must_contain": [
+   "Minimum roadway width for fixed civilian bridges"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   30
+  ]
+ },
+ {
+  "query": "Which criterion governs the MLC of a floating bridge?",
+  "must_contain": [
+   "The lowest of these MLCs must be used"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   34
+  ]
+ },
+ {
+  "query": "What standard current speed is used for a floating bridge in normal laden use?",
+  "must_contain": [
+   "Construction and normal laden use"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   35
+  ]
+ },
+ {
+  "query": "What speed is used for the stability check of a floating bridge?",
+  "must_contain": [
+   "2.8 m/s"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   36
+  ]
+ },
+ {
+  "query": "What water depth is assumed under floating equipment?",
+  "must_contain": [
+   "water depth of 2.50 m or more"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   35
+  ]
+ },
+ {
+  "query": "What is the speed limit for vehicles in a caution crossing?",
+  "must_contain": [
+   "their speed must not exceed 5 km/h"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   83
+  ]
+ },
+ {
+  "query": "What minimum distance between vehicles is required on a floating bridge in caution crossing?",
+  "must_contain": [
+   "which must never be lower than 30.5 m"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   83
+  ]
+ },
+ {
+  "query": "Which rating may be permanently posted for a bridge?",
+  "must_contain": [
+   "the rating associated with the normal crossing for a particular bridge may be permanently"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   25
+  ]
+ },
+ {
+  "query": "What must be done for a vehicle heavier than MLC 150?",
+  "must_contain": [
+   "be assessed on a case-by-case basis even if the inequality"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   16
+  ]
+ },
+ {
+  "query": "What is the minimum diameter of a circular military load class sign?",
+  "must_contain": [
+   "minimum of 40 cm in diameter"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   88
+  ]
+ },
+ {
+  "query": "What do rectangular signs on a bridge indicate?",
+  "must_contain": [
+   "Rectangular signs which indicate particular"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   87
+  ],
+  "note": "string shortened: the PDF text reads 'res trict ions' (OCR gap), search ranks the passage first"
+ },
+ {
+  "query": "How is the dynamic effect of vehicles taken into account in bridge rating?",
+  "must_contain": [
+   "dynamic load allowance (DLA) or impact factor"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   27
+  ]
+ },
+ {
+  "query": "How is the MLC of a vehicle narrower than the hypothetical vehicle adjusted?",
+  "must_contain": [
+   "For vehicles narrower than the hypothetical vehicle"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   22
+  ]
+ },
+ {
+  "query": "What does the Red damage level mean for a bridge?",
+  "must_contain": [
+   "Damage is beyond"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   32
+  ]
+ },
+ {
+  "query": "What is the required propulsion or anchorage capacity of a floating bridge at maximum current?",
+  "must_contain": [
+   "Propulsion and anchorage systems/subsystems must"
+  ],
+  "document": "AEP-3.12.1.5-MILITARY-LOAD-CLASSIFICATION",
+  "pages": [
+   36
+  ]
+ },
+ {
+  "query": "Which factors affect the suitability of road transportation?",
+  "must_contain": [
+   "The following factors affect the suitability of road"
+  ],
+  "document": "NP_allied_joint_doctrine_for_movement_AJP-4.4",
+  "pages": [
+   44
+  ]
+ },
+ {
+  "query": "What influences the speed of road movement?",
+  "must_contain": [
+   "speed of road movement will be influenced by the types of vehicles"
+  ],
+  "document": "NP_allied_joint_doctrine_for_movement_AJP-4.4",
+  "pages": [
+   44
+  ]
+ },
+ {
+  "query": "Which road network properties must be considered when planning road transport?",
+  "must_contain": [
+   "availability, classification, surface, capacity, state of repair or damage of the road"
+  ],
+  "document": "NP_allied_joint_doctrine_for_movement_AJP-4.4",
+  "pages": [
+   44
+  ]
+ },
+ {
+  "query": "Is road movement subject to border crossing rules?",
+  "must_contain": [
+   "Road movement is subject to border crossing"
+  ],
+  "document": "NP_allied_joint_doctrine_for_movement_AJP-4.4",
+  "pages": [
+   36
+  ]
+ },
+ {
+  "query": "Why is distance a key element of movement planning?",
+  "must_contain": [
+   "Distance is a key element in movement planning"
+  ],
+  "document": "NP_allied_joint_doctrine_for_movement_AJP-4.4",
+  "pages": [
+   40
+  ]
+ },
+ {
+  "query": "Which factor determines the most suitable modes of transportation at the destination?",
+  "must_contain": [
+   "determines the most suitable modes of transportation"
+  ],
+  "document": "NP_allied_joint_doctrine_for_movement_AJP-4.4",
+  "pages": [
+   40
+  ]
+ },
+ {
+  "query": "What is the Joint Logistic Support Group?",
+  "must_contain": [
+   "The JLSG is a joint, force generated, deployable logistic capability"
+  ],
+  "document": "NP_allied_joint_doctrine_joint_logistic_support_group_AJP-4.6",
+  "pages": [
+   17
+  ]
+ },
+ {
+  "query": "What does the JLSG provide when it is activated?",
+  "must_contain": [
+   "the JLSG HQ will provide the tactical-level executive"
+  ],
+  "document": "NP_allied_joint_doctrine_joint_logistic_support_group_AJP-4.6",
+  "pages": [
+   17
+  ]
+ },
+ {
+  "query": "What does the JLSG contribute to?",
+  "must_contain": [
+   "The JLSG contributes to conducting joint operational logistic support"
+  ],
+  "document": "NP_allied_joint_doctrine_joint_logistic_support_group_AJP-4.6",
+  "pages": [
+   17
+  ]
+ },
+ {
+  "query": "What should the COM JLSG aim to ensure across the JLSN?",
+  "must_contain": [
+   "efficient sustainment flow"
+  ],
+  "document": "NP_allied_joint_doctrine_joint_logistic_support_group_AJP-4.6",
+  "pages": [
+   38
+  ]
+ }
+]

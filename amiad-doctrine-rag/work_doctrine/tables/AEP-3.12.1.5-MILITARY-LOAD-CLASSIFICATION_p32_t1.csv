@@ -1,0 +1,6 @@
+﻿,Damag,Damage Type,MLC Effect
+,e,,
+,Level,,
+Green,,Superficial,No immediate requirement for reduction in allowable MLC
+Amber,,One or more critical load-carrying members has damage or deterioration,MLC should be recalculated
+Red,,Severe damage to one or more critical load-carrying members is widespread or exhibits potential for total span collapse,Damage is beyond determination of reduced MLC

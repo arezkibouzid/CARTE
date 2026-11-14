@@ -3,7 +3,7 @@
     python scripts/fetch_data.py --prc                    # PRC U-Net code (GitHub, MIT) + pretrained weights (Hugging Face)
     python scripts/fetch_data.py --bdtopo --osm           # roads of the Hackathon sheet: IGN BD TOPO (Etalab 2.0) + OSM (ODbL)
     python scripts/fetch_data.py --llm                    # Qwen3-VL-8B-Instruct (Apache 2.0, 17 GB), optional
-    python scripts/fetch_data.py --unet --hf-repo USER/carte-unet   # our fine-tuned U-Nets (Hugging Face, 2 x 61 MB)
+    python scripts/fetch_data.py --unet                   # our fine-tuned U-Nets (Hugging Face, 3 x 61 MB)
     python scripts/fetch_data.py --all --bbox 4.08 48.57 5.77 49.37 --name Hackathon --out examples
 
 What it writes:
@@ -14,7 +14,7 @@ What it writes:
 - ``OUT/<name>_OSM.shp``: the Geofabrik free road layer of the regions covering the box, clipped, same fields as the
   hackathon file (osm_id, code, fclass, name, ref, oneway, maxspeed, layer, bridge, tunnel, width);
 - ``$AMIAD_MODELS/Qwen3-VL-8B-Instruct`` (``~/extraction/models`` by default) for deploy/serve_llm.sbatch;
-- ``outputs/hf/carte_unet_{2sheets,1sheet}.safetensors`` + ``config.json``: our fine-tuned U-Nets, for
+- ``outputs/hf/carte_unet_{2sheets,2sheets_nodice,1sheet}.safetensors`` + ``config.json``: our fine-tuned U-Nets, for
   ``scripts/prc_unet.py infer --model ...`` (published with scripts/publish_hf.py).
 
 Not open, so not downloaded: the scanned IGN 1:100,000 sheet and the exercise / order PDFs (handed out at the hackathon),
@@ -160,7 +160,8 @@ def fetch_unet(repo: str, dest: Path):
         from huggingface_hub import hf_hub_download
     except ImportError:
         sys.exit('pip install -e ".[hub]" (huggingface_hub, safetensors), then run again')
-    for f in ("carte_unet_2sheets.safetensors", "carte_unet_1sheet.safetensors", "config.json", "README.md"):
+    for f in ("carte_unet_2sheets.safetensors", "carte_unet_2sheets_nodice.safetensors", "carte_unet_1sheet.safetensors",
+              "config.json", "README.md"):
         p = hf_hub_download(repo, f, local_dir=str(dest))
         print(f"  {p}")
     print(f"U-Net weights -> {dest} (scripts/prc_unet.py infer --model {dest}/carte_unet_2sheets.safetensors ...)")
@@ -184,8 +185,8 @@ def main():
     ap.add_argument("--bdtopo", action="store_true")
     ap.add_argument("--osm", action="store_true")
     ap.add_argument("--llm", action="store_true")
-    ap.add_argument("--unet", action="store_true", help="our fine-tuned U-Nets from Hugging Face (needs --hf-repo)")
-    ap.add_argument("--hf-repo", default=os.environ.get("CARTE_HF_REPO"), help="USER/NAME of the U-Net model repository")
+    ap.add_argument("--unet", action="store_true", help="our fine-tuned U-Nets from Hugging Face")
+    ap.add_argument("--hf-repo", default=os.environ.get("CARTE_HF_REPO", "arezkibouzid/carte-unet"), help="the U-Net model repository")
     ap.add_argument("--bbox", type=float, nargs=4, default=HACKATHON_BBOX, metavar=("LON0", "LAT0", "LON1", "LAT1"))
     ap.add_argument("--name", default="Hackathon", help="file prefix: <name>_BDTopo.shp, <name>_OSM.shp")
     ap.add_argument("--out", type=Path, default=REPO / "examples")

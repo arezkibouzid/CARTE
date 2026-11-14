@@ -12,6 +12,7 @@ import base64
 import io
 import json
 import math
+import os
 import pickle
 import threading
 import time
@@ -60,6 +61,63 @@ def model_cfg(sheet: str, model: str) -> dict:
         if m["id"] == model:
             return m
     raise HTTPException(404, f"unknown model {model}")
+
+
+# ----------------------------------------------------------------------------------------------------- U-Net outputs
+
+HF_REPO = os.environ.get("CARTE_HF_REPO") or CONFIG.get("hf_repo")  # published U-Net weights (scripts/publish_hf.py)
+_unet_locks: dict[str, threading.Lock] = {}
+
+
+def unet_dir(sheet: str, model: str) -> Path:
+    """Folder of the model's ``unet_oof.tif``. Missing (no release archive): the model's weights are downloaded from
+    Hugging Face (``hf`` of the model in sheets.json) and run on the sheet, on the GPU if there is one, else on the CPU
+    (about 70 s per sheet, 8 times more with the 8 orientations). Computed once, then read from disk."""
+    m = model_cfg(sheet, model)
+    d = rp(m["raster"])
+    if (d / "unet_oof.tif").exists():
+        return d
+    with _lock:
+        lk = _unet_locks.setdefault(str(d), threading.Lock())
+    with lk:
+        if (d / "unet_oof.tif").exists():
+            return d
+        hf = m.get("hf")
+        if not (hf and HF_REPO):
+            raise HTTPException(503, f"probabilités du modèle {model} absentes ({d}) et pas de poids publiés pour ce modèle")
+        step = f"U-Net {model} (poids Hugging Face)"
+        STATUS["steps"][step] = "téléchargement"
+        try:
+            import importlib.util
+            from argparse import Namespace
+
+            from huggingface_hub import hf_hub_download
+
+            w = hf_hub_download(HF_REPO, hf["file"])
+            ext = Path(os.environ.get("CARTE_EXT", Path.home() / "ext"))
+            prc = ext / "ProbRoadClass-DeepLearning"
+            if not prc.exists():  # the architecture code (MIT), as scripts/fetch_data.py --prc
+                import subprocess
+
+                subprocess.run(["git", "clone", "-q", "https://github.com/DominikM198/ProbRoadClass-DeepLearning.git", str(prc)], check=True)
+                subprocess.run(["git", "-C", str(prc), "checkout", "-q", "09e04bb87a306e46acbf37c0df74ba28628365a1"], check=True)
+            spec = importlib.util.spec_from_file_location("prc_unet", REPO / "scripts" / "prc_unet.py")
+            pu = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(pu)
+            STATUS["steps"][step] = "calcul sur la feuille" + (" (8 orientations)" if hf.get("tta") else "")
+            t = time.perf_counter()
+            pu.infer(Namespace(tif=str(rp(sheet_cfg(sheet)["tif"])), model=w, prc_repo=str(prc), weights=None, dest=str(d),
+                               device=os.environ.get("CARTE_UNET_DEVICE"), method="tta" if hf.get("tta") else "base", stride=256))
+            (d / "source.json").write_text(json.dumps({"hf_repo": HF_REPO, "file": hf["file"], "tta": bool(hf.get("tta")),
+                                                       "note": "final model: the training sheets were seen in training (not out of fold)"},
+                                                      indent=1), encoding="utf-8")
+            STATUS["steps"][step] = f"prêt ({time.perf_counter() - t:.0f} s)"
+        except HTTPException:
+            raise
+        except Exception as e:  # noqa: BLE001
+            STATUS["steps"][step] = f"erreur : {e}"
+            raise HTTPException(503, f"U-Net {model} : poids Hugging Face indisponibles ou calcul impossible ({e})") from e
+    return d
 
 
 # ----------------------------------------------------------------------------------------------------------- rasters
@@ -136,7 +194,7 @@ def scan_raster(sheet: str) -> Raster:
 
 
 def prob_raster(sheet: str, model: str) -> Raster:
-    return raster(f"prob:{sheet}:{model}", rp(model_cfg(sheet, model)["raster"]) / "unet_oof.tif")
+    return raster(f"prob:{sheet}:{model}", unet_dir(sheet, model) / "unet_oof.tif")
 
 
 @lru_cache(maxsize=16)
@@ -379,7 +437,7 @@ def unet_graph(sheet: str, model: str):
     if f.exists():
         G = pickle.load(open(f, "rb"))
     else:
-        G = scanunet.unet_network(rp(m["raster"]))
+        G = scanunet.unet_network(unet_dir(sheet, model))
         pickle.dump(G, open(f, "wb"))
     with _lock:
         _graphs[key] = G
@@ -996,7 +1054,7 @@ def extract(req: ExtractRequest):
     t0 = time.perf_counter()
     T = {}
     m = model_cfg(req.sheet, req.model)
-    with rasterio.open(rp(m["raster"]) / "unet_oof.tif") as src:
+    with rasterio.open(unet_dir(req.sheet, req.model) / "unet_oof.tif") as src:
         win = from_bounds(*req.bbox, src.transform).round_offsets().round_lengths()
         win = win.intersection(rasterio.windows.Window(0, 0, src.width, src.height))
         if win.width * win.height > 4000 * 4000:
@@ -1280,7 +1338,7 @@ def itineraries(req: ItinerariesRequest):
 
     origin, destination = zone(req.origin_zone, req.start, "de départ"), zone(req.destination_zone, req.end, "d’arrivée")
     cached = key in C._bases
-    source = rp(cfg[which]) if req.model == NO_MODEL else rp(model_cfg(req.sheet, req.model)["raster"]) / "unet_oof.tif"
+    source = rp(cfg[which]) if req.model == NO_MODEL else unet_dir(req.sheet, req.model) / "unet_oof.tif"
     base = C.get_base(key, graph_fn, lambda: builtup(req.sheet), req.vehicle, vector, disk=CACHE / "bases", source=source)
     t_base = time.perf_counter() - t0
     try:

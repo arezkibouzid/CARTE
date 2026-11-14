@@ -1,0 +1,988 @@
+{
+  "$defs": {
+    "Deliverable": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "certainty": {
+          "enum": [
+            "explicit",
+            "uncertain"
+          ],
+          "title": "Certainty",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "exercise_input",
+            "exercise_requirement",
+            "context_definition",
+            "illustrative_example"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "route_overlay",
+            "distance",
+            "duration",
+            "network_overlay",
+            "classification_overlay",
+            "movement_chart",
+            "occupancy_chart",
+            "planning_table",
+            "options_report",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "evidence_ids",
+        "certainty",
+        "role",
+        "kind"
+      ],
+      "title": "Deliverable",
+      "type": "object"
+    },
+    "Entity": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "certainty": {
+          "enum": [
+            "explicit",
+            "uncertain"
+          ],
+          "title": "Certainty",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "exercise_input",
+            "exercise_requirement",
+            "context_definition",
+            "illustrative_example"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "place",
+            "unit",
+            "vehicle_type",
+            "equipment",
+            "resource",
+            "route",
+            "document",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "parent_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Parent Id"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "evidence_ids",
+        "certainty",
+        "role",
+        "kind",
+        "parent_id"
+      ],
+      "title": "Entity",
+      "type": "object"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "modality": {
+          "enum": [
+            "text",
+            "image",
+            "table",
+            "symbol"
+          ],
+          "title": "Modality",
+          "type": "string"
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Quote"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Zone normalisée [gauche, haut, droite, bas], origine en haut à gauche ; null si non localisée.",
+          "title": "Bbox"
+        },
+        "observation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Observation"
+        }
+      },
+      "required": [
+        "id",
+        "document_id",
+        "page",
+        "modality",
+        "quote",
+        "bbox",
+        "observation"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "GeographicObject": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "certainty": {
+          "enum": [
+            "explicit",
+            "uncertain"
+          ],
+          "title": "Certainty",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "exercise_input",
+            "exercise_requirement",
+            "context_definition",
+            "illustrative_example"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "point",
+            "line",
+            "polygon",
+            "route_reference",
+            "unresolved"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "departure",
+            "arrival",
+            "waypoint",
+            "deployment_area",
+            "restricted_area",
+            "checkpoint",
+            "other"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "coordinate_status": {
+          "enum": [
+            "explicit",
+            "image_only",
+            "unknown"
+          ],
+          "title": "Coordinate Status",
+          "type": "string"
+        },
+        "crs": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Crs"
+        },
+        "positions": {
+          "items": {
+            "$ref": "#/$defs/Position"
+          },
+          "title": "Positions",
+          "type": "array"
+        },
+        "member_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Member Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "evidence_ids",
+        "certainty",
+        "role",
+        "kind",
+        "purpose",
+        "coordinate_status",
+        "crs",
+        "positions",
+        "member_ids"
+      ],
+      "title": "GeographicObject",
+      "type": "object"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "conflict",
+            "illegible",
+            "missing_input",
+            "ambiguous_symbol",
+            "unclear_reference",
+            "unspecified_interpretation",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "related_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Related Ids",
+          "type": "array"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "resolution_status": {
+          "const": "unresolved",
+          "title": "Resolution Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "description",
+        "related_ids",
+        "evidence_ids",
+        "resolution_status"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "OrderedRelation": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "certainty": {
+          "enum": [
+            "explicit",
+            "uncertain"
+          ],
+          "title": "Certainty",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "exercise_input",
+            "exercise_requirement",
+            "context_definition",
+            "illustrative_example"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "waypoint_sequence",
+            "named_route_sequence",
+            "march_order",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "ordering": {
+          "enum": [
+            "fixed",
+            "free",
+            "unspecified"
+          ],
+          "title": "Ordering",
+          "type": "string"
+        },
+        "member_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Member Ids",
+          "type": "array"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "evidence_ids",
+        "certainty",
+        "role",
+        "kind",
+        "ordering",
+        "member_ids",
+        "scope"
+      ],
+      "title": "OrderedRelation",
+      "type": "object"
+    },
+    "Position": {
+      "additionalProperties": false,
+      "properties": {
+        "longitude": {
+          "maximum": 180,
+          "minimum": -180,
+          "title": "Longitude",
+          "type": "number"
+        },
+        "latitude": {
+          "maximum": 90,
+          "minimum": -90,
+          "title": "Latitude",
+          "type": "number"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "longitude",
+        "latitude",
+        "evidence_ids"
+      ],
+      "title": "Position",
+      "type": "object"
+    },
+    "Quantity": {
+      "additionalProperties": false,
+      "properties": {
+        "number": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Number"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Text"
+        },
+        "boolean": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Boolean"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Unit"
+        }
+      },
+      "required": [
+        "number",
+        "text",
+        "boolean",
+        "unit"
+      ],
+      "title": "Quantity",
+      "type": "object"
+    },
+    "Reference": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "certainty": {
+          "enum": [
+            "explicit",
+            "uncertain"
+          ],
+          "title": "Certainty",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "exercise_input",
+            "exercise_requirement",
+            "context_definition",
+            "illustrative_example"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "exercise",
+            "doctrine",
+            "annex",
+            "dataset",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        },
+        "availability": {
+          "enum": [
+            "provided",
+            "not_in_supplied_pages",
+            "unknown"
+          ],
+          "title": "Availability",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "evidence_ids",
+        "certainty",
+        "role",
+        "kind",
+        "target",
+        "availability"
+      ],
+      "title": "Reference",
+      "type": "object"
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "properties": {
+        "subject_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Subject Ids",
+          "type": "array"
+        },
+        "leg": {
+          "enum": [
+            "outbound",
+            "return",
+            "both",
+            "unspecified"
+          ],
+          "title": "Leg",
+          "type": "string"
+        },
+        "period": {
+          "enum": [
+            "day",
+            "night",
+            "all",
+            "unspecified"
+          ],
+          "title": "Period",
+          "type": "string"
+        },
+        "condition": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Condition"
+        }
+      },
+      "required": [
+        "subject_ids",
+        "leg",
+        "period",
+        "condition"
+      ],
+      "title": "Scope",
+      "type": "object"
+    },
+    "Sourced": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "certainty": {
+          "enum": [
+            "explicit",
+            "uncertain"
+          ],
+          "title": "Certainty",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "exercise_input",
+            "exercise_requirement",
+            "context_definition",
+            "illustrative_example"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "evidence_ids",
+        "certainty",
+        "role"
+      ],
+      "title": "Sourced",
+      "type": "object"
+    },
+    "Statement": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "certainty": {
+          "enum": [
+            "explicit",
+            "uncertain"
+          ],
+          "title": "Certainty",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "exercise_input",
+            "exercise_requirement",
+            "context_definition",
+            "illustrative_example"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "objective",
+            "constraint",
+            "input_fact",
+            "definition",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "distance",
+            "duration",
+            "speed",
+            "time",
+            "spacing",
+            "count",
+            "load",
+            "clearance",
+            "width",
+            "weather",
+            "continuity",
+            "area",
+            "waypoint",
+            "route_relation",
+            "classification",
+            "other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "operator": {
+          "enum": [
+            "eq",
+            "le",
+            "ge",
+            "lt",
+            "gt",
+            "required",
+            "forbidden",
+            "minimize",
+            "maximize",
+            "unspecified"
+          ],
+          "title": "Operator",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "evidence_ids",
+        "certainty",
+        "role",
+        "kind",
+        "category",
+        "operator",
+        "value",
+        "scope"
+      ],
+      "title": "Statement",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "document_id": {
+      "title": "Document Id",
+      "type": "string"
+    },
+    "exercise_id": {
+      "description": "Chaîne, conserve les variantes comme 22B.",
+      "pattern": "^[0-9]+[A-Z]?$",
+      "title": "Exercise Id",
+      "type": "string"
+    },
+    "main_pages": {
+      "items": {
+        "type": "integer"
+      },
+      "minItems": 1,
+      "title": "Main Pages",
+      "type": "array"
+    },
+    "context_pages": {
+      "items": {
+        "type": "integer"
+      },
+      "title": "Context Pages",
+      "type": "array"
+    },
+    "task_types": {
+      "items": {
+        "enum": [
+          "route_search",
+          "route_pair",
+          "network_design",
+          "classification",
+          "movement_schedule",
+          "resource_occupancy",
+          "coordination",
+          "other"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Task Types",
+      "type": "array"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/Evidence"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "entities": {
+      "items": {
+        "$ref": "#/$defs/Entity"
+      },
+      "title": "Entities",
+      "type": "array"
+    },
+    "geographic_objects": {
+      "items": {
+        "$ref": "#/$defs/GeographicObject"
+      },
+      "title": "Geographic Objects",
+      "type": "array"
+    },
+    "statements": {
+      "items": {
+        "$ref": "#/$defs/Statement"
+      },
+      "title": "Statements",
+      "type": "array"
+    },
+    "ordered_relations": {
+      "items": {
+        "$ref": "#/$defs/OrderedRelation"
+      },
+      "title": "Ordered Relations",
+      "type": "array"
+    },
+    "requested_outputs": {
+      "items": {
+        "$ref": "#/$defs/Deliverable"
+      },
+      "title": "Requested Outputs",
+      "type": "array"
+    },
+    "references": {
+      "items": {
+        "$ref": "#/$defs/Reference"
+      },
+      "title": "References",
+      "type": "array"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/Issue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "unparsed_statements": {
+      "items": {
+        "$ref": "#/$defs/Sourced"
+      },
+      "title": "Unparsed Statements",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "document_id",
+    "exercise_id",
+    "main_pages",
+    "context_pages",
+    "task_types",
+    "evidence",
+    "entities",
+    "geographic_objects",
+    "statements",
+    "ordered_relations",
+    "requested_outputs",
+    "references",
+    "issues",
+    "unparsed_statements"
+  ],
+  "title": "Extraction",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

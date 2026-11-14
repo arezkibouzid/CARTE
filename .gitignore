@@ -29,3 +29,5 @@ docs/presentation/preview/
 docs/presentation/demo/
 docs/presentation/img/
 docs/presentation/charts/
+experiments/runs/*/work_doctrine/
+experiments/runs/*/work_index/

@@ -362,6 +362,7 @@ export interface OrderRule {
   rule_scope: string;
   source: { pdf_document: string; pdf_page: number } | null;
   verification_status: string;
+  quote_check?: { index_check: string; quote_match_pdf: string | null } | null;
   applicability_status: string;
   enforce: boolean;
   matched_exercise_requirement: string;

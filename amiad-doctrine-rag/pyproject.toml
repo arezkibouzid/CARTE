@@ -1,0 +1,17 @@
+[project]
+name = "docrag"
+version = "0.1.0"
+description = "Document search (BM25 + embeddings + graph) and rule extraction with human sign-off"
+requires-python = ">=3.10"
+dependencies = ["numpy", "networkx", "pypdf", "requests"]
+license = { text = "MIT" }
+
+[project.optional-dependencies]
+semantic = ["sentence-transformers"]
+dev = ["pytest"]
+
+[project.scripts]
+docrag = "docrag.cli:main"
+
+[tool.setuptools]
+packages = ["docrag"]

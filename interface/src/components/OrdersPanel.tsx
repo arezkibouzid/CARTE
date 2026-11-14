@@ -265,6 +265,9 @@ function RuleCard({ r, facts, onHover, onAsk }: { r: OrderRule; facts: Record<st
       <div className="title">
         <span className="rid">{r.rule_id}</span> {r.rule_value}
         {r.verification_status !== 'verified' && <span className="badge warn" title="Citation non vérifiée sur le PDF">non vérifiée</span>}
+        {r.quote_check?.index_check === 'not_found' && (
+          <span className="badge warn" title="Le contrôle automatique n’a pas retrouvé la citation dans le texte lu du PDF (souvent un manuel scanné, un tableau ou une figure) : comparer à la page">citation non retrouvée</span>
+        )}
       </div>
       <div className="small">{r.explanation}</div>
       {r.linked_facts.length > 0 && (

@@ -25,20 +25,31 @@ road reading priced in, and every decision explained. *Carte* is French for map.
 | PRC U-Net code and pretrained weights | MIT | `python scripts/fetch_data.py --prc` (GitHub + Hugging Face) |
 | BD TOPO roads of the sheet (IGN) | Licence Ouverte Etalab 2.0 | `python scripts/fetch_data.py --bdtopo` (Géoplateforme WFS, no key) |
 | OpenStreetMap roads of the sheet | ODbL (© OpenStreetMap contributors) | `python scripts/fetch_data.py --osm` (Geofabrik) |
-| Qwen3-VL-8B-Instruct (optional) | Apache 2.0 | `python scripts/fetch_data.py --llm` (Hugging Face, 17 GB) |
+| Qwen3-VL-8B-Instruct (GPU) / Qwen3-VL-4B-Instruct (CPU), optional | Apache 2.0 | downloaded by `deploy/llm_launch.py` (Hugging Face, 17 / 8 GB) |
+| Doctrine rules: 214 rules, quote check, rule finder, the pipeline that rebuilds them | MIT (rules from public NATO documents, PDFs not stored) | `amiad-doctrine-rag/`; rerun with `python experiments/rag_reproduce.py` |
 | Scanned IGN 1:100,000 sheet, exercise and order PDFs | handed out at the hackathon, not open | release archive, `examples/` |
-| Our fine-tuned U-Nets (2 sheets, 1 sheet), safetensors | MIT (trained on the hackathon scans, not included) | `python scripts/fetch_data.py --unet --hf-repo USER/carte-unet` once published (`scripts/publish_hf.py`); release archive |
+| Our fine-tuned U-Nets (2 sheets, 2 sheets without Dice, 1 sheet), safetensors | MIT (trained on the hackathon scans, not included) | [`arezkibouzid/carte-unet`](https://huggingface.co/arezkibouzid/carte-unet): fetched by the app when its U-Net outputs are missing, or `python scripts/fetch_data.py --unet` |
 | Our U-Net rasters, calibration and network caches | ours (derived from the sheet) | release archive, `outputs/` |
 
 `fetch_data.py` writes the BD TOPO and OSM roads in the fields of the hackathon extracts, so the code reads them unchanged;
 they are today's data, not the organisers' snapshot.
 
-**Without a GPU.** Routing, the explanations from the solver's trace and the rule engine run on CPU (the back end is
-started with no GPU). The U-Net runs on CPU too (`prc_unet.py infer --device cpu`: about 3 Mpx/s on 16 cores, a sheet in
-about 70 s). The language model runs on CPU with `deploy/cpu_llm_server.py` (same weights, same JSON grammar): a written
-order in about 22 s, but a chat answer of a few hundred words takes minutes (one example: 3,944 prompt tokens and a
-517-token answer took 506 s on 32 cores), so the chat usually falls back to the deterministic answer (after
-`COA_LLM_TIMEOUT`, 90 s). Without the release archive the routing core still runs on BD TOPO or
+**GPU or not, chosen automatically.** `interface/run.sh --llm` (or `python deploy/llm_launch.py`) starts the language
+model the machine can run: with a GPU, Qwen3-VL-8B (vLLM, 131,072 tokens), the best measured; on CPU only, Qwen3-VL-4B
+with `deploy/cpu_llm_server.py` (same family, JSON grammar and image input, half the weights). Missing weights are
+downloaded from Hugging Face. On the cluster: `sbatch deploy/serve_llm.sbatch` (GPU) or `deploy/serve_llm_cpu.sbatch`.
+Measured on 32 cores: a written order in 14 s with the 4B (22 s with the 8B, 0.7 s on an H100); a chat answer of a few
+hundred words still takes about 9 minutes, so on CPU the chat gives the deterministic answer after `COA_LLM_TIMEOUT`
+(90 s). Routing, the solver's explanations and the rule engine never need a GPU.
+
+**U-Net outputs fetched from Hugging Face.** When a model's probability raster is missing (no release archive), the app
+downloads its weights from [`arezkibouzid/carte-unet`](https://huggingface.co/arezkibouzid/carte-unet) (`hf_repo` and
+each model's `hf` in `interface/backend/sheets.json`; `CARTE_HF_REPO` to change), clones the PRC architecture code if
+needed, and computes the raster once on the sheet: GPU if there is one, else CPU (about 70 s per sheet, 8 times more for
+the « 8 orientations » variants). These rasters come from the final models, which saw the training sheets: on the
+Hackathon sheet they are not out of fold like the archive's. The repository is private for now: `hf auth login` first.
+
+Without the release archive the routing core still runs on BD TOPO or
 OSM alone (« Sans modèle de segmentation » in the interface); the scan and the U-Net rasters are needed for the vision part.
 
 ```bash
