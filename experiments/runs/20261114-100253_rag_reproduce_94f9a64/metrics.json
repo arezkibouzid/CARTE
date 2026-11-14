@@ -1,0 +1,64 @@
+{
+ "summary": {
+  "pdfs_present": 0,
+  "index_from_pdfs": null,
+  "candidates": "138/138 identical",
+  "conflicts_skipped_identical": true,
+  "quote_check_identical": true,
+  "quotes_found": 196,
+  "quotes_not_found": 18,
+  "finder_identical": true,
+  "finder": "Exercise 22B: 13 relevant rules (10 verified, 3 enforce:true) -> /home/nouhaila_aitbella/bouzid/Hackathon_AMIAD/experiments/runs/20261114-100253_rag_reproduce_94f9a64/finder/exercise_22B_relevant_rules.json",
+  "pipeline_tests": "193 passed, 4 skipped in 2.99s; node 62 passed",
+  "app_uses_pipeline_rules": true
+ },
+ "records": [
+  {
+   "test": "sources",
+   "documents": 5,
+   "present": 0,
+   "sha256_ok": 0
+  },
+  {
+   "test": "extract",
+   "ok": true,
+   "passages": 3486,
+   "candidates": 138,
+   "candidates_identical": 138,
+   "conflicts_identical": true,
+   "skipped_identical": true,
+   "skipped": 1407,
+   "conflicts": 10
+  },
+  {
+   "test": "quotes",
+   "ok": true,
+   "rules": 214,
+   "quote_found_next_page": 6,
+   "quote_found_on_page": 186,
+   "quote_not_found": 18,
+   "quote_start_and_end_found": 4,
+   "identical": true
+  },
+  {
+   "test": "finder",
+   "ok": true,
+   "summary": "Exercise 22B: 13 relevant rules (10 verified, 3 enforce:true) -> /home/nouhaila_aitbella/bouzid/Hackathon_AMIAD/experiments/runs/20261114-100253_rag_reproduce_94f9a64/finder/exercise_22B_relevant_rules.json",
+   "selected": 13,
+   "identical": true
+  },
+  {
+   "test": "tests",
+   "pytest": "193 passed, 4 skipped in 2.99s",
+   "pytest_ok": true,
+   "node": "62 passed",
+   "node_ok": true
+  },
+  {
+   "test": "app",
+   "rules_csv": "amiad-doctrine-rag/rules_final/doctrine_final_unique_rules.csv",
+   "search": "amiad-doctrine-rag/search",
+   "rules_identical": true
+  }
+ ]
+}

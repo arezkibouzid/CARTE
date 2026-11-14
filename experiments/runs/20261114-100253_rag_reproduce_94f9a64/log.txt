@@ -1,0 +1,14 @@
+10:02:53 run 20261114-100253_rag_reproduce_94f9a64
+10:02:53 {'test': 'sources', 'documents': 5, 'present': 0, 'sha256_ok': 0}
+10:02:59 incomplete 11, conditional_requirement 23, descriptive_value 8, mandatory_constraint 17, recommendation 21, threshold_trigger 15, unclassified_evidence 43
+destinations: advisory 28, blocked 51, constraint 16, unclassified_evidence 43
+incomplete context (blocked until a person completes it): 46
+Next: open /home/nouhaila_aitbella/bouzid/Hackathon_AMIAD/experiments/runs/20261114-100253_rag_reproduce_94f9a64/work_doctrine/signoff.csv (or run `docrag ui /home/nouhaila_aitbella/bouzid/Hackathon_AMIAD/experiments/runs/20261114-100253_rag_reproduce_94f9a64/work_doctrine`) and accept/reject each rule.
+
+10:03:00 {'test': 'extract', 'ok': True, 'passages': 3486, 'candidates': 138, 'candidates_identical': 138, 'conflicts_identical': True, 'skipped_identical': True, 'skipped': 1407, 'conflicts': 10}
+10:03:00 {'test': 'quotes', 'ok': True, 'rules': 214, 'quote_found_next_page': 6, 'quote_found_on_page': 186, 'quote_not_found': 18, 'quote_start_and_end_found': 4, 'identical': True}
+10:03:00 {'test': 'finder', 'ok': True, 'summary': 'Exercise 22B: 13 relevant rules (10 verified, 3 enforce:true) -> /home/nouhaila_aitbella/bouzid/Hackathon_AMIAD/experiments/runs/20261114-100253_rag_reproduce_94f9a64/finder/exercise_22B_relevant_rules.json', 'selected': 13, 'identical': True}
+10:03:10 {'test': 'tests', 'pytest': '193 passed, 4 skipped in 2.99s', 'pytest_ok': True, 'node': '62 passed', 'node_ok': True}
+10:03:10 {'test': 'app', 'rules_csv': 'amiad-doctrine-rag/rules_final/doctrine_final_unique_rules.csv', 'search': 'amiad-doctrine-rag/search', 'rules_identical': True}
+10:03:10 summary {'pdfs_present': 0, 'index_from_pdfs': None, 'candidates': '138/138 identical', 'conflicts_skipped_identical': True, 'quote_check_identical': True, 'quotes_found': 196, 'quotes_not_found': 18, 'finder_identical': True, 'finder': 'Exercise 22B: 13 relevant rules (10 verified, 3 enforce:true) -> /home/nouhaila_aitbella/bouzid/Hackathon_AMIAD/experiments/runs/20261114-100253_rag_reproduce_94f9a64/finder/exercise_22B_relevant_rules.json', 'pipeline_tests': '193 passed, 4 skipped in 2.99s; node 62 passed', 'app_uses_pipeline_rules': True}
+10:03:10 done in 16.7 s (ok): /home/nouhaila_aitbella/bouzid/Hackathon_AMIAD/experiments/runs/20261114-100253_rag_reproduce_94f9a64

@@ -1,0 +1,59 @@
+{
+ "wall_s": 16.7,
+ "cpu_s": 10.94,
+ "peak_rss_mb": 130.5,
+ "cpu_energy_j": 46.2,
+ "cpu_energy_method": "estimated",
+ "phases": {
+  "sources": {
+   "calls": 1,
+   "wall_s": 0.0,
+   "cpu_s": 0.0,
+   "cpu_energy_j": 0.0,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 19.3
+  },
+  "extract": {
+   "calls": 1,
+   "wall_s": 6.359,
+   "cpu_s": 10.918,
+   "cpu_energy_j": 46.1,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 110.8
+  },
+  "quotes": {
+   "calls": 1,
+   "wall_s": 0.344,
+   "cpu_s": 0.001,
+   "cpu_energy_j": 0.0,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 110.8
+  },
+  "finder": {
+   "calls": 1,
+   "wall_s": 0.099,
+   "cpu_s": 0.001,
+   "cpu_energy_j": 0.0,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 110.8
+  },
+  "tests": {
+   "calls": 1,
+   "wall_s": 9.805,
+   "cpu_s": 0.005,
+   "cpu_energy_j": 0.0,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 110.8
+  },
+  "app": {
+   "calls": 1,
+   "wall_s": 0.002,
+   "cpu_s": 0.002,
+   "cpu_energy_j": 0.0,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 110.8
+  }
+ },
+ "status": "ok",
+ "error": null
+}

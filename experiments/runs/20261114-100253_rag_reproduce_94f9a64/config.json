@@ -1,0 +1,4 @@
+{
+ "script": "experiments/rag_reproduce.py",
+ "pipeline": "amiad-doctrine-rag"
+}

@@ -296,7 +296,7 @@ quotes in the source text** (186 on the stated page, 6 on the next page, 4 by st
 in the scanned STANAG 2174 (OCR spelling, tables, figures). The extractor's safety chain (two runs byte-identical, 64
 checks: a blocked rule cannot be approved or exported) is saved in `evidence/`.
 
-**Reproduced here** (run `20261114-095731_rag_reproduce`, `experiments/rag_reproduce.py`, 17 s on CPU; every step
+**Reproduced here** (run `20261114-100253_rag_reproduce`, `experiments/rag_reproduce.py`, 17 s on CPU; every step
 rerun in the run folder and compared with what is committed):
 - the 5 PDFs are not in the repository (`doctrine/SOURCES.md` gives names and SHA-256); without them step 1 is not
   rerun, and the index's vector files (not stored either) are rebuilt from the saved 3,486 passages;

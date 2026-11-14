@@ -1,0 +1,7 @@
+test,documents,present,sha256_ok,ok,passages,candidates,candidates_identical,conflicts_identical,skipped_identical,skipped,conflicts,rules,quote_found_next_page,quote_found_on_page,quote_not_found,quote_start_and_end_found,identical,summary,selected,pytest,pytest_ok,node,node_ok,rules_csv,search,rules_identical
+sources,5,0,0,,,,,,,,,,,,,,,,,,,,,,,
+extract,,,,True,3486,138,138,True,True,1407,10,,,,,,,,,,,,,,,
+quotes,,,,True,,,,,,,,214,6,186,18,4,True,,,,,,,,,
+finder,,,,True,,,,,,,,,,,,,True,"Exercise 22B: 13 relevant rules (10 verified, 3 enforce:true) -> /home/nouhaila_aitbella/bouzid/Hackathon_AMIAD/experiments/runs/20261114-100253_rag_reproduce_94f9a64/finder/exercise_22B_relevant_rules.json",13,,,,,,,
+tests,,,,,,,,,,,,,,,,,,,,"193 passed, 4 skipped in 2.99s",True,62 passed,True,,,
+app,,,,,,,,,,,,,,,,,,,,,,,,amiad-doctrine-rag/rules_final/doctrine_final_unique_rules.csv,amiad-doctrine-rag/search,True
