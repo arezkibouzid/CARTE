@@ -172,7 +172,7 @@ def fetch_llm(models: Path):
     try:
         from huggingface_hub import snapshot_download
     except ImportError:
-        sys.exit("pip install huggingface_hub, then run again (or: huggingface-cli download Qwen/Qwen3-VL-8B-Instruct)")
+        sys.exit("pip install huggingface_hub, then run again (or: hf download Qwen/Qwen3-VL-8B-Instruct)")
     d = snapshot_download("Qwen/Qwen3-VL-8B-Instruct", local_dir=str(models / "Qwen3-VL-8B-Instruct"))
     print(f"Qwen3-VL-8B-Instruct -> {d}")
 

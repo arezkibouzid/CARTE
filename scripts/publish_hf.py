@@ -1,7 +1,7 @@
 """Prepares (and, on request, uploads) the CARTE U-Net weights as a Hugging Face model repository.
 
     python scripts/publish_hf.py                                   # builds outputs/hf/carte-unet/ only (nothing sent)
-    huggingface-cli login                                          # once, with a token that can write
+    .venv/bin/hf auth login                                        # once, with a token that can write (older hub: huggingface-cli login)
     python scripts/publish_hf.py --repo USER/carte-unet --push     # uploads, PRIVATE repository
     python scripts/publish_hf.py --repo USER/carte-unet --push --public   # uploads, public
 
@@ -155,7 +155,7 @@ def main():
                     "trained on IGN 1:100,000 scans handed out for the AMIAD hackathon; the scans themselves are not "
                     "included and keep their own terms.")
     ap.add_argument("--prc-repo", default=str(Path.home() / "ext" / "ProbRoadClass-DeepLearning"), help="the PRC code (fetch_data.py --prc)")
-    ap.add_argument("--push", action="store_true", help="upload (needs huggingface-cli login or HF_TOKEN)")
+    ap.add_argument("--push", action="store_true", help="upload (needs hf auth login or HF_TOKEN)")
     ap.add_argument("--public", action="store_true", help="with --push: make the repository public (default: private)")
     a = ap.parse_args()
     out = build(a.out, a.repo, a.license, a.license_note, a.prc_repo)
