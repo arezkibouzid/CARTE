@@ -1,0 +1,46 @@
+{
+ "git": {
+  "commit": "21e1fd524b6c9b85914a4e15b3a01fbc72103349",
+  "branch": "feat/orders-rules-chatbot",
+  "dirty": true,
+  "diff_sha256": "766ed643553fbc01"
+ },
+ "python": "3.10.12",
+ "packages": {
+  "numpy": "2.2.6",
+  "scipy": "1.15.3",
+  "shapely": "2.1.2",
+  "networkx": "3.4.2",
+  "geopandas": "1.1.4",
+  "pyproj": "3.7.1",
+  "rasterio": "1.4.4",
+  "torch": "2.14.1",
+  "fastapi": "0.162.5",
+  "scikit-learn": "1.7.2",
+  "matplotlib": "3.10.9"
+ },
+ "host": "par2dc5-ai-prd-cl01dgx01",
+ "cpu": {
+  "model": "Intel(R) Xeon(R) Platinum 8480CL",
+  "hardware_threads": 224,
+  "sockets": 2,
+  "threads_available_to_job": 16,
+  "tdp_w_per_socket": 350,
+  "watts_per_thread_estimate": 3.12
+ },
+ "memory": {
+  "total_gb": 2015.6,
+  "available_gb": 1905.8
+ },
+ "gpus": [],
+ "slurm_job": "8052",
+ "slurm_cpus": "16",
+ "threads": {
+  "OMP_NUM_THREADS": "16",
+  "MKL_NUM_THREADS": "16",
+  "OPENBLAS_NUM_THREADS": "16"
+ },
+ "command": "context_stress.py",
+ "started": "2026-11-14 07:34:16",
+ "energy_method": "estimated from CPU time x TDP per thread"
+}

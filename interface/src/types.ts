@@ -143,6 +143,7 @@ export interface RouteChatReply {
   mode: string;
   cited_segments: string[];
   cited_rules: string[];
+  cited_facts?: string[];
   sources: { rule_id: string; status: string; group: string; pdf_document: string; pdf_page: number; verification_status: string }[];
   model: string | null;
   context: { budget_tokens: number; used_tokens: number; omitted: string[]; shortened: string[]; linked_orders_added?: string[] } | null;

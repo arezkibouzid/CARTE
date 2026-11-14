@@ -15,6 +15,12 @@ Derived analyses (each names its source run): `analysis/lambda_choice.json`, `an
 | `20261113-202429_imagery_ablation_6ff7618` | ok | imagery_ablation.py  | 27 | 783.81 | 9203.8 | 2521.2 (estimated) + GPU 103240.3 | par2dc5-ai-prd-cl01dgx01 job 8017 | 6ff7618 +dirty | imagery_f1.png |
 | `20261113-204810_routing_ablation_6ff7618` | ok | routing_ablation.py cost network | 170 | 1338.75 | 4648.0 | 4086.1 (estimated) | par2dc5-ai-prd-cl01dgx01 job 8029 | 6ff7618 +dirty | ablation_cost.png, ablation_network.png, lambda_tradeoff.png |
 | `20261114-033644_context_stress_eeeda4c` | ok | context_stress.py  | 19 | 79.67 | 2043.6 | 41.4 (estimated) | par2dc5-ai-prd-cl01dgx01 job 8043 | eeeda4c +dirty | context_stress.png |
+| `20261114-071515_llm_compare_quick_21e1fd5` | ok | llm_compare.py  (quick) | 19 | 42.93 | 2043.9 | 108.7 (estimated) | par2dc5-ai-prd-cl01login01  | 21e1fd5 |  |
+| `20261114-071816_llm_compare_21e1fd5` | ok | llm_compare.py  | 67 | 279.01 | 2042.7 | 54.6 (estimated) | par2dc5-ai-prd-cl01dgx01 job 8046 | 21e1fd5 |  |
+| `20261114-072142_llm_compare_21e1fd5` | ok | llm_compare.py  | 67 | 166.85 | 2043.8 | 49.2 (estimated) | par2dc5-ai-prd-cl01dgx01 job 8048 | 21e1fd5 |  |
+| `20261114-073055_context_stress_21e1fd5` | running? | context_stress.py  | 0 | — | — | — () | par2dc5-ai-prd-cl01dgx01 job 8051 | 21e1fd5 +dirty |  |
+| `20261114-073055_llm_compare_21e1fd5` | ok | llm_compare.py  | 67 | 198.93 | 2042.3 | 57.0 (estimated) | par2dc5-ai-prd-cl01dgx01 job 8050 | 21e1fd5 +dirty |  |
+| `20261114-073416_context_stress_21e1fd5` | ok | context_stress.py  | 20 | 145.74 | 2043.6 | 41.9 (estimated) | par2dc5-ai-prd-cl01dgx01 job 8052 | 21e1fd5 +dirty | context_stress.png |
 
 ## Earlier experiments (kept in `outputs/`, reported in `docs/`)
 

@@ -22,8 +22,12 @@ import unicodedata
 
 from interface.backend import orders as O
 
-BUDGET_TOKENS = int(os.environ.get("AMIAD_CHAT_BUDGET_TOKENS", "6000"))  # the model serves 32k; we stay well below
-CHARS_PER_TOKEN = 3.0  # conservative for French text with ids and numbers (Qwen tokenizer: about 3.5)
+# The model serves 131,072 tokens (deploy/serve_llm.sbatch); 100,000 for the context leaves room for the system prompt and
+# the answer. The packer only adds what the question needs: a route with a few orders stays near 10,000 tokens (2-3 s);
+# a 400-order archive fills about 80,000 (10 s). Qwen3-VL-8B found a fact in one order among 400 at 112,000 real tokens,
+# 15/15, where a 6,000 budget lost it (experiments/runs/*_llm_compare).
+BUDGET_TOKENS = int(os.environ.get("AMIAD_CHAT_BUDGET_TOKENS", "100000"))
+CHARS_PER_TOKEN = 2.2  # measured on our contexts (French, ids and numbers): server count / characters, Qwen tokenizer
 
 
 def tokens(s: str) -> int:
@@ -235,7 +239,8 @@ et, s'il y en a, les règles doctrinales des ordres d'opération concernés.
 - Ne cite une règle (DR-xxxx) que si son texte complet figure dans le contexte.
 - Si des ordres sont liés, seules les « valeurs en vigueur » s'appliquent ; une valeur marquée [REMPLACÉ] ne se cite que
   comme ancienne valeur. Un conflit non résolu se signale, il ne se tranche pas.
-- Cite les segments (L1S2…), règles (DR-xxxx) et fragments par leur identifiant. Réponds en français."""
+- Cite les segments (L1S2…), règles (DR-xxxx) et fragments d'ordre (« ordre/fragment », par exemple test_frago1/P001_S004) par leur
+  identifiant : une valeur lue dans un ordre se justifie par son fragment. Réponds en français."""
 
 
 def chat(entry: dict, messages: list[dict], level: str = "standard", order_ids: list[str] | None = None,
@@ -307,8 +312,8 @@ def chat(entry: dict, messages: list[dict], level: str = "standard", order_ids: 
             for a in analyses:
                 full, short, fids = _order_facts(a, qw, share, old.get(a["order"], frozenset()))
                 P.add(f"ordre {a['order']}", full, short)
-                if P.report["blocks"][-1]["form"] != "omitted":
-                    ids["facts"] += fids
+                if P.report["blocks"][-1]["form"] != "omitted":  # citable as « ordre/fragment » (fragment ids repeat across orders)
+                    ids["facts"] += [f"{a['order']}/{x}" for x in fids]
     hist = [m for m in messages[:-1]]
     if hist:
         recent = "\n".join(f"{'Utilisateur' if m['role'] == 'user' else 'Assistant'} : {O._clean(m['content'])[:600]}" for m in hist[-2:])
@@ -325,10 +330,11 @@ def chat(entry: dict, messages: list[dict], level: str = "standard", order_ids: 
     if c is not None:
         length = {"concise": "Réponds en 2 phrases au plus.", "standard": "Réponds en un court paragraphe (6 phrases au plus).",
                   "detailed": "Réponds de façon détaillée et structurée, segment par segment si utile."}[level]
-        schema = {"type": "object", "additionalProperties": False, "required": ["answer", "cited_segments", "cited_rules"],
+        schema = {"type": "object", "additionalProperties": False, "required": ["answer", "cited_segments", "cited_rules", "cited_facts"],
                   "properties": {"answer": {"type": "string"},
                                  "cited_segments": {"type": "array", "maxItems": 20, "items": {"type": "string", "enum": seg_ids or ["none"]}},
-                                 "cited_rules": {"type": "array", "maxItems": 10, "items": {"type": "string", "enum": ids["rules"] or ["none"]}}}}
+                                 "cited_rules": {"type": "array", "maxItems": 10, "items": {"type": "string", "enum": ids["rules"] or ["none"]}},
+                                 "cited_facts": {"type": "array", "maxItems": 10, "items": {"type": "string", "enum": ids["facts"] or ["none"]}}}}
         rules_all = [r for a in analyses for r in a["rules"]]
 
         def validate(o):
@@ -344,8 +350,9 @@ def chat(entry: dict, messages: list[dict], level: str = "standard", order_ids: 
                 rid = set(re.findall(r"DR-\d{4}", sent))
                 if rid and all(grp.get(r) == "applicable" for r in rid) and re.search(r"ne s.appliqu\w* pas|non applicable|n.est pas applicable|ne sont pas applicables", sent, re.I):
                     bad.append(f"{', '.join(sorted(rid))} : règle(s) explicitement applicable(s), pas « ne s'applique pas » (dire « à vérifier »)")
-            if not o["cited_segments"] and not o["cited_rules"] and not re.search(r"ne permet pas|pas d.information|aucune information|a verifier|à vérifier", o["answer"], re.I):
-                bad.append("affirmation sans segment ni règle cités : cite tes sources ou dis que le contexte ne permet pas de conclure")
+            o["cited_facts"] = [f for f in o.get("cited_facts", []) if f in ids["facts"]]
+            if not o["cited_segments"] and not o["cited_rules"] and not o["cited_facts"] and not re.search(r"ne permet pas|pas d.information|aucune information|a verifier|à vérifier", o["answer"], re.I):
+                bad.append("affirmation sans segment, règle ni fragment d'ordre cités : cite tes sources ou dis que le contexte ne permet pas de conclure")
             if links_res:
                 bad += OL.stale_problems(o["answer"], links_res)
             return o, bad + O.status_problems(o["answer"], rules_all)
@@ -359,11 +366,11 @@ def chat(entry: dict, messages: list[dict], level: str = "standard", order_ids: 
         fl = OL.fallback_lines(links_res, question) if links_res else []
         if fl:
             text = "Ordres liés (valeurs en vigueur calculées par le code) :\n" + "\n".join(fl) + "\n" + text
-        out = {"answer": note + "\n" + text, "cited_segments": segs, "cited_rules": []}
+        out = {"answer": note + "\n" + text, "cited_segments": segs, "cited_rules": [], "cited_facts": []}
     by_rule = {r["rule_id"]: r for a in analyses for r in a["rules"]}
     cited = [r for r in out["cited_rules"] if r in by_rule]
     sources = [{"rule_id": r, "status": by_rule[r]["applicability_status"], "group": by_rule[r]["group"],
                 "pdf_document": (by_rule[r].get("source") or {}).get("pdf_document"), "pdf_page": (by_rule[r].get("source") or {}).get("pdf_page"),
                 "verification_status": by_rule[r].get("verification_status")} for r in cited]
     return {"answer": out["answer"], "mode": "model" if model else "trace (repli)", "cited_segments": [s for s in out["cited_segments"] if s in seg_ids],
-            "cited_rules": cited, "sources": sources, "model": model, "context": P.report, "seconds": round(time.perf_counter() - t0, 2)}
+            "cited_rules": cited, "cited_facts": out.get("cited_facts", []), "sources": sources, "model": model, "context": P.report, "seconds": round(time.perf_counter() - t0, 2)}

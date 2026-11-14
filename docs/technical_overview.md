@@ -148,8 +148,8 @@ are answered in this order, cheapest first:
    - Instant (0.001 s) and exact.
    - A segment number that does not exist gets an explicit answer.
 2. **The local model, on a packed context.** This covers other questions, and rule questions when orders are selected.
-   `ContextPacker` builds the context under a token budget (`AMIAD_CHAT_BUDGET_TOKENS`, default 6,000; the model
-   serves 32k), in this order:
+   `ContextPacker` builds the context under a token budget (`AMIAD_CHAT_BUDGET_TOKENS`, default 100,000; the model
+   serves 131,072; tokens estimated at 2.2 characters each, measured against the server's count), in this order:
    - the question;
    - the route trace, with the segment named in the question in full;
    - the **rules of every selected order, merged by rule id** (the doctrine is shared, so the same rule recurs across
@@ -172,7 +172,7 @@ are answered in this order, cheapest first:
    built-up stretches, speed limits) and the rules closest to it, with their status per order.
 
 **Measured.** Exercise 7, the question "does crossing bridges on this route impose a constraint?", 7 extracted orders
-at once:
+at once (measured with the former 6,000-token budget; with 100,000 nothing is ever cut at this size):
 - **Context:** 5,286 / 6,000 tokens, nothing omitted.
 - **With the model:** an answer in 2.8 s citing DR-0031 / DR-0029 and the segments with bridges.
 - **Without the model:** the deterministic answer in 0.01 s lists the 10 segments with drawn bridges, says their class
@@ -245,17 +245,34 @@ Scénario tab, and written orders (« puis va à C sans repasser par le trajet p
 - **Measured.** Return B → A with the outbound forbidden: 94.8 → 119.3 km, 1.7 km reused, all within 2 km of B;
   penalised (×3): 100.3 km, 8.8 km reused. Tests: `tests/test_mission_history.py`; browser: `interface/scripts/ui_smoke.py`.
 
-### 3.6 Context window under stress
+### 3.6 Context window under stress, and which model
 
-Run `20261114-033644_context_stress` (`experiments/context_stress.py`, Qwen3-VL-8B, one question per setting, real route of
-exercise 7, synthetic orders saved in the run folder):
-- **1 → 40 orders**: at most 5,971 / 6,000 tokens; beyond 10 orders some orders' fragments are left out (4 at 20, 16 at 40),
-  their rules and the links are kept, and the answer reports it.
+**Same size, longer context?** Qwen3-VL-8B (8.8 B, native window 262,144) against Qwen2.5-7B-Instruct-1M (7.6 B, built
+for 1 M tokens, text only), both on one H100 with a 262,144-token window, same questions (`experiments/llm_compare.py`,
+runs `20261114-071816_llm_compare` and `20261114-072142_llm_compare`). First answers, before the app's checks, where the
+asked order was in the context:
+- **Retrieval** (one order's radio frequency among 10 → 400 orders, up to 112,000 real tokens): 37/37 against 31/37; the
+  1 M model missed all 3 at 112,000 tokens.
+- **Value in force** at the end of 5 → 25 FRAGOs: 9/9 against 9/9 but once the replaced value.
+- **Conflict reported:** 3/3 against 0/3. **Written orders → fields:** 10/10 against 9/10.
+- The 1 M model answers faster (2.5 s against 4.6 s per chat answer) but reads no images (order pages).
+
+Kept: Qwen3-VL-8B. What lost answers was the app, not the model: a 6,000-token budget that cut the asked order from 40
+orders on, and a check that rejected answers justified by an order's own fragment (the schema could cite only segments
+and rules). Now: the chat cites fragments (`cited_facts`, « ordre/fragment »), the model serves 131,072 tokens, the budget
+is 100,000. At these settings (run `20261114-073055_llm_compare`): found 15/15 up to 400 orders (79,000 real tokens, 6 s),
+against 13/15 at 32,000 and 7/15 at 6,000; final answers equal first answers.
+
+**Dependencies under load** (run `20261114-073416_context_stress`, real route of exercise 7, synthetic orders saved in the
+run folder):
+- **1 → 40 orders** (the 8 extracted ones, then synthetic): 4,758 → 38,675 tokens, nothing left out.
 - **Chain of 1 → 20 FRAGOs** (only the last selected): the chain comes in by itself, the value in force is right in 5/5
-  answers, never a replaced value (0/5); the links block grows from 124 to 1,068 tokens.
-- **Budget 1,500 → 12,000** (30 orders in play): blocks left out 30 → 0, the links block always kept, the answer right 4/4;
-  the required blocks alone need 1,726 tokens, so ~2,000 is the smallest workable budget.
+  answers, never a replaced value; the links block grows from 168 to 1,456 tokens.
+- **Budget 1,500 → 100,000** (30 orders in play): blocks left out 30 → 0, the links block always kept, the answer right
+  5/5.
 - **Conflicts** (0 → 5 contradicting annexes): reported by the code and in 3/3 answers, never settled.
+- **Limit seen:** with 20 real orders (32,000 tokens and hundreds of rules), the model twice called applicable rules « not
+  applicable »; the status check rejected both and the deterministic answer was given (43 s, two calls).
 
 ## 4. Flexibility and scenario simulation
 

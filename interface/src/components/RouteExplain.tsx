@@ -161,6 +161,7 @@ export function RouteChat({ route, uiContext, sheetId, onTextOrder, mapCtx }: { 
                 {' · '}{m.reply.seconds} s
                 {m.reply.cited_segments.length > 0 && <> · segments {m.reply.cited_segments.join(', ')}</>}
                 {m.reply.cited_rules.length > 0 && <> · règles {m.reply.cited_rules.join(', ')}</>}
+                {(m.reply.cited_facts?.length ?? 0) > 0 && <> · fragments {m.reply.cited_facts!.join(', ')}</>}
                 {m.reply.context?.linked_orders_added && m.reply.context.linked_orders_added.length > 0 && <> · ordres liés ajoutés : {m.reply.context.linked_orders_added.join(', ')}</>}
                 {m.reply.context && <> · contexte {m.reply.context.used_tokens}/{m.reply.context.budget_tokens} jetons
                   {m.reply.context.omitted.length > 0 && <> (omis : {m.reply.context.omitted.join(', ')})</>}

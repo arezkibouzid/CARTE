@@ -1,0 +1,51 @@
+{
+ "wall_s": 145.74,
+ "cpu_s": 13.41,
+ "peak_rss_mb": 2043.6,
+ "cpu_energy_j": 41.9,
+ "cpu_energy_method": "estimated",
+ "phases": {
+  "network + route": {
+   "calls": 1,
+   "wall_s": 8.507,
+   "cpu_s": 10.078,
+   "cpu_energy_j": 31.4,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1022.5
+  },
+  "orders": {
+   "calls": 6,
+   "wall_s": 85.459,
+   "cpu_s": 0.173,
+   "cpu_energy_j": 0.5,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1022.9
+  },
+  "chain": {
+   "calls": 5,
+   "wall_s": 22.382,
+   "cpu_s": 0.068,
+   "cpu_energy_j": 0.1,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1022.9
+  },
+  "budget": {
+   "calls": 5,
+   "wall_s": 12.985,
+   "cpu_s": 0.08,
+   "cpu_energy_j": 0.2,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1022.9
+  },
+  "conflicts": {
+   "calls": 4,
+   "wall_s": 14.548,
+   "cpu_s": 0.038,
+   "cpu_energy_j": 0.0,
+   "cpu_energy_method": "estimated",
+   "rss_mb_after": 1022.9
+  }
+ },
+ "status": "ok",
+ "error": null
+}

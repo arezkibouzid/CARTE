@@ -1,0 +1,21 @@
+test,orders,used_tokens,budget,rules_tokens,order_blocks_full,order_blocks_short,order_blocks_omitted,mode,cited_rules,wall_s,cpu_s,cpu_energy_j,cpu_energy_method,rss_mb,depth,orders_added,expected,computed_in_force,replaced_values,links_block_tokens,links_block_form,omitted,shortened,answer_has_value,answer_stale,orders_selected,orders_total,omitted_blocks,shortened_blocks,annexes,conflict_reported_by_code,conflict_values,answer_flags_conflict
+orders,1,4758,100000,1296,1,0,0,model,3,4.2142,0.0207,0.1,estimated,1022.9,,,,,,,,,,,,,,,,,,,
+orders,2,5636,100000,1336,2,0,0,model,3,4.3697,0.0069,0.0,estimated,1022.9,,,,,,,,,,,,,,,,,,,
+orders,5,19925,100000,12599,5,0,0,model,3,5.5255,0.0153,0.0,estimated,1022.9,,,,,,,,,,,,,,,,,,,
+orders,10,28965,100000,18072,10,0,0,model,10,15.2853,0.03,0.1,estimated,1022.9,,,,,,,,,,,,,,,,,,,
+orders,20,32317,100000,19031,20,0,0,trace (repli),0,43.1988,0.0452,0.1,estimated,1022.9,,,,,,,,,,,,,,,,,,,
+orders,40,38675,100000,20949,40,0,0,model,2,12.8653,0.0548,0.2,estimated,1022.9,,,,,,,,,,,,,,,,,,,
+chain,,14830,,,,,,model,,4.2149,0.0083,0.0,estimated,1022.9,1,1,58 km/h,58 km/h,1,168,full,[],[],True,False,,,,,,,,
+chain,,15096,,,,,,model,,4.6956,0.0075,0.0,estimated,1022.9,2,2,56 km/h,56 km/h,2,235,full,[],[],True,False,,,,,,,,
+chain,,15896,,,,,,model,,2.9599,0.0107,0.0,estimated,1022.9,5,5,50 km/h,50 km/h,5,437,full,[],[],True,False,,,,,,,,
+chain,,17255,,,,,,model,,5.2431,0.0155,0.0,estimated,1022.9,10,10,40 km/h,40 km/h,10,774,full,[],[],True,False,,,,,,,,
+chain,,20086,,,,,,model,,5.2674,0.0249,0.1,estimated,1022.9,20,20,20 km/h,20 km/h,20,1456,full,[],[],True,False,,,,,,,,
+budget,,2108,1500,,,,,model,,2.3452,0.0147,0.0,estimated,1022.9,,,,,,1158,full,,,True,False,20,30,30,0,,,,
+budget,,2959,3000,,,,,model,,2.2221,0.0143,0.0,estimated,1022.9,,,,,,1158,full,,,True,False,20,30,27,0,,,,
+budget,,5980,6000,,,,,model,,2.2152,0.0145,0.0,estimated,1022.9,,,,,,1158,full,,,True,False,20,30,8,0,,,,
+budget,,10310,12000,,,,,model,,2.6665,0.0178,0.1,estimated,1022.9,,,,,,1158,full,,,True,False,20,30,0,0,,,,
+budget,,24867,100000,,,,,model,,3.5356,0.0177,0.1,estimated,1022.9,,,,,,1158,full,,,True,False,20,30,0,0,,,,
+conflicts,,14828,,,,,,model,,3.009,0.009,0.0,estimated,1022.9,,,,,,,,,,,,,,,,0,False,0,False
+conflicts,,15531,,,,,,model,,3.2914,0.0076,0.0,estimated,1022.9,,,,,,,,,,,,,,,,1,True,2,True
+conflicts,,16828,,,,,,model,,3.6472,0.0102,0.0,estimated,1022.9,,,,,,,,,,,,,,,,3,True,4,True
+conflicts,,18126,,,,,,model,,4.6013,0.0114,0.0,estimated,1022.9,,,,,,,,,,,,,,,,5,True,6,True

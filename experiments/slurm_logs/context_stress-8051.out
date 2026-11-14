@@ -1,0 +1,4 @@
+node par2dc5-ai-prd-cl01dgx01, job 8051, 16 CPUs
+run 20261114-073055_context_stress_21e1fd5
+8 real orders copied; model: Qwen/Qwen3-VL-8B-Instruct
+slurmstepd: error: *** JOB 8051 ON par2dc5-ai-prd-cl01dgx01 CANCELLED AT 2026-11-14T07:31:02 ***

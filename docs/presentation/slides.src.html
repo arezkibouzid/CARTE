@@ -351,17 +351,17 @@ ol.steps li::before { content: counter(s); position: absolute; left: 0; top: 0; 
       <div class="card row" style="gap:14px; align-items:center; padding:12px 16px;"><div class="badge" style="background:#fff"><!--icon:LuNetwork--></div>
         <div style="font-size:16px;"><b>1 · Solver trace.</b> "Why segment 3?", "alternatives?" answered from the solver's numbers. <b>0.001 s</b>, exact.</div></div>
       <div class="card row" style="gap:14px; align-items:center; padding:12px 16px;"><div class="badge blue" style="background:#fff"><!--icon:LuBrainCircuit--></div>
-        <div style="font-size:16px;"><b>2 · Local model.</b> Other questions, with the orders: context packed under <b>6,000 tokens</b>.</div></div>
+        <div style="font-size:16px;"><b>2 · Local model.</b> Other questions, with the orders: context packed under <b>100,000 tokens</b>.</div></div>
       <div class="card row" style="gap:14px; align-items:center; padding:12px 16px;"><div class="badge amber" style="background:#fff"><!--icon:LuShieldCheck--></div>
         <div style="font-size:16px;"><b>3 · Checks.</b> Every id, number, rule text and status must come from the context, or the answer is rejected.</div></div>
       <div class="card row" style="gap:14px; align-items:center; padding:12px 16px;"><div class="badge red" style="background:#fff"><!--icon:LuCheck--></div>
         <div style="font-size:16px;"><b>4 · Fallback.</b> A deterministic answer from the trace and the rules, always available.</div></div>
       <div class="row" style="gap:12px; align-items:center; margin-top:4px;">
-        <span class="tag m">Measured</span><span style="font-size:15px;">7 orders at once: <b>5,286 / 6,000 tokens</b>, nothing dropped; answer in 2.8 s.</span></div>
+        <span class="tag m">Measured</span><span style="font-size:15px;">5 real orders at once: <b>19,925 tokens</b>, nothing dropped; answer in 5.5 s.</span></div>
     </div>
   </div>
   <div class="foot">8</div>
-  <aside class="notes" data-time="30">Because every constraint is a term of the cost, the solver can explain itself. The route is cut into readable segments; for each one we rerun Dijkstra with that segment forbidden, so we know the best alternative and its extra cost: 'net' means at least 10 percent more, 'serré' a close call, 'obligé' no other way. On the right, how the chat answers: segment and alternative questions come straight from this trace, in a millisecond. Other questions go to a local 8-billion-parameter model with the orders' rules packed under a 6,000-token budget; even seven orders fit. Answers citing anything absent from the context are rejected and replaced by a deterministic answer. The checks are heuristics, so the trace answers remain the reference.</aside>
+  <aside class="notes" data-time="30">Because every constraint is a term of the cost, the solver can explain itself. The route is cut into readable segments; for each one we rerun Dijkstra with that segment forbidden, so we know the best alternative and its extra cost: 'net' means at least 10 percent more, 'serré' a close call, 'obligé' no other way. On the right, how the chat answers: segment and alternative questions come straight from this trace, in a millisecond. Other questions go to a local 8-billion-parameter model with the orders and their rules packed under a 100,000-token budget: hundreds of orders fit. Answers citing anything absent from the context are rejected and replaced by a deterministic answer. The checks are heuristics, so the trace answers remain the reference.</aside>
 </section>
 
 <!-- 8a · NATO DOCTRINE (RAG) -->
@@ -417,7 +417,7 @@ ol.steps li::before { content: counter(s); position: absolute; left: 0; top: 0; 
     <div class="lbl" style="left:874px; top:-24px;">Output it can only produce</div>
     <div class="nd" style="left:0; top:0; width:232px; height:92px; background:#E8F1FC;"><span class="h">1 · Extraction</span>pages of a PDF order, as images</div>
     <div class="nd" style="left:0; top:108px; width:232px; height:92px; background:#E3F1EE;"><span class="h">2 · Rule explanations</span>facts of the order + candidate rules</div>
-    <div class="nd" style="left:0; top:216px; width:232px; height:92px; background:var(--doubt-bg);"><span class="h">3 · Chat (orders, route)</span>route trace + rules, ≤ 6,000 tokens</div>
+    <div class="nd" style="left:0; top:216px; width:232px; height:92px; background:var(--doubt-bg);"><span class="h">3 · Chat (orders, route)</span>route trace + rules, ≤ 100,000 tokens</div>
     <div class="nd" style="left:0; top:324px; width:232px; height:92px; background:#FBEAE8;"><span class="h">4 · Written order <span class="otag" style="color:var(--route); border-color:var(--route);">NEW</span></span>text + points of the PDF, of the map, coordinates</div>
 
     <div style="position:absolute; left:270px; top:0; width:258px; height:416px; background:var(--dark); border-radius:16px; color:var(--on-dark); padding:14px 16px;">
@@ -515,7 +515,7 @@ ol.steps li::before { content: counter(s); position: absolute; left: 0; top: 0; 
       <tr><td>Map ↔ written order</td><td style="color:var(--ink); font-weight:400; white-space:normal;">point P, departure, waypoints, zones, rectangle, PDF points, coordinates</td><td style="color:var(--muted); font-weight:400; white-space:normal;">place names not resolved (offline by design)</td></tr>
       <tr><td>Convoy → convoy</td><td style="color:var(--ink); font-weight:400; white-space:normal;">priority order; roads of earlier convoys priced or forbidden</td><td style="color:var(--muted); font-weight:400; white-space:normal;">planned in sequence, no timing at junctions</td></tr>
       <tr><td>Constraint → route</td><td style="color:var(--ink); font-weight:400; white-space:normal;">one formula: hard removes, soft prices, doubt included</td><td style="color:var(--muted); font-weight:400; white-space:normal;">each section's doubt priced on its own</td></tr>
-      <tr><td>Question → context</td><td style="color:var(--ink); font-weight:400; white-space:normal;">linked orders added, links block first, replaced text cut first</td><td style="color:var(--muted); font-weight:400; white-space:normal;">6,000 tokens: beyond ~10 orders, some orders' text is left out (reported)</td></tr>
+      <tr><td>Question → context</td><td style="color:var(--ink); font-weight:400; white-space:normal;">linked orders added, links block first, replaced text cut first</td><td style="color:var(--muted); font-weight:400; white-space:normal;">100,000 tokens (window 131,072): about 400 orders; beyond, the least related text is left out (reported)</td></tr>
     </table>
     <div class="row" style="gap:14px; margin-top:12px; align-items:center;">
       <span class="tag m">Measured</span>
@@ -523,24 +523,24 @@ ol.steps li::before { content: counter(s); position: absolute; left: 0; top: 0; 
     </div>
   </div>
   <div class="foot">12 · interface/backend/amiad_api.py (history), order_links.py, text_order.py · tests/test_mission_history.py, test_order_links.py</div>
-  <aside class="notes" data-time="30">Here is every dependency the app takes into account, and honestly where each one stops. New: legs of a mission. The next leg starts where the previous one ended and may not reuse its path; it is reopened only around the shared point if there is no other way out, and the app says so: on a return trip, 1.7 kilometres reused, all around the turning point. Orders amending orders, doctrine rules matched to orders, the map referenced from a written order, convoys deconflicted, constraints in one formula, and the context window. The limits are on the right: explicit references only, quantified items only, sequential convoys, and a 6,000-token budget.</aside>
+  <aside class="notes" data-time="30">Here is every dependency the app takes into account, and honestly where each one stops. New: legs of a mission. The next leg starts where the previous one ended and may not reuse its path; it is reopened only around the shared point if there is no other way out, and the app says so: on a return trip, 1.7 kilometres reused, all around the turning point. Orders amending orders, doctrine rules matched to orders, the map referenced from a written order, convoys deconflicted, constraints in one formula, and the context window. The limits are on the right: explicit references only, quantified items only, sequential convoys, and a 100,000-token budget.</aside>
 </section>
 
 <!-- 8e · CONTEXT STRESS -->
 <section class="slide">
   <div class="kicker"><span class="pin"><b>6</b></span>Stress test · context window</div>
-  <h1>Under load, details go first; the dependencies always stay</h1>
+  <h1>400 orders in the window, the right fact out</h1>
   <div class="body">
-    <div><span class="tag m">Measured · <span class="src">runs/20261114-033644_context_stress</span> · Qwen3-VL-8B · one question per setting</span></div>
-    <div class="row" style="gap:20px; margin-top:8px;"><!--chart:ctx_orders--><!--chart:ctx_chain--><!--chart:ctx_budget--></div>
+    <div><span class="tag m">Measured · <span class="src">runs/20261114-07*_llm_compare, _context_stress</span> · same questions, two models of 8 B · one H100</span></div>
+    <div class="row" style="gap:20px; margin-top:8px;"><!--chart:ctx_needle--><!--chart:llm_models--><!--chart:ctx_cost--></div>
     <div class="row" style="gap:12px; margin-top:10px;">
-      <div class="card" style="flex:1; padding:10px 14px; font-size:14.5px;"><b>1 → 40 orders</b> stay under 6,000 tokens; at 40, 16 orders' text is left out, their rules and links kept, and the answer says so.</div>
-      <div class="card" style="flex:1; padding:10px 14px; font-size:14.5px;"><b>Chain of 1 → 20 FRAGOs</b>: value in force right <b>5/5</b>, never an old value <b>0/5</b>; links block 124 → 1,068 tokens.</div>
-      <div class="card" style="flex:1; padding:10px 14px; font-size:14.5px;"><b>Conflicts</b> reported <b>3/3</b>, never settled. Below ~2,000 tokens the required blocks alone (1,726) no longer fit.</div>
+      <div class="card" style="flex:1; padding:10px 14px; font-size:14.5px;"><b>Window 6k → 100k tokens.</b> At 6k, from 40 orders the asked order gets cut: 8/15 lost. At 100k: <b>15/15</b>, up to 79k real tokens, 6 s.</div>
+      <div class="card" style="flex:1; padding:10px 14px; font-size:14.5px;"><b>Model kept: Qwen3-VL-8B.</b> The long-context Qwen2.5-7B-1M missed facts (0/3 at 112k), conflicts 0/3, and reads no images.</div>
+      <div class="card" style="flex:1; padding:10px 14px; font-size:14.5px;"><b>Dependencies:</b> chain of 20 FRAGOs, value in force <b>5/5</b>, never an old one; conflicts <b>3/3</b> reported. Wrong rule status at 20 orders: caught, fallback.</div>
     </div>
   </div>
-  <div class="foot">13 · experiments/context_stress.py · synthetic orders in the run folder · 80 s, 1 CPU job + the shared model</div>
-  <aside class="notes" data-time="30">We stress-tested the context window. Left: from 1 to 40 orders, the context stays under the 6,000-token budget; beyond 10 orders some orders' text is left out, but never their rules or links, and the answer reports it. Middle: a chain of up to 20 successive FRAGOs, only the last one selected: the whole chain comes in, and the model gave the value in force every time, never an old one. Right: shrinking the budget drops more blocks, but the links block is kept every time. Conflicts were reported, never settled. One question per setting, so a small sample.</aside>
+  <div class="foot">13 · experiments/llm_compare.py, context_stress.py · synthetic orders (fictional) · first answers before the app's checks</div>
+  <aside class="notes" data-time="30">Can one 8-billion model read a whole archive of orders? We asked for one fact that only one order carries, among up to 400 orders. Left: with the old 6,000-token budget, from 40 orders the order was cut and the fact lost; with 100,000 tokens, found every time, up to 79,000 real tokens, in 6 seconds. Middle: we tried a model of the same size built for a million tokens, Qwen 2.5 7B 1M. It was faster, but missed facts at the longest contexts and never reported a conflict, so we kept Qwen3-VL, which also reads the order pages as images. Right: the cost grows with what is in the window, not with the budget. Chains and conflicts still hold. And when the model misstated a rule's status, the check caught it and the app answered from the rule engine.</aside>
 </section>
 
 <!-- 9 · FLEXIBILITY -->
@@ -757,7 +757,7 @@ ol.steps li::before { content: counter(s); position: absolute; left: 0; top: 0; 
     </div>
     <div class="row" style="gap:12px; align-items:center; margin-top:22px;">
       <span class="tag m">Measured</span>
-      <span style="font-size:16px;"><b>To deploy routing:</b> 2 cores, 4 GB RAM, no GPU. Optional: 8 GB GPU for a new sheet, 24 GB for the local language model.</span>
+      <span style="font-size:16px;"><b>To deploy routing:</b> 2 cores, 4 GB RAM, no GPU. Optional: 8 GB GPU for a new sheet, 40 GB for the local language model (131k-token window; 24 GB at 32k).</span>
     </div>
     <div class="small" style="font-size:13px; margin-top:8px;">Server 2× Xeon Gold 6430, GPU NVIDIA H100 80 GB · CPU energy estimated from CPU time (no RAPL), GPU energy measured.</div>
   </div>

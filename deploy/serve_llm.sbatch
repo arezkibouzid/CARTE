@@ -3,6 +3,8 @@
 # One model for every role: Qwen3-VL-8B-Instruct, the model the extraction bundle was validated with (images + schema),
 # also serves the rule explanations and the chatbot. Qwen3-VL-4B was measured on the same explanations and questions:
 # as fast here, but it misstated rule contents and statuses where the 8B did not (see interface/backend/orders.py).
+# Window 131,072 tokens (native 262,144): one full-window request fits in the KV cache (about 19 GB at 144 KB per token).
+# Qwen2.5-7B-Instruct-1M was compared on the same long-context tests and answered worse (experiments/README.md).
 # Writes the endpoint to outputs/orders/llm_endpoints.json; the app reads that file (or COA_LLM_BASE_URL).
 #   sbatch deploy/serve_llm.sbatch            (stop: scancel <job>)
 #SBATCH --job-name=amiad-llm
@@ -22,7 +24,7 @@ HOST=$(hostname -f)  # the name other cluster nodes resolve (the first interface
 P8=$(free_port)
 cd "$REPO"
 "$VLLM" serve "$MODELS/Qwen3-VL-8B-Instruct" --served-model-name Qwen/Qwen3-VL-8B-Instruct --host 0.0.0.0 --port "$P8" \
-  --dtype bfloat16 --max-model-len 32768 --max-num-seqs 4 --gpu-memory-utilization 0.50 \
+  --dtype bfloat16 --max-model-len 131072 --max-num-seqs 4 --gpu-memory-utilization 0.55 \
   --limit-mm-per-prompt '{"image":8}' --mm-processor-kwargs '{"max_pixels":2508800}' \
   --structured-outputs-config '{"backend":"xgrammar","disable_any_whitespace":true,"disable_fallback":true}' \
   --generation-config vllm > "outputs/orders/vllm-8b-$SLURM_JOB_ID.log" 2>&1 &

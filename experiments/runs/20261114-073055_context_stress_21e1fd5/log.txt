@@ -1,0 +1,2 @@
+07:30:55 run 20261114-073055_context_stress_21e1fd5
+07:30:56 8 real orders copied; model: Qwen/Qwen3-VL-8B-Instruct

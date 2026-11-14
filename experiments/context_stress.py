@@ -6,7 +6,7 @@ links between orders (values in force, conflicts). This measures how that holds 
   orders     1..40 orders selected at once (the extracted exercises, then synthetic independent orders)
   chain      a chain of 1..20 FRAGOs, each amending the previous one; only the last is selected: the whole chain must come
              in by itself and the value in force must be the last one
-  budget     1,500..12,000 tokens for 20 orders + a chain of 10: what is shortened or left out, whether the links survive
+  budget     1,500..100,000 tokens for 20 orders + a chain of 10: what is shortened or left out, whether the links survive
   conflicts  0..5 annexes contradicting the base order's load: the conflict must be reported, not settled
 
 Per call: tokens per block, blocks shortened / omitted, time; with the model (``--llm``, default on): whether the answer
@@ -87,7 +87,7 @@ def main():
     use_llm = not a.no_llm
     N_ORDERS = [1, 5, 40] if a.quick else [1, 2, 5, 10, 20, 40]
     DEPTH = [1, 5] if a.quick else [1, 2, 5, 10, 20]
-    BUDGETS = [1500, 6000] if a.quick else [1500, 3000, 6000, 12000]
+    BUDGETS = [1500, 6000] if a.quick else [1500, 3000, 6000, 12000, 100000]
     CONFL = [0, 3] if a.quick else [0, 1, 3, 5]
     cfg = {"script": "experiments/context_stress.py", "llm": use_llm, "quick": a.quick, "orders": N_ORDERS, "chain_depth": DEPTH,
            "budgets": BUDGETS, "conflicts": CONFL, "route": "exercise 7 (PD4 -> PA4, 4 waypoints free order), network nodice"}

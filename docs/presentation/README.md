@@ -1,6 +1,6 @@
 # CARTE — presentation and demo
 
-A 10-minute talk (20 slides, speaker notes timed to 10:00) and a 3:49 demo video of the interface.
+A 10-minute talk (20 slides, speaker notes timed to 10:00) and a 3:51 demo video of the interface.
 
 | file | what |
 |---|---|

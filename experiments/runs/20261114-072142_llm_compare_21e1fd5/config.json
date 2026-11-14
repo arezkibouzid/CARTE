@@ -1,0 +1,26 @@
+{
+ "script": "experiments/llm_compare.py",
+ "quick": false,
+ "budgets": [
+  6000,
+  32000,
+  120000
+ ],
+ "needle_orders": [
+  10,
+  40,
+  100,
+  200,
+  400
+ ],
+ "chain_depth": [
+  5,
+  15,
+  25
+ ],
+ "conflicts": [
+  3
+ ],
+ "text_cases": 10,
+ "route": "exercise 7 (PD4 -> PA4), network nodice"
+}

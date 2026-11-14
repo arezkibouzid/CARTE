@@ -32,7 +32,7 @@ Two kinds of engineering keep this fast. On the left, how the graph is built fro
 
 ## 8. Every segment comes with its reason and its rejected alternative  (0:30)
 
-Because every constraint is a term of the cost, the solver can explain itself. The route is cut into readable segments; for each one we rerun Dijkstra with that segment forbidden, so we know the best alternative and its extra cost: 'net' means at least 10 percent more, 'serré' a close call, 'obligé' no other way. On the right, how the chat answers: segment and alternative questions come straight from this trace, in a millisecond. Other questions go to a local 8-billion-parameter model with the orders' rules packed under a 6,000-token budget; even seven orders fit. Answers citing anything absent from the context are rejected and replaced by a deterministic answer. The checks are heuristics, so the trace answers remain the reference.
+Because every constraint is a term of the cost, the solver can explain itself. The route is cut into readable segments; for each one we rerun Dijkstra with that segment forbidden, so we know the best alternative and its extra cost: 'net' means at least 10 percent more, 'serré' a close call, 'obligé' no other way. On the right, how the chat answers: segment and alternative questions come straight from this trace, in a millisecond. Other questions go to a local 8-billion-parameter model with the orders and their rules packed under a 100,000-token budget: hundreds of orders fit. Answers citing anything absent from the context are rejected and replaced by a deterministic answer. The checks are heuristics, so the trace answers remain the reference.
 
 ## 9. NATO doctrine as a checked rule base, matched to each order  (0:35)
 
@@ -48,11 +48,11 @@ Orders depend on each other: a FRAGO amends an OPORD, an annex completes it. Sid
 
 ## 12. Every dependency the app takes into account, and where it stops  (0:30)
 
-Here is every dependency the app takes into account, and honestly where each one stops. New: legs of a mission. The next leg starts where the previous one ended and may not reuse its path; it is reopened only around the shared point if there is no other way out, and the app says so: on a return trip, 1.7 kilometres reused, all around the turning point. Orders amending orders, doctrine rules matched to orders, the map referenced from a written order, convoys deconflicted, constraints in one formula, and the context window. The limits are on the right: explicit references only, quantified items only, sequential convoys, and a 6,000-token budget.
+Here is every dependency the app takes into account, and honestly where each one stops. New: legs of a mission. The next leg starts where the previous one ended and may not reuse its path; it is reopened only around the shared point if there is no other way out, and the app says so: on a return trip, 1.7 kilometres reused, all around the turning point. Orders amending orders, doctrine rules matched to orders, the map referenced from a written order, convoys deconflicted, constraints in one formula, and the context window. The limits are on the right: explicit references only, quantified items only, sequential convoys, and a 100,000-token budget.
 
-## 13. Under load, details go first; the dependencies always stay  (0:30)
+## 13. 400 orders in the window, the right fact out  (0:30)
 
-We stress-tested the context window. Left: from 1 to 40 orders, the context stays under the 6,000-token budget; beyond 10 orders some orders' text is left out, but never their rules or links, and the answer reports it. Middle: a chain of up to 20 successive FRAGOs, only the last one selected: the whole chain comes in, and the model gave the value in force every time, never an old one. Right: shrinking the budget drops more blocks, but the links block is kept every time. Conflicts were reported, never settled. One question per setting, so a small sample.
+Can one 8-billion model read a whole archive of orders? We asked for one fact that only one order carries, among up to 400 orders. Left: with the old 6,000-token budget, from 40 orders the order was cut and the fact lost; with 100,000 tokens, found every time, up to 79,000 real tokens, in 6 seconds. Middle: we tried a model of the same size built for a million tokens, Qwen 2.5 7B 1M. It was faster, but missed facts at the longest contexts and never reported a conflict, so we kept Qwen3-VL, which also reads the order pages as images. Right: the cost grows with what is in the window, not with the budget. Chains and conflicts still hold. And when the model misstated a rule's status, the check caught it and the app answered from the rule engine.
 
 ## 14. Many convoys on one network, with no hard-coded scenario  (0:25)
 

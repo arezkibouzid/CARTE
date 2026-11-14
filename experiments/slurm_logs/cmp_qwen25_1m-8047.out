@@ -1,0 +1,32 @@
+node par2dc5-ai-prd-cl01dgx01, job 8047, model Qwen/Qwen2.5-7B-Instruct-1M, port 64821
+vLLM stopped
+[1;36m(APIServer pid=2537301)[0;0m   File "/home/nouhaila_aitbella/extraction/.venv-vllm/lib/python3.12/site-packages/uvloop/__init__.py", line 48, in wrapper
+[1;36m(APIServer pid=2537301)[0;0m     return await main
+[1;36m(APIServer pid=2537301)[0;0m            ^^^^^^^^^^
+[1;36m(APIServer pid=2537301)[0;0m   File "/home/nouhaila_aitbella/extraction/.venv-vllm/lib/python3.12/site-packages/vllm/entrypoints/openai/api_server.py", line 1884, in run_server
+[1;36m(APIServer pid=2537301)[0;0m     await run_server_worker(listen_address, sock, args, **uvicorn_kwargs)
+[1;36m(APIServer pid=2537301)[0;0m   File "/home/nouhaila_aitbella/extraction/.venv-vllm/lib/python3.12/site-packages/vllm/entrypoints/openai/api_server.py", line 1902, in run_server_worker
+[1;36m(APIServer pid=2537301)[0;0m     async with build_async_engine_client(
+[1;36m(APIServer pid=2537301)[0;0m                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[1;36m(APIServer pid=2537301)[0;0m   File "/home/nouhaila_aitbella/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/contextlib.py", line 210, in __aenter__
+[1;36m(APIServer pid=2537301)[0;0m     return await anext(self.gen)
+[1;36m(APIServer pid=2537301)[0;0m            ^^^^^^^^^^^^^^^^^^^^^
+[1;36m(APIServer pid=2537301)[0;0m   File "/home/nouhaila_aitbella/extraction/.venv-vllm/lib/python3.12/site-packages/vllm/entrypoints/openai/api_server.py", line 180, in build_async_engine_client
+[1;36m(APIServer pid=2537301)[0;0m     async with build_async_engine_client_from_engine_args(
+[1;36m(APIServer pid=2537301)[0;0m                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[1;36m(APIServer pid=2537301)[0;0m   File "/home/nouhaila_aitbella/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/contextlib.py", line 210, in __aenter__
+[1;36m(APIServer pid=2537301)[0;0m     return await anext(self.gen)
+[1;36m(APIServer pid=2537301)[0;0m            ^^^^^^^^^^^^^^^^^^^^^
+[1;36m(APIServer pid=2537301)[0;0m   File "/home/nouhaila_aitbella/extraction/.venv-vllm/lib/python3.12/site-packages/vllm/entrypoints/openai/api_server.py", line 206, in build_async_engine_client_from_engine_args
+[1;36m(APIServer pid=2537301)[0;0m     vllm_config = engine_args.create_engine_config(usage_context=usage_context)
+[1;36m(APIServer pid=2537301)[0;0m                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[1;36m(APIServer pid=2537301)[0;0m   File "/home/nouhaila_aitbella/extraction/.venv-vllm/lib/python3.12/site-packages/vllm/engine/arg_utils.py", line 1431, in create_engine_config
+[1;36m(APIServer pid=2537301)[0;0m     config = VllmConfig(
+[1;36m(APIServer pid=2537301)[0;0m              ^^^^^^^^^^^
+[1;36m(APIServer pid=2537301)[0;0m   File "/home/nouhaila_aitbella/extraction/.venv-vllm/lib/python3.12/site-packages/pydantic/_internal/_dataclasses.py", line 121, in __init__
+[1;36m(APIServer pid=2537301)[0;0m     s.__pydantic_validator__.validate_python(ArgsKwargs(args, kwargs), self_instance=s)
+[1;36m(APIServer pid=2537301)[0;0m   File "/home/nouhaila_aitbella/extraction/.venv-vllm/lib/python3.12/site-packages/vllm/config/__init__.py", line 310, in __post_init__
+[1;36m(APIServer pid=2537301)[0;0m     self.model_config.verify_dual_chunk_attention_config(
+[1;36m(APIServer pid=2537301)[0;0m   File "/home/nouhaila_aitbella/extraction/.venv-vllm/lib/python3.12/site-packages/vllm/config/model.py", line 1028, in verify_dual_chunk_attention_config
+[1;36m(APIServer pid=2537301)[0;0m     self.hf_config.dual_chunk_attention_config[
+[1;36m(APIServer pid=2537301)[0;0m TypeError: 'NoneType' object does not support item assignment

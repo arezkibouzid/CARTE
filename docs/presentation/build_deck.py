@@ -28,7 +28,10 @@ RUNS = {
     "stress": REPO / "experiments/runs/20261113-202358_stress_test_6ff7618/metrics.json",
     "imagery": REPO / "experiments/runs/20261113-202429_imagery_ablation_6ff7618/metrics.json",
     "feasibility": REPO / "experiments/analysis/stress_test_feasibility_relative.json",
-    "context": REPO / "experiments/runs/20261114-033644_context_stress_eeeda4c/metrics.json",
+    "context": REPO / "experiments/runs/20261114-073416_context_stress_21e1fd5/metrics.json",
+    "llm_app": REPO / "experiments/runs/20261114-073055_llm_compare_21e1fd5/metrics.json",  # app settings: 131k window
+    "llm_vl": REPO / "experiments/runs/20261114-071816_llm_compare_21e1fd5/metrics.json",   # both models, 262k window
+    "llm_q25": REPO / "experiments/runs/20261114-072142_llm_compare_21e1fd5/metrics.json",
     "doctrine": REPO / "RAG/rules/doctrine_final_unique_rules.csv",
 }
 CHARTS = HERE / "charts"
@@ -265,54 +268,74 @@ def charts():
     f.tight_layout()
     save(f, "imagery_f1", RUNS["imagery"], {f"{m} / {c}": I[f"{m} / {c}"]["f1"] for m, _, _ in models for c, _ in conds})
 
-    # --- context window stress test
-    C = json.loads(RUNS["context"].read_text())["records"]
-    o = [r for r in C if r["test"] == "orders"]
-    f, ax = fig(330, 250)
-    xs = [str(r["orders"]) for r in o]
-    ax.plot(xs, [r["used_tokens"] for r in o], color=TEAL, linewidth=2, marker="o", markersize=6)
-    ax.axhline(6000, color="#9AA6A9", linestyle="--", linewidth=1.2)
-    ax.text(0, 6150, "budget 6,000", fontsize=10, color=MUTED)
-    offs = [(-62, -30), (-44, -62)]
-    for r, x in zip([r for r in o if r["order_blocks_omitted"]], [x for r, x in zip(o, xs) if r["order_blocks_omitted"]]):
-        ax.annotate(f"{r['order_blocks_omitted']} left out", (x, r["used_tokens"]), offs.pop(0) if offs else (-40, -40), textcoords="offset points",
-                    fontsize=9.5, color=INK, arrowprops=dict(arrowstyle="-", color="#9AA6A9", lw=0.8))
-    ax.set_ylim(0, 7000)
-    ax.set_xlabel("orders selected")
-    ax.set_title("tokens used")
+    # --- context window: long-context retrieval at the app's settings, two models of the same size, cost of a long context
+    A = json.loads(RUNS["llm_app"].read_text())["records"]
+    nd = [r for r in A if r["test"] == "needle"]
+    ns = sorted({r["orders"] for r in nd})
+    f, ax = fig(320, 290)
+    xs = [str(n) for n in ns]
+    for z, (b, col, lab, mk_) in enumerate(((100000, TEAL, "100k (now)", "o"), (32000, BLUE, "32k", "s"), (6000, ZERO, "6k (before)", "D"))):
+        ys = [sum(r["final_ok"] for r in nd if r["orders"] == n and r["budget"] == b) for n in ns]
+        ax.plot(xs, ys, color=col, linewidth=2, marker=mk_, markersize=6, label=lab, zorder=5 - z)
+    ax.set_ylim(-0.3, 4.3)
+    ax.set_yticks([0, 1, 2, 3])
+    ax.set_xlabel("orders in the context")
+    ax.set_ylabel("found, of 3")
+    ax.set_title("one order's fact found · budget")
+    ax.legend(frameon=False, fontsize=9.5, loc="upper center", ncol=3, handlelength=1.2, columnspacing=0.8, handletextpad=0.4)
     ygrid(ax)
     f.tight_layout()
-    save(f, "ctx_orders", RUNS["context"], {r["orders"]: [r["used_tokens"], r["order_blocks_omitted"]] for r in o})
+    save(f, "ctx_needle", RUNS["llm_app"], {f"{n} orders @ {b}": sum(r["final_ok"] for r in nd if r["orders"] == n and r["budget"] == b)
+                                           for n in ns for b in (6000, 32000, 100000)})
 
-    ch = [r for r in C if r["test"] == "chain"]
-    f, ax = fig(330, 250)
-    xs = [str(r["depth"]) for r in ch]
-    ax.bar(xs, [r["used_tokens"] - (r["links_block_tokens"] or 0) for r in ch], color=CONTEXT, width=0.6, label="rest of context")
-    ax.bar(xs, [r["links_block_tokens"] or 0 for r in ch], bottom=[r["used_tokens"] - (r["links_block_tokens"] or 0) for r in ch],
-           color=TEAL, width=0.6, label="links block")
-    for x, r in zip(xs, ch):
-        ax.text(x, r["used_tokens"] + 120, "✓" if r["answer_has_value"] and not r["answer_stale"] else "✗", ha="center",
-                fontsize=12, color=TEAL if r["answer_has_value"] else "#C8382F")
-    ax.set_ylim(0, 8600)
-    ax.set_xlabel("FRAGOs in the chain")
-    ax.set_title("tokens · ✓ = value in force given")
-    ax.legend(frameon=False, fontsize=9.5, loc="upper left")
-    ygrid(ax)
-    f.tight_layout()
-    save(f, "ctx_chain", RUNS["context"], {r["depth"]: [r["used_tokens"], r["links_block_tokens"], r["answer_has_value"], r["answer_stale"]] for r in ch})
+    def score(path):
+        R_ = json.loads(path.read_text())["records"]
+        ned = [r for r in R_ if r["test"] == "needle" and r["target_in_context"]]
+        ch_ = [r for r in R_ if r["test"] == "chain"]
+        cf = [r for r in R_ if r["test"] == "conflicts"]
+        tx = [r for r in R_ if r["test"] == "text"]
+        return {"retrieval": (sum(r["raw_ok"] for r in ned), len(ned)),
+                "value in force": (sum(r["raw_ok"] and not r["raw_stale"] for r in ch_), len(ch_)),
+                "conflict reported": (sum(r["raw_ok"] for r in cf), len(cf)),
+                "written orders": (sum(r["raw_ok"] for r in tx), len(tx))}
 
-    bu = [r for r in C if r["test"] == "budget"]
-    f, ax = fig(330, 250)
-    xs = [f"{r['budget'] // 1000 if r['budget'] >= 1000 and r['budget'] % 1000 == 0 else r['budget'] / 1000:g}k" for r in bu]
-    bars = ax.bar(xs, [r["omitted_blocks"] for r in bu], color=CONTEXT, width=0.6)
-    for b_, r in zip(bars, bu):
-        ax.text(b_.get_x() + b_.get_width() / 2, r["omitted_blocks"] + 0.6, f"{r['omitted_blocks']}", ha="center", fontsize=10.5, color=INK)
-    ax.set_ylim(0, 36)
-    ax.set_xlabel("token budget (30 orders in play)")
-    ax.set_title("blocks left out · links kept 4/4")
+    sv, sq = score(RUNS["llm_vl"]), score(RUNS["llm_q25"])
+    f, ax = fig(420, 290)
+    tasks = list(sv)
+    ys = list(range(len(tasks)))[::-1]
+    for y, t in zip(ys, tasks):
+        a_, b_ = sv[t][0] / sv[t][1] * 100, sq[t][0] / sq[t][1] * 100
+        ax.plot([min(a_, b_), max(a_, b_)], [y, y], color=GRID, linewidth=3, zorder=1)
+        ax.scatter([b_], [y], s=70, color="#C8382F", zorder=3, edgecolor="white", linewidth=1.5, label="Qwen2.5-7B-1M" if y == ys[0] else None)
+        ax.scatter([a_], [y], s=70, color=TEAL, zorder=4, edgecolor="white", linewidth=1.5, label="Qwen3-VL-8B (kept)" if y == ys[0] else None)
+        ax.text(110, y, f"{sv[t][0]}/{sv[t][1]}", va="center", fontsize=10, color=TEAL, fontweight="semibold")
+        ax.text(140, y, f"{sq[t][0]}/{sq[t][1]}", va="center", fontsize=10, color="#C8382F", fontweight="semibold")
+    ax.set_yticks(ys)
+    ax.set_yticklabels(tasks)
+    ax.set_xlim(-5, 165)
+    ax.set_xticks([0, 50, 100])
+    ax.set_xlabel("% right, first answer")
+    ax.spines["left"].set_visible(False)
+    ax.set_title("same size, first answers right")
+    ax.legend(frameon=False, fontsize=9.5, loc="upper center", bbox_to_anchor=(0.4, -0.22), ncol=2, handletextpad=0.2)
+    xgrid(ax)
+    f.tight_layout()
+    save(f, "llm_models", RUNS["llm_vl"], {"Qwen3-VL-8B": sv, "Qwen2.5-7B-Instruct-1M (run %s)" % RUNS["llm_q25"].parent.name: sq})
+
+    big = [r for r in nd if r["budget"] == 100000]
+    pts = {n: (sum(r["prompt_tokens"] for r in big if r["orders"] == n) / 3, sum(r["seconds"] for r in big if r["orders"] == n) / 3) for n in ns}
+    f, ax = fig(320, 290)
+    ax.plot([v[0] / 1000 for v in pts.values()], [v[1] for v in pts.values()], color=TEAL, linewidth=2, marker="o", markersize=6)
+    for n, (tk, sec) in pts.items():
+        ax.annotate(f"{n}", (tk / 1000, sec), (8, -12) if n == 400 else (-4, 8), textcoords="offset points", fontsize=9.5, color=MUTED,
+                    ha="left" if n == 400 else "right")
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 8)
+    ax.set_xlabel("real prompt tokens (k) · labels: orders")
+    ax.set_title("seconds per answer, one H100")
     ygrid(ax)
     f.tight_layout()
-    save(f, "ctx_budget", RUNS["context"], {r["budget"]: [r["omitted_blocks"], r["links_block_form"], r["answer_has_value"]] for r in bu})
+    save(f, "ctx_cost", RUNS["llm_app"], {n: {"prompt_tokens": round(v[0]), "seconds": round(v[1], 2)} for n, v in pts.items()})
 
     # --- doctrine rule base (the CSV itself)
     import csv

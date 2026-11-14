@@ -1,0 +1,54 @@
+{
+ "git": {
+  "commit": "21e1fd524b6c9b85914a4e15b3a01fbc72103349",
+  "branch": "feat/orders-rules-chatbot",
+  "dirty": false,
+  "diff_sha256": null
+ },
+ "python": "3.10.12",
+ "packages": {
+  "numpy": "2.2.6",
+  "scipy": "1.15.3",
+  "shapely": "2.1.2",
+  "networkx": "3.4.2",
+  "geopandas": "1.1.4",
+  "pyproj": "3.7.1",
+  "rasterio": "1.4.4",
+  "torch": "2.14.1",
+  "fastapi": "0.162.5",
+  "scikit-learn": "1.7.2",
+  "matplotlib": "3.10.9"
+ },
+ "host": "par2dc5-ai-prd-cl01dgx01",
+ "cpu": {
+  "model": "Intel(R) Xeon(R) Platinum 8480CL",
+  "hardware_threads": 224,
+  "sockets": 2,
+  "threads_available_to_job": 8,
+  "tdp_w_per_socket": 350,
+  "watts_per_thread_estimate": 3.12
+ },
+ "memory": {
+  "total_gb": 2015.6,
+  "available_gb": 1896.5
+ },
+ "gpus": [
+  {
+   "index": "0",
+   "name": "NVIDIA H100 80GB HBM3",
+   "memory_mb": "81559",
+   "power_limit_w": "700.00",
+   "driver": "570.211.01"
+  }
+ ],
+ "slurm_job": "8048",
+ "slurm_cpus": "8",
+ "threads": {
+  "OMP_NUM_THREADS": null,
+  "MKL_NUM_THREADS": null,
+  "OPENBLAS_NUM_THREADS": null
+ },
+ "command": "llm_compare.py --budgets 6000,32000,120000",
+ "started": "2026-11-14 07:21:42",
+ "energy_method": "estimated from CPU time x TDP per thread"
+}

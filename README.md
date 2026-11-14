@@ -9,8 +9,9 @@ road reading priced in, and every decision explained. *Carte* is French for map.
   deconfliction, turns); Dijkstra on a sparse graph, 0.14 s per route on one CPU core.
 - **Explanation** (`src/coa_net/route_explain.py`, `interface/backend/route_chat.py`, `orders.py`, `order_links.py`): segment
   by segment, with the rejected alternative; NATO doctrine rules matched to each order (`RAG/`); one frozen local language
-  model (Qwen3-VL-8B) with grammar-constrained decoding, checked; orders that amend orders; written orders
-  (`text_order.py`).
+  model (Qwen3-VL-8B, 131,072-token window, context up to 100,000 tokens) with grammar-constrained decoding, checked;
+  orders that amend orders; written orders (`text_order.py`). A long-context model of the same size (Qwen2.5-7B-1M) was
+  compared and answered worse (`experiments/README.md`).
 - **Vision extension** (`scripts/prc_unet.py`, `src/coa_net/scanunet.py`): a fine-tuned Attention Res-U-Net reads the roads
   from the scan, with their probability, for when no road database exists.
 - **Interface** (`interface/`, React + FastAPI): `interface/run.sh`, then http://localhost:8008. See `interface/README.md`.
