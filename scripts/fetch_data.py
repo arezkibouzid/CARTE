@@ -3,6 +3,7 @@
     python scripts/fetch_data.py --prc                    # PRC U-Net code (GitHub, MIT) + pretrained weights (Hugging Face)
     python scripts/fetch_data.py --bdtopo --osm           # roads of the Hackathon sheet: IGN BD TOPO (Etalab 2.0) + OSM (ODbL)
     python scripts/fetch_data.py --llm                    # Qwen3-VL-8B-Instruct (Apache 2.0, 17 GB), optional
+    python scripts/fetch_data.py --unet --hf-repo USER/carte-unet   # our fine-tuned U-Nets (Hugging Face, 2 x 61 MB)
     python scripts/fetch_data.py --all --bbox 4.08 48.57 5.77 49.37 --name Hackathon --out examples
 
 What it writes:
@@ -12,10 +13,12 @@ What it writes:
   code reads (NATURE, IMPORTANCE, POS_SOL, FRANCHISST, SENS, LARGEUR, NB_VOIES, NUMERO, ETAT...), cp1252;
 - ``OUT/<name>_OSM.shp``: the Geofabrik free road layer of the regions covering the box, clipped, same fields as the
   hackathon file (osm_id, code, fclass, name, ref, oneway, maxspeed, layer, bridge, tunnel, width);
-- ``$AMIAD_MODELS/Qwen3-VL-8B-Instruct`` (``~/extraction/models`` by default) for deploy/serve_llm.sbatch.
+- ``$AMIAD_MODELS/Qwen3-VL-8B-Instruct`` (``~/extraction/models`` by default) for deploy/serve_llm.sbatch;
+- ``outputs/hf/carte_unet_{2sheets,1sheet}.safetensors`` + ``config.json``: our fine-tuned U-Nets, for
+  ``scripts/prc_unet.py infer --model ...`` (published with scripts/publish_hf.py).
 
 Not open, so not downloaded: the scanned IGN 1:100,000 sheet and the exercise / order PDFs (handed out at the hackathon),
-and our trained U-Net rasters and checkpoints (in the release archive, see README "Data and models"). Values differ
+and our U-Net rasters (in the release archive, see README "Data and models"). Values differ
 slightly from the hackathon extracts: today's BD TOPO and OSM, not the snapshot the organisers made.
 """
 from __future__ import annotations
@@ -150,6 +153,19 @@ def fetch_osm(bbox: tuple, dest: Path, regions: list[str], cache: Path):
     print(f"OSM: {len(g)} roads -> {dest}")
 
 
+# --------------------------------------------------------------------------------------------------------- U-Net
+
+def fetch_unet(repo: str, dest: Path):
+    try:
+        from huggingface_hub import hf_hub_download
+    except ImportError:
+        sys.exit('pip install -e ".[hub]" (huggingface_hub, safetensors), then run again')
+    for f in ("carte_unet_2sheets.safetensors", "carte_unet_1sheet.safetensors", "config.json", "README.md"):
+        p = hf_hub_download(repo, f, local_dir=str(dest))
+        print(f"  {p}")
+    print(f"U-Net weights -> {dest} (scripts/prc_unet.py infer --model {dest}/carte_unet_2sheets.safetensors ...)")
+
+
 # --------------------------------------------------------------------------------------------------------- LLM
 
 def fetch_llm(models: Path):
@@ -168,6 +184,8 @@ def main():
     ap.add_argument("--bdtopo", action="store_true")
     ap.add_argument("--osm", action="store_true")
     ap.add_argument("--llm", action="store_true")
+    ap.add_argument("--unet", action="store_true", help="our fine-tuned U-Nets from Hugging Face (needs --hf-repo)")
+    ap.add_argument("--hf-repo", default=os.environ.get("CARTE_HF_REPO"), help="USER/NAME of the U-Net model repository")
     ap.add_argument("--bbox", type=float, nargs=4, default=HACKATHON_BBOX, metavar=("LON0", "LAT0", "LON1", "LAT1"))
     ap.add_argument("--name", default="Hackathon", help="file prefix: <name>_BDTopo.shp, <name>_OSM.shp")
     ap.add_argument("--out", type=Path, default=REPO / "examples")
@@ -175,7 +193,7 @@ def main():
     ap.add_argument("--ext", type=Path, default=Path(os.environ.get("CARTE_EXT", Path.home() / "ext")))
     ap.add_argument("--models", type=Path, default=Path(os.environ.get("AMIAD_MODELS", Path.home() / "extraction" / "models")))
     a = ap.parse_args()
-    if not (a.all or a.prc or a.bdtopo or a.osm or a.llm):
+    if not (a.all or a.prc or a.bdtopo or a.osm or a.llm or a.unet):
         ap.print_help()
         return
     if a.all or a.prc:
@@ -186,7 +204,11 @@ def main():
         fetch_osm(tuple(a.bbox), a.out / f"{a.name}_OSM.shp", a.osm_regions.split(","), a.ext / "geofabrik")
     if a.llm:
         fetch_llm(a.models)
-    print("Not downloaded (not open): the scanned 1:100,000 sheet, the exercise / order PDFs and our trained U-Net outputs: "
+    if a.unet:
+        if not a.hf_repo:
+            ap.error("--unet needs --hf-repo USER/NAME (or CARTE_HF_REPO)")
+        fetch_unet(a.hf_repo, REPO / "outputs" / "hf")
+    print("Not downloaded (not open): the scanned 1:100,000 sheet, the exercise / order PDFs and our U-Net rasters: "
           "take them from the release archive (README, « Data and models »).")
 
 

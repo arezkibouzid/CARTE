@@ -9,7 +9,8 @@ so it can be used by `scan-learn --unet DIR` and by `coa_net.scanunet.network_fr
     python scripts/prc_unet.py finetune  --out OUT --weights prc_binary.pt --prc-repo ... --fold F               (GPU)
     python scripts/prc_unet.py merge     --out OUT --name finetuned
     python scripts/prc_unet.py finetune  ... --fold -1 --tag T          (every block: the model for sheets without labels)
-    python scripts/prc_unet.py infer     --tif SHEET.tif --model OUT/prc_T_final.pt --prc-repo ... --dest DIR   (GPU, no labels)
+    python scripts/prc_unet.py infer     --tif SHEET.tif --model OUT/prc_T_final.pt --prc-repo ... --dest DIR   (no labels)
+        (--model also takes the published .safetensors; --device cpu runs without a GPU, slower; --weights not needed)
 
 ``--tag`` names a fine-tuning run (``--steps``, ``--lr``, ``--batch``), so several runs can share OUT.
 """
@@ -80,11 +81,12 @@ def build(prc_repo: str, weights: str):
     from models.models import Resnet18_Unet_Big_Attention
 
     base = Resnet18_Unet_Big_Attention(1, imagenet1k=False, p=0.1)
-    sd = torch.load(weights, map_location="cpu", weights_only=False)
-    sd = sd.get("model_state_dict", sd.get("state_dict", sd)) if isinstance(sd, dict) else sd.state_dict()
-    missing, unexpected = base.load_state_dict(sd, strict=False)
-    print(f"PRC weights: {len(sd)} tensors, missing {len(missing)}, unexpected {len(unexpected)}", flush=True)
-    assert len(missing) == 0, missing[:10]
+    if weights:  # the pretrained PRC weights (training); not needed when a fine-tuned model is loaded over them (infer)
+        sd = torch.load(weights, map_location="cpu", weights_only=False)
+        sd = sd.get("model_state_dict", sd.get("state_dict", sd)) if isinstance(sd, dict) else sd.state_dict()
+        missing, unexpected = base.load_state_dict(sd, strict=False)
+        print(f"PRC weights: {len(sd)} tensors, missing {len(missing)}, unexpected {len(unexpected)}", flush=True)
+        assert len(missing) == 0, missing[:10]
 
     class PRC7(nn.Module):
         """PRC road output (pretrained head) + a new head for importance 1..5 and structure on the same features."""
@@ -102,6 +104,35 @@ def build(prc_repo: str, weights: str):
             return torch.cat([road, o6[:, :5], o6[:, 5:]], 1)
 
     return PRC7()
+
+
+def unique_state(net) -> dict:
+    """State dict with one name per tensor: the encoder is reachable as base.encoder.* and base.convN.* (same tensors);
+    safetensors stores each tensor once, under the encoder name."""
+    sd, seen, out = net.state_dict(), set(), {}
+    for k in sorted(sd, key=lambda k: (".encoder." not in k, k)):
+        key = (sd[k].data_ptr(), tuple(sd[k].shape), sd[k].dtype)
+        if key not in seen:
+            seen.add(key)
+            out[k] = sd[k].detach().clone().contiguous()
+    return out
+
+
+def load_weights(net, path, device="cpu") -> None:
+    """A fine-tuned model from .pt (training output) or .safetensors (published, see :func:`unique_state`)."""
+    import torch
+
+    if not str(path).endswith(".safetensors"):
+        net.load_state_dict(torch.load(path, map_location=device))
+        return
+    from safetensors.torch import load_file
+
+    sd = load_file(str(path), device=str(device))
+    missing, unexpected = net.load_state_dict(sd, strict=False)
+    full = net.state_dict()
+    loaded = {(full[k].data_ptr(), tuple(full[k].shape)) for k in sd}
+    bad = [k for k in missing if (full[k].data_ptr(), tuple(full[k].shape)) not in loaded]
+    assert not unexpected and not bad, (unexpected[:5], bad[:5])
 
 
 def soft_skeleton(img, iters: int = 10):
@@ -188,11 +219,12 @@ def predict(net, rgb, where=None, batch=16):
                 jobs.append((r0, c0, r1, c1))
     pad = np.pad(rgb, ((MARGIN, TILE), (MARGIN, TILE), (0, 0)), mode="edge")
     net.eval()
-    with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
+    dev = next(net.parameters()).device  # GPU for training and the experiments; CPU works too (infer --device cpu)
+    with torch.no_grad(), torch.autocast(dev.type, dtype=torch.bfloat16):
         for i in range(0, len(jobs), batch):
             jb = jobs[i:i + batch]
             x = np.stack([pad[r0:r0 + TILE, c0:c0 + TILE] for r0, c0, _, _ in jb])
-            x = torch.from_numpy(x).cuda().permute(0, 3, 1, 2).float() / 255.0
+            x = torch.from_numpy(x).to(dev).permute(0, 3, 1, 2).float() / 255.0
             o = net(x).float()
             p = torch.cat([torch.sigmoid(o[:, :1]), torch.softmax(o[:, 1:6], 1), torch.sigmoid(o[:, 6:])], 1)
             p = (p.permute(0, 2, 3, 1).cpu().numpy() * 255 + 0.5).astype(np.uint8)
@@ -235,11 +267,12 @@ def predict_blend(net, rgb, where=None, batch=16, tta: bool = False, stride: int
 
     net.eval()
     passes = 0
-    with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
+    dev = next(net.parameters()).device
+    with torch.no_grad(), torch.autocast(dev.type, dtype=torch.bfloat16):
         for i in range(0, len(jobs), batch):
             jb = jobs[i:i + batch]
             x = np.stack([pad[r0 + MARGIN:r0 + MARGIN + TILE, c0 + MARGIN:c0 + MARGIN + TILE] for r0, c0 in jb])
-            x = torch.from_numpy(x).cuda().permute(0, 3, 1, 2).float() / 255.0
+            x = torch.from_numpy(x).to(dev).permute(0, 3, 1, 2).float() / 255.0
             prob = 0
             for k in ks:
                 o = inv(net(fwd(x, k)).float(), k)
@@ -423,23 +456,25 @@ def infer(a):
     from coa_net.scanunet import save_raster, scan_rgb
 
     rgb, transform, _, crs = scan_rgb(a.tif)
-    net = build(a.prc_repo, a.weights).cuda()
-    net.load_state_dict(torch.load(a.model, map_location="cuda"))
-    torch.cuda.synchronize()
+    dev = torch.device(a.device or ("cuda" if torch.cuda.is_available() else "cpu"))
+    net = build(a.prc_repo, a.weights).to(dev)
+    load_weights(net, a.model, dev)  # .pt, or the published .safetensors (Hugging Face, scripts/fetch_data.py --unet)
+    sync = torch.cuda.synchronize if dev.type == "cuda" else (lambda: None)
+    sync()
     t = time.perf_counter()
     st: dict = {}
     if a.method == "base":
         P = predict(net, rgb)
     else:
         P = predict_blend(net, rgb, tta="tta" in a.method, stride=a.stride if "overlap" in a.method else TILE - 2 * MARGIN, stats=st)
-    torch.cuda.synchronize()
+    sync()
     sec = time.perf_counter() - t
     dest = Path(a.dest)
     dest.mkdir(parents=True, exist_ok=True)
     save_raster(dest / "unet_oof.tif", P, transform, crs)
     (dest / "inference.json").write_text(json.dumps({"tif": str(a.tif), "model": str(a.model), "method": a.method, "seconds": round(sec, 2),
                                                      "megapixels": round(rgb.shape[0] * rgb.shape[1] / 1e6, 1),
-                                                     "megapixels_per_s": round(rgb.shape[0] * rgb.shape[1] / 1e6 / sec, 2), **st, **gpu_info(),
+                                                     "megapixels_per_s": round(rgb.shape[0] * rgb.shape[1] / 1e6 / sec, 2), "device": dev.type, **st, **gpu_info(),
                                                      "note": "inference without labels: not out of fold if the model was trained on this sheet"},
                                                     indent=1), encoding="utf-8")
     print(f"inference on {a.tif}: {time.perf_counter() - t:.0f} s, road pixels >= 0.5: {(P[..., 0] >= 128).mean():.1%}")
@@ -475,7 +510,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=("prep", "prep-extra", "zeroshot", "finetune", "merge", "infer", "repredict"))
     ap.add_argument("--data")
-    ap.add_argument("--out", required=True)
+    ap.add_argument("--out", help="work folder (every command but infer)")
     ap.add_argument("--grid", type=int, default=4)
     ap.add_argument("--prc-repo")
     ap.add_argument("--weights")
@@ -497,9 +532,12 @@ def main():
     ap.add_argument("--eval-every", type=int, default=0, help="finetune: score the held-out fold every N steps (checkpoints_TAG.jsonl)")
     ap.add_argument("--tag", default="finetuned", help="name of the fine-tuning run")
     ap.add_argument("--tif", help="infer: the sheet")
-    ap.add_argument("--model", help="infer: a fine-tuned model (.pt)")
+    ap.add_argument("--model", help="infer: a fine-tuned model (.pt, or the published .safetensors)")
     ap.add_argument("--dest", help="infer: output folder")
+    ap.add_argument("--device", help="infer: cuda or cpu (default: cuda when available)")
     a = ap.parse_args()
+    if a.cmd != "infer" and not a.out:
+        ap.error("--out is required")
     {"prep": prep, "prep-extra": prep_extra, "zeroshot": zeroshot, "finetune": finetune, "merge": merge, "infer": infer,
      "repredict": repredict}[a.cmd](a)
 

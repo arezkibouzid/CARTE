@@ -31,6 +31,8 @@ cnn = ["torch>=2.2"]
 # web interface back end (interface/backend/amiad_api.py, launched by interface/run.sh)
 interface = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "python-multipart>=0.0.9"]
 dev = ["pytest>=7"]
+# published U-Net weights (Hugging Face): scripts/fetch_data.py --unet, scripts/publish_hf.py
+hub = ["huggingface_hub>=0.24", "safetensors>=0.4"]
 
 [project.scripts]
 coa-net = "coa_net.cli:main"

@@ -27,10 +27,18 @@ road reading priced in, and every decision explained. *Carte* is French for map.
 | OpenStreetMap roads of the sheet | ODbL (© OpenStreetMap contributors) | `python scripts/fetch_data.py --osm` (Geofabrik) |
 | Qwen3-VL-8B-Instruct (optional) | Apache 2.0 | `python scripts/fetch_data.py --llm` (Hugging Face, 17 GB) |
 | Scanned IGN 1:100,000 sheet, exercise and order PDFs | handed out at the hackathon, not open | release archive, `examples/` |
-| Our fine-tuned U-Net rasters, checkpoints, calibration and network caches | ours (derived from the sheet) | release archive, `outputs/` |
+| Our fine-tuned U-Nets (2 sheets, 1 sheet), safetensors | MIT (trained on the hackathon scans, not included) | `python scripts/fetch_data.py --unet --hf-repo USER/carte-unet` once published (`scripts/publish_hf.py`); release archive |
+| Our U-Net rasters, calibration and network caches | ours (derived from the sheet) | release archive, `outputs/` |
 
 `fetch_data.py` writes the BD TOPO and OSM roads in the fields of the hackathon extracts, so the code reads them unchanged;
-they are today's data, not the organisers' snapshot. Without the release archive the routing core still runs on BD TOPO or
+they are today's data, not the organisers' snapshot.
+
+**Without a GPU.** Routing, the explanations from the solver's trace and the rule engine run on CPU (the back end is
+started with no GPU). The U-Net runs on CPU too (`prc_unet.py infer --device cpu`: about 3 Mpx/s on 16 cores, a sheet in
+about 70 s). The language model runs on CPU with `deploy/cpu_llm_server.py` (same weights, same JSON grammar): a written
+order in about 22 s, but a chat answer of a few hundred words takes minutes (one example: 3,944 prompt tokens and a
+517-token answer took 506 s on 32 cores), so the chat usually falls back to the deterministic answer (after
+`COA_LLM_TIMEOUT`, 90 s). Without the release archive the routing core still runs on BD TOPO or
 OSM alone (« Sans modèle de segmentation » in the interface); the scan and the U-Net rasters are needed for the vision part.
 
 ```bash
@@ -39,6 +47,7 @@ python -m venv .venv && .venv/bin/pip install -e ".[dev]"        # Python 3.10+
 # unzip the release archive at the repository root (examples/, outputs/), then:
 interface/run.sh                                                  # http://localhost:8008 (Node.js 18+ builds the interface)
 sbatch deploy/serve_llm.sbatch                                    # optional: the local language model (one GPU)
+sbatch deploy/serve_llm_cpu.sbatch                                # or the same model without GPU (32 cores; slower)
 .venv/bin/python -m pytest -q                                     # 160 tests
 ```
 
