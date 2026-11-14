@@ -1,12 +1,12 @@
 """Starts the local language model the machine can run, and tells the app where it is.
 
-    python deploy/llm_launch.py              # GPU found: Qwen3-VL-8B with vLLM (131,072 tokens); else Qwen3-VL-4B on CPU
+    python deploy/llm_launch.py              # GPU found: Qwen3-VL-8B with vLLM (131,072 tokens); else the same model on CPU
     python deploy/llm_launch.py --dry-run    # only says what it would start
     python deploy/llm_launch.py --device cpu # force the CPU model
 
-GPU: the best model measured (Qwen3-VL-8B, experiments/README.md). CPU only: Qwen3-VL-4B, the same family with half the
-weights (about twice as fast on CPU; it misstated some rule statuses where the 8B did not, and the app's checks catch
-those). Missing weights are downloaded from Hugging Face into ``$AMIAD_MODELS`` (``~/extraction/models``). Writes
+The same model either way, Qwen3-VL-8B (the best measured, experiments/README.md): vLLM on a GPU, deploy/cpu_llm_server.py
+on CPU only (same weights, JSON grammar and image input; slower: a written order in about 22 s on 32 cores).
+``AMIAD_CPU_MODEL=Qwen/Qwen3-VL-4B-Instruct`` picks the smaller model on CPU (14 s, but less reliable). Missing weights are downloaded from Hugging Face into ``$AMIAD_MODELS`` (``~/extraction/models``). Writes
 ``outputs/orders/llm_endpoints.json`` (removed on exit), the file the app reads. On the cluster, the Slurm scripts
 deploy/serve_llm.sbatch (GPU) and deploy/serve_llm_cpu.sbatch (CPU) do the same.
 """
@@ -25,7 +25,8 @@ import urllib.request
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-GPU_MODEL, CPU_MODEL = "Qwen/Qwen3-VL-8B-Instruct", "Qwen/Qwen3-VL-4B-Instruct"
+GPU_MODEL = "Qwen/Qwen3-VL-8B-Instruct"
+CPU_MODEL = os.environ.get("AMIAD_CPU_MODEL", "Qwen/Qwen3-VL-8B-Instruct")
 
 
 def has_gpu() -> bool:

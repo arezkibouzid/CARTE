@@ -25,7 +25,7 @@ road reading priced in, and every decision explained. *Carte* is French for map.
 | PRC U-Net code and pretrained weights | MIT | `python scripts/fetch_data.py --prc` (GitHub + Hugging Face) |
 | BD TOPO roads of the sheet (IGN) | Licence Ouverte Etalab 2.0 | `python scripts/fetch_data.py --bdtopo` (Géoplateforme WFS, no key) |
 | OpenStreetMap roads of the sheet | ODbL (© OpenStreetMap contributors) | `python scripts/fetch_data.py --osm` (Geofabrik) |
-| Qwen3-VL-8B-Instruct (GPU) / Qwen3-VL-4B-Instruct (CPU), optional | Apache 2.0 | downloaded by `deploy/llm_launch.py` (Hugging Face, 17 / 8 GB) |
+| Qwen3-VL-8B-Instruct (GPU or CPU), optional | Apache 2.0 | downloaded by `deploy/llm_launch.py` (Hugging Face, 17 GB) |
 | Doctrine rules: 214 rules, quote check, rule finder, the pipeline that rebuilds them | MIT (rules from public NATO documents, PDFs not stored) | `amiad-doctrine-rag/`; rerun with `python experiments/rag_reproduce.py` |
 | Scanned IGN 1:100,000 sheet, exercise and order PDFs | handed out at the hackathon, not open | release archive, `examples/` |
 | Our fine-tuned U-Nets (2 sheets, 2 sheets without Dice, 1 sheet), safetensors | MIT (trained on the hackathon scans, not included) | [`arezkibouzid/carte-unet`](https://huggingface.co/arezkibouzid/carte-unet): fetched by the app when its U-Net outputs are missing, or `python scripts/fetch_data.py --unet` |
@@ -35,11 +35,11 @@ road reading priced in, and every decision explained. *Carte* is French for map.
 they are today's data, not the organisers' snapshot.
 
 **GPU or not, chosen automatically.** `interface/run.sh --llm` (or `python deploy/llm_launch.py`) starts the language
-model the machine can run: with a GPU, Qwen3-VL-8B (vLLM, 131,072 tokens), the best measured; on CPU only, Qwen3-VL-4B
-with `deploy/cpu_llm_server.py` (same family, JSON grammar and image input, half the weights). Missing weights are
-downloaded from Hugging Face. On the cluster: `sbatch deploy/serve_llm.sbatch` (GPU) or `deploy/serve_llm_cpu.sbatch`.
-Measured on 32 cores: a written order in 14 s with the 4B (22 s with the 8B, 0.7 s on an H100); a chat answer of a few
-hundred words still takes about 9 minutes, so on CPU the chat gives the deterministic answer after `COA_LLM_TIMEOUT`
+model on what the machine has: Qwen3-VL-8B, the best measured, with vLLM on a GPU (131,072 tokens) or with
+`deploy/cpu_llm_server.py` on CPU only (same weights, JSON grammar and image input). Missing weights are downloaded from
+Hugging Face. On the cluster: `sbatch deploy/serve_llm.sbatch` (GPU) or `deploy/serve_llm_cpu.sbatch`.
+Measured on 32 cores: a written order in 22 s (0.7 s on an H100; 14 s with `AMIAD_CPU_MODEL=Qwen/Qwen3-VL-4B-Instruct`,
+less reliable); a chat answer of a few hundred words takes about 9 minutes, so on CPU the chat gives the deterministic answer after `COA_LLM_TIMEOUT`
 (90 s). Routing, the solver's explanations and the rule engine never need a GPU.
 
 **U-Net outputs fetched from Hugging Face.** When a model's probability raster is missing (no release archive), the app

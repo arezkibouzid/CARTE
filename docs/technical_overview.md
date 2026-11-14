@@ -402,7 +402,7 @@ Energy measurement method:
 | **+ U-Net inference on new sheets** | 1 CUDA GPU with 8 GB VRAM (7.9 GB measured at batch 16; a smaller batch needs less, not measured) | 1 GPU ≥ 16 GB (e.g. L4 / A10 / A100 / H100): 15–60 s per sheet |
 | **+ fine-tuning** | 1 GPU ≥ 24 GB, 64 GB RAM, about 2 h on a mid-range GPU (estimate) | 1–2 H100: 31 min for 4 folds with 2 GPUs (measured) |
 | **+ local LLM** (optional) | 1 GPU ≥ 24 GB for Qwen3-VL-8B in bf16 (17 GB weights + KV cache) | 40 GB reserved on an H100 (as deployed: 121k-token KV cache, 4 concurrent requests) |
-| **local LLM without GPU** | Qwen3-VL-4B on 32 cores, 16 GB RAM (`deploy/llm_launch.py` picks it when no GPU is found): written orders 14 s; chat answers about 9 min, so the chat falls back to the deterministic answer | a GPU (above) |
+| **local LLM without GPU** | Qwen3-VL-8B on 32 cores, 32 GB RAM (`deploy/llm_launch.py` runs it on CPU when no GPU is found): written orders 22 s; chat answers about 9 min, so the chat falls back to the deterministic answer | a GPU (above) |
 | **U-Net without GPU** | weights fetched from Hugging Face, rasters computed on CPU: about 3 Mpx/s on 16 cores, a sheet in about 70 s (8× with TTA) | a GPU: 15 s per sheet |
 
 The browser needs WebGL (MapLibre); the front end is 1 MB of JavaScript.
@@ -411,9 +411,10 @@ The browser needs WebGL (MapLibre); the front end is 1 MB of JavaScript.
 final models in safetensors: two sheets, two sheets without Dice, one sheet; `scripts/publish_hf.py`). When a sheet has
 no precomputed raster, the back end (`unet_dir` in `interface/backend/amiad_api.py`) downloads the model named in
 `sheets.json`, runs it on the sheet (GPU if available, else CPU) and keeps the raster; the CPU output is identical to the
-GPU checkpoint's on a test crop. The language model is chosen by `deploy/llm_launch.py`: Qwen3-VL-8B on a GPU (the best
-of the comparison, section 3.6), Qwen3-VL-4B on CPU only (half the weights; it misstated rule statuses more often in our
-earlier comparison, and on CPU a chat answer still takes minutes, so the deterministic answer is what users get).
+GPU checkpoint's on a test crop. The language model is the same everywhere, Qwen3-VL-8B (the best of the comparison, section
+3.6); `deploy/llm_launch.py` serves it with vLLM on a GPU, or on the CPU when there is none (written orders in 22 s; a
+chat answer takes minutes, so on CPU the deterministic answer is what users get). Qwen3-VL-4B can be chosen for CPU
+(`AMIAD_CPU_MODEL`): 14 s per written order, but it misstated rule statuses more often.
 
 ## 6. Civilian applicability and U-Net transfer learning
 

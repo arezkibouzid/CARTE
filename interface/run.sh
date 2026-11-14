@@ -3,7 +3,7 @@
 # Ouvrir ensuite http://localhost:8008 (VS Code redirige le port automatiquement ; sinon onglet « Ports » → 8008).
 #   interface/run.sh            démarre (ou redémarre) en arrière-plan
 #   interface/run.sh --llm      idem, et lance le modèle de langue local adapté à la machine (deploy/llm_launch.py :
-#                               GPU → Qwen3-VL-8B, sinon Qwen3-VL-4B sur CPU ; poids téléchargés de Hugging Face si absents)
+#                               Qwen3-VL-8B, sur GPU si présent, sinon sur CPU ; poids téléchargés de Hugging Face si absents)
 #   interface/run.sh stop       arrête (et le modèle de langue lancé par --llm)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

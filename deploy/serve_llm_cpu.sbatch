@@ -1,7 +1,7 @@
 #!/bin/bash
-# The language model on CPU only (no GPU requested): deploy/cpu_llm_server.py with Qwen3-VL-4B (AMIAD_CPU_MODEL to change),
-# same family, JSON grammar and image input as the GPU server (Qwen3-VL-8B), one request at a time. Writes the
-# endpoint file the app reads, so the app needs no other change.
+# The language model on CPU only (no GPU requested): deploy/cpu_llm_server.py with Qwen3-VL-8B, the same model, JSON
+# grammar and image input as the GPU server, one request at a time (AMIAD_CPU_MODEL=Qwen3-VL-4B-Instruct: smaller,
+# faster, less reliable). Writes the endpoint file the app reads, so the app needs no other change.
 #   sbatch deploy/serve_llm_cpu.sbatch                                   (replaces the GPU server for the app)
 #   AMIAD_ENDPOINT_FILE=outputs/orders/llm_endpoints_cpu.json sbatch deploy/serve_llm_cpu.sbatch   (side by side, tests)
 # Without Slurm: python deploy/cpu_llm_server.py --port 8010, then COA_LLM_BASE_URL=http://127.0.0.1:8010/v1 interface/run.sh
@@ -20,7 +20,7 @@ export CUDA_VISIBLE_DEVICES=""
 cd "$REPO"
 HOST=$(hostname -f)
 PORT=$("$PY" -c 'import socket; s=socket.socket(); s.bind(("0.0.0.0",0)); print(s.getsockname()[1]); s.close()')
-CPU_MODEL="${AMIAD_CPU_MODEL:-Qwen3-VL-4B-Instruct}"   # CPU: the 4B (half the 8B's weights, about twice as fast); GPU: 8B
+CPU_MODEL="${AMIAD_CPU_MODEL:-Qwen3-VL-8B-Instruct}"
 "$PY" -u deploy/cpu_llm_server.py --model "$MODELS/$CPU_MODEL" --name "Qwen/$CPU_MODEL" --host 0.0.0.0 --port "$PORT" \
   --threads "${SLURM_CPUS_PER_TASK:-32}" --max-len 32768 &
 PID=$!
