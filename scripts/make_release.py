@@ -30,7 +30,7 @@ DATA = [
     "outputs/hackathon100k/pdf_exercises",
     "outputs/interface_cache/bases", "outputs/scenarios",
     "outputs/orders/extractions", "outputs/orders/pages",
-    "docs/presentation/CARTE_presentation.pdf", "docs/presentation/slides.html", "docs/presentation/speaker_notes.md",
+    "docs/presentation/CARTE_presentation.pdf", "docs/presentation/slides.html",
     "docs/presentation/preview", "docs/presentation/img", "docs/presentation/charts", "docs/presentation/demo/CARTE_demo.webm",
     "docs/presentation/demo/demo_chapters.md",
 ]
