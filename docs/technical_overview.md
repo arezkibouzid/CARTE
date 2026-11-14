@@ -402,7 +402,7 @@ Energy measurement method:
 | **+ U-Net inference on new sheets** | 1 CUDA GPU with 8 GB VRAM (7.9 GB measured at batch 16; a smaller batch needs less, not measured) | 1 GPU ≥ 16 GB (e.g. L4 / A10 / A100 / H100): 15–60 s per sheet |
 | **+ fine-tuning** | 1 GPU ≥ 24 GB, 64 GB RAM, about 2 h on a mid-range GPU (estimate) | 1–2 H100: 31 min for 4 folds with 2 GPUs (measured) |
 | **+ local LLM** (optional) | 1 GPU ≥ 24 GB for Qwen3-VL-8B in bf16 (17 GB weights + KV cache) | 40 GB reserved on an H100 (as deployed: 121k-token KV cache, 4 concurrent requests) |
-| **local LLM without GPU** | Qwen3-VL-8B on 32 cores (`deploy/llm_launch.py` when no GPU is found): with llama.cpp, the official 4-bit build (5.0 GB + 1.2 GB image encoder, about 8 GB RAM, not timed yet); without it, transformers in bfloat16 (32 GB RAM): written orders 22 s, chat answers about 9 min, so the chat falls back to the deterministic answer | a GPU (above) |
+| **local LLM without GPU** | Qwen3-VL-8B on 32 cores (`deploy/llm_launch.py` when no GPU is found): with llama.cpp, the official 4-bit build (5.0 GB + 1.2 GB image encoder, about 8 GB RAM): written orders 7 s, a chat answer of about 500 tokens in 50 s (prompt read at 230–310 tokens/s, answer written at 14–22 tokens/s); without llama.cpp, transformers in bfloat16 (32 GB RAM): 22 s and about 9 min | a GPU (above) |
 | **U-Net without GPU** | weights fetched from Hugging Face, rasters computed on CPU: about 3 Mpx/s on 16 cores, a sheet in about 70 s (8× with TTA) | a GPU: 15 s per sheet |
 
 The browser needs WebGL (MapLibre); the front end is 1 MB of JavaScript.
@@ -413,9 +413,8 @@ no precomputed raster, the back end (`unet_dir` in `interface/backend/amiad_api.
 `sheets.json`, runs it on the sheet (GPU if available, else CPU) and keeps the raster; the CPU output is identical to the
 GPU checkpoint's on a test crop. The language model is the same everywhere, Qwen3-VL-8B (the best of the comparison, section
 3.6). `deploy/llm_launch.py` serves it with vLLM on a GPU; on CPU only, as the official 4-bit build (Q4_K_M) with
-llama.cpp when it is installed, which reads less memory per token and is the path meant for CPU use (not timed here:
-building llama.cpp was not possible in this session), else with transformers in bfloat16 (measured: written orders in
-22 s, a chat answer in about 9 minutes, so the deterministic answer is what users get). Qwen3-VL-4B can be chosen for CPU
+llama.cpp when it is installed: on 32 cores a written order in 7 s and a chat answer in about 50 s, within the app's
+90 s timeout, so the chat stays usable without a GPU (transformers in bfloat16, the fallback: 22 s and about 9 minutes). Qwen3-VL-4B can be chosen for CPU
 (`AMIAD_CPU_MODEL`): 14 s per written order, but it misstated rule statuses more often.
 
 ## 6. Civilian applicability and U-Net transfer learning

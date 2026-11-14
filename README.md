@@ -38,9 +38,8 @@ they are today's data, not the organisers' snapshot.
 model on what the machine has: Qwen3-VL-8B, the best measured, with vLLM on a GPU (131,072 tokens); on CPU only, the
 same model as the official 4-bit build with llama.cpp when `llama-server` is installed (`deploy/README.md`), else with
 `deploy/cpu_llm_server.py` (transformers, bfloat16). Missing weights are downloaded from Hugging Face. On the cluster: `sbatch deploy/serve_llm.sbatch` (GPU) or `deploy/serve_llm_cpu.sbatch`.
-Measured on 32 cores with the transformers path: a written order in 22 s (0.7 s on an H100); a chat answer of a few
-hundred words takes about 9 minutes (the llama.cpp path is meant to cut this; not measured yet), so on CPU the chat gives the deterministic answer after `COA_LLM_TIMEOUT`
-(90 s). Routing, the solver's explanations and the rule engine never need a GPU.
+Measured on 32 cores: with llama.cpp (4-bit) a written order in 7 s and a chat answer of about 500 words in 50 s (0.7 s
+and 3–6 s on an H100); with the transformers fallback 22 s and about 9 minutes; past `COA_LLM_TIMEOUT` (90 s) the chat gives the deterministic answer. Routing, the solver's explanations and the rule engine never need a GPU.
 
 **U-Net outputs fetched from Hugging Face.** When a model's probability raster is missing (no release archive), the app
 downloads its weights from [`arezkibouzid/carte-unet`](https://huggingface.co/arezkibouzid/carte-unet) (`hf_repo` and

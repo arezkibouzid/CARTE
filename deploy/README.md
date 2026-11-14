@@ -8,7 +8,7 @@ machine has. It writes `outputs/orders/llm_endpoints.json`, the file the app rea
 | machine | how the model runs | started by |
 |---|---|---|
 | GPU (H100 here) | vLLM, bfloat16, 131,072-token window | `sbatch deploy/serve_llm.sbatch`, or `interface/run.sh --llm` |
-| CPU only, llama.cpp installed | `llama-server`, official 4-bit build `Qwen/Qwen3-VL-8B-Instruct-GGUF` (Q4_K_M, 5.0 GB) + image encoder (mmproj F16, 1.2 GB), 32,768 tokens | `sbatch deploy/serve_llm_cpu.sbatch`, or `interface/run.sh --llm` |
+| CPU only, llama.cpp installed | `llama-server`, official 4-bit build `Qwen/Qwen3-VL-8B-Instruct-GGUF` (Q4_K_M, 5.0 GB) + image encoder (mmproj F16, 1.2 GB), 32,768 tokens: a written order in 7 s, a chat answer in about 50 s on 32 cores | `sbatch deploy/serve_llm_cpu.sbatch`, or `interface/run.sh --llm` |
 | CPU only, no llama.cpp | `cpu_llm_server.py` (transformers, bfloat16): a written order in 22 s, a chat answer in about 9 min on 32 cores, so the chat uses its deterministic answer | same, automatic fallback |
 
 Missing weights are downloaded from Hugging Face into `$AMIAD_MODELS` (default `~/extraction/models`).

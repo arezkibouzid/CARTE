@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CARTE — technical report</title>
+<style>
+@font-face { font-family: "Plex"; src: url(../presentation/fonts/ibm-plex-sans-latin-400-normal.woff2) format("woff2"); font-weight: 400; }
+@font-face { font-family: "Plex"; src: url(../presentation/fonts/ibm-plex-sans-latin-400-italic.woff2) format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "Plex"; src: url(../presentation/fonts/ibm-plex-sans-latin-600-normal.woff2) format("woff2"); font-weight: 600; }
+@font-face { font-family: "Plex"; src: url(../presentation/fonts/ibm-plex-sans-latin-700-normal.woff2) format("woff2"); font-weight: 700; }
+@font-face { font-family: "IBM Plex Sans"; src: url(../presentation/fonts/ibm-plex-sans-latin-400-normal.woff2) format("woff2"); font-weight: 400; }
+@font-face { font-family: "IBM Plex Sans"; src: url(../presentation/fonts/ibm-plex-sans-latin-600-normal.woff2) format("woff2"); font-weight: 600; }
+@font-face { font-family: "Mono"; src: url(../presentation/fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2"); }
+:root { --ink: #14232A; --muted: #5B6B70; --line: #DCE3E4; --teal: #1F7A6D; --tint: #F1F5F5; --red: #C8382F; --amber: #B7791F; }
+@page { size: A4; margin: 15mm 16mm 16mm 16mm; }
+body { font-family: "Plex", sans-serif; color: var(--ink); font-size: 10pt; line-height: 1.42; margin: 0; background: #fff; }
+h1 { font-size: 21pt; margin: 0 0 2px; letter-spacing: -0.3px; }
+h2 { font-size: 13pt; margin: 12px 0 5px; padding-top: 5px; border-top: 2px solid var(--ink); break-after: avoid; }
+h3 { font-size: 10.5pt; margin: 10px 0 4px; }
+p { margin: 4px 0 6px; }
+ul { margin: 3px 0 6px; padding-left: 16px; } li { margin: 1.5px 0; }
+.sub { color: var(--muted); font-size: 10.5pt; margin-bottom: 10px; }
+.box { background: var(--tint); border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+table { border-collapse: collapse; width: 100%; margin: 6px 0 8px; font-size: 9pt; }
+th { text-align: left; color: var(--muted); font-weight: 600; border-bottom: 1.5px solid var(--ink); padding: 3px 6px; }
+td { border-bottom: 1px solid var(--line); padding: 3px 6px; vertical-align: top; }
+td.n { text-align: right; white-space: nowrap; }
+.mono { font-family: "Mono", monospace; font-size: 8.6pt; }
+.tag { display: inline-block; font-size: 7.6pt; font-weight: 700; letter-spacing: .5px; padding: 1px 6px; border-radius: 9px; white-space: nowrap; }
+.done { background: #DDF1EC; color: var(--teal); } .part { background: #FBF0DC; color: var(--amber); } .no { background: #FBE6E4; color: var(--red); }
+.figs { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between; margin: 6px 0; }
+.fig { flex: 1; min-width: 0; } .fig svg { display: block; width: 100%; height: 44mm; margin: 0 auto; } .fig img { width: 100%; border-radius: 6px; }
+.cap { font-size: 8.4pt; color: var(--muted); margin-top: 2px; }
+.small { font-size: 8.6pt; color: var(--muted); }
+.formula { font-family: "Mono", monospace; font-size: 9pt; background: var(--tint); padding: 6px 10px; border-radius: 6px; margin: 4px 0; }
+.brk { break-before: page; }
+.avoid { break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<h1>CARTE — Constraint-Aware Routing with Trust Estimation</h1>
+<div class="sub">Convoy route planning from a scanned map, under constraints, with explained decisions and a priced doubt.
+Technical report for the jury · AMIAD hackathon · November 2026</div>
+
+<div class="box">
+<b>What the application does.</b> From the IGN 1:100,000 scan (and BD TOPO / OSM if available) it builds a road graph,
+then computes convoy routes with one cost formula that holds every constraint: hard limits remove roads, soft ones price
+them, and the model's own doubt about a road read from the image is priced too. Every route is explained segment by
+segment; orders (PDF or typed text) are read by a local, frozen language model and matched to 214 NATO doctrine rules.
+Routing runs on one CPU core in 0.14 s. Every figure below is measured on the hackathon sheet (runs in
+<span class="mono">experiments/runs/</span>).
+</div>
+
+<h2>1. Models chosen</h2>
+<table>
+<tr><th style="width:21%">part</th><th style="width:30%">model</th><th>why this one (measured)</th></tr>
+<tr><td><b>Routing</b></td><td>Dijkstra on a priced graph (SciPy), all waypoint orders tried</td>
+<td>Exact, explainable, 0.14 s per route on 1 core; constraints enter as costs or removed edges, so no special case per constraint.</td></tr>
+<tr><td><b>Reading the scan</b> (optional: when no road vector data)</td><td>ProbRoadClass Attention Res-U-Net (ResNet-18, Mühlematter et al. 2024, trained on Swiss maps), <b>fine-tuned</b> on our IGN sheets, + a head for road importance and bridges</td>
+<td>Zero-shot on the IGN style it is at chance (F1 0.09); fine-tuned on 1 sheet F1 0.59; 2 sheets bring the routes closer to BD TOPO (length gap 7.4 % → 5.1 %). Three variants in the app: coverage (no Dice loss), compromise and precision (test-time augmentation).</td></tr>
+<tr><td><b>Language model</b> (optional)</td><td><b>Qwen3-VL-8B-Instruct</b>, frozen, greedy, one model for four jobs; each output forced by a JSON grammar</td>
+<td>Reads order pages as images; 262k native window. Compared with a long-context model of the same size (Qwen2.5-7B-1M): retrieval 37/37 vs 31/37, conflicts reported 3/3 vs 0/3, and that model reads no images. A grammar can only emit ids present in the context, so the model never writes a position or an invented rule.</td></tr>
+<tr><td><b>Doctrine rules</b></td><td>No language model: patterns + BM25 (pipeline <span class="mono">amiad-doctrine-rag</span>)</td>
+<td>Deterministic and citable: 5 NATO PDFs → 3,486 passages → 138 candidates → team review → 214 rules with quote, value, scope and page. Rerun here: identical.</td></tr>
+</table>
+
+<div class="figs avoid">
+<div class="fig"><!--chart:llm_models--><div class="cap">Same-size models on the app's tasks, first answer before the app's checks (runs 20261114-071816 / 072142).</div></div>
+<div class="fig"><!--chart:ctx_needle--><div class="cap">Finding one order's fact among 10–400 orders: the 100k-token window keeps it (3/3); the former 6k lost it from 40 orders.</div></div>
+</div>
+
+<div class="avoid"><h2>2. Data used</h2>
+<table>
+<tr><th style="width:30%">data</th><th style="width:19%">source</th><th>use</th></tr>
+<tr><td>Hackathon scan, BD TOPO and OSM extracts, exercise and order PDFs</td><td>handed out</td><td>input; BD TOPO and OSM also as references for scoring and as optional networks</td></tr>
+<tr><td><b>Second IGN 1:100,000 sheet</b> (Scenario 1) with its BD TOPO</td><td>handed out (other data)</td><td><b>additional training data</b> for the U-Net (half the tiles); never used for scoring</td></tr>
+<tr><td>ProbRoadClass weights</td><td>public (MIT, Hugging Face)</td><td>starting point of the fine-tuning</td></tr>
+<tr><td><b>5 NATO / allied documents</b> (AEP-3.12.1.5, AJP-4.4, AJP-4.6, STANAG 2015, STANAG 2174)</td><td>public, unclassified</td><td>214 doctrine rules (speed, gaps, halts, loads, bridges)</td></tr>
+<tr><td>Synthetic orders (OPORD, FRAGOs, annexes), labelled as such</td><td>made by us</td><td>tests of linked orders and of the context window only</td></tr>
+</table></div>
+<p class="small">Open data can be re-downloaded with <span class="mono">scripts/fetch_data.py</span> (BD TOPO from the IGN WFS, OSM from Geofabrik); our U-Net weights are on Hugging Face
+(<span class="mono">arezkibouzid/carte-unet</span>) and fetched by the app when a probability raster is missing.</p>
+
+<h2>3. How constraints are handled</h2>
+<div class="formula">R* = argmin<sub>R ⊆ A</sub> Σ<sub>e∈R</sub> base(e) · (1 + s·share<sub>&lt;τ</sub>(e)) · (1 + λ·risk(e)) · Π<sub>j</sub>(1 + w<sub>j</sub>·φ<sub>j</sub>(e)),&nbsp;&nbsp; A = E \ (area ∪ zones ∪ vehicle ∪ earlier legs)</div>
+<ul>
+<li><b>Hard (removed):</b> outside the deployment area, zones to avoid (drawn or written), roads too narrow for the vehicle, the path of earlier legs of the mission (reopened only around the shared point if there is no other way).</li>
+<li><b>Soft (priced):</b> length or time (legal limits, 50 km/h in built-up areas, convoy speed cap), roads already used by an earlier convoy (deconfliction), low image confidence.</li>
+<li><b>Uncertainty:</b> risk(e) = mean of −ln(p/0.78) along the section, p the calibrated U-Net probability; λ = 0.5 chosen at the knee of the ablation (−9 % km off real roads for +0.5 % length). Applied only when the route relies on the scan alone.</li>
+<li><b>Also:</b> fixed or free waypoint order, round trip on a distinct return, k distinct itineraries with a minimum separation, several convoys with priorities.</li>
+</ul>
+
+<div class="figs avoid">
+<div class="fig"><!--chart:lambda_km--><div class="cap">Uncertainty strength λ: km of route off real roads (10 exercises). λ = 0.5 is the knee.</div></div>
+<div class="fig" style="flex:1.35"><!--chart:network_ablation--><div class="cap">Network source ablation, 10 exercises: closeness to the BD TOPO route.</div></div>
+</div>
+
+<h2>4. The jury's criteria: what the application does</h2>
+<p class="small">Status as implemented and tested. Nothing here was added for the report; what the app does not do is listed as such.</p>
+<table>
+<tr><th style="width:22%">criterion</th><th style="width:9%">status</th><th>what the application does</th></tr>
+<tr><td colspan="3" style="font-weight:600; color:var(--muted); border-bottom:1.5px solid var(--line);">Adaptability</td></tr>
+<tr><td>Moving forbidden zones (moving enemy units)</td><td><span class="tag part">PARTIAL</span></td>
+<td>Zones are static within one computation. A mission is planned as successive legs (the next leg cannot reuse the previous path), each with its own zones, and a replan takes 0.2–0.6 s with up to 60 zones, so zones can be redrawn as the threat moves. No time-dependent zone (position at time t) and no prediction of enemy movement.</td></tr>
+<tr><td>Time of day, season, weather</td><td><span class="tag no">NOT DONE</span></td>
+<td>No time, season or weather model in the cost. Only indirect: the convoy speed cap and the doctrine rules a night movement triggers (shown "to check" when an order says <i>nuit</i>).</td></tr>
+<tr><td>Splitting convoys</td><td><span class="tag part">PARTIAL</span></td>
+<td>Up to 64 convoys, each with its own points, vehicle, speed and priority, planned in sequence with deconfliction (sharing penalised or forbidden): with 16 convoys, shared km 139 → 3.6 for +1 % total length. k distinct itineraries with a minimum separation. The user decides the split; the app does not split one convoy into serials by itself, and convoys are not timed at junctions.</td></tr>
+<tr><td colspan="3" style="font-weight:600; color:var(--muted); border-bottom:1.5px solid var(--line);">User experience</td></tr>
+<tr><td>Objective in natural language (text or voice)</td><td><span class="tag part">TEXT ONLY</span></td>
+<td>A written order (French) becomes the scenario: « De PD1 à PA1, le plus rapide, 60 km/h », coordinates, the point under the mouse (« ici »), drawn zones, « puis va à… sans repasser… » for the next leg. Rules parser + the language model with a grammar; 10/10 test orders parsed right, 7 s on CPU, 0.7 s on GPU. Questions about a route are answered in the chat. <b>No voice input.</b></td></tr>
+<tr><td>Noisy data: photographed maps</td><td><span class="tag part">PARTIAL</span></td>
+<td>Scanned maps of poor quality are handled: JPEG q20 and noise σ 12 leave the U-Net unchanged (F1 0.59). Blur, lower resolution and low contrast degrade it (fig. below) and need fine-tuning on that imagery. Photographs with perspective, folds or shadows are not rectified or georeferenced: the input must be a georeferenced image.</td></tr>
+<tr><td>"Play" the scenario (simulation)</td><td><span class="tag part">PARTIAL</span></td>
+<td>Scenarios are saved and reloaded; every change (zone, threshold, speed, convoy) recomputes in under a second, so what-if questions are played live; a mission journal chains the legs; the uncertainty threshold slider moves the route on screen. No time-stepped playback of convoys moving along their routes.</td></tr>
+</table>
+
+<div class="figs avoid">
+<div class="fig" style="flex:1.5"><!--chart:imagery_f1--><div class="cap">U-Net road F1 under degraded imagery, out of fold (208 Mpx, run 20261113-202429).</div></div>
+<div class="fig"><!--chart:deconflict--><div class="cap">16 convoys: km shared between convoys, without / with deconfliction.</div></div>
+</div>
+
+<div class="avoid"><h2>5. Robustness and frugality (measured)</h2>
+<div class="figs">
+<div class="fig"><!--chart:robust_random--><div class="cap">Sections removed at random: feasibility drops past 2 %; a road network read from an image is fragile to scattered gaps.</div></div>
+<div class="fig"><!--chart:scale_convoys--><div class="cap">Time grows linearly with the number of convoys (33 s for 64).</div></div>
+</div></div>
+<table class="avoid">
+<tr><th>task</th><th>hardware</th><th class="n">time</th><th>note</th></tr>
+<tr><td>one route, whole sheet</td><td>1 CPU core, 4.6 GB RAM (4 networks)</td><td class="n">0.14 s</td><td>about 1 J; no GPU</td></tr>
+<tr><td>U-Net on a new sheet</td><td>1 GPU, 7.9 GB VRAM / or 16 CPU cores</td><td class="n">15 s / ~70 s</td><td>once per sheet</td></tr>
+<tr><td>fine-tuning (4 folds + final)</td><td>1 H100</td><td class="n">1.3 GPU-h</td><td>once per new kind of map</td></tr>
+<tr><td>language model: written order / chat answer</td><td>GPU (vLLM, bf16)</td><td class="n">0.7 s / 3–6 s</td><td>131k-token window</td></tr>
+<tr><td>same model, CPU only</td><td>32 cores, 4-bit (llama.cpp)</td><td class="n">7 s / ~50 s</td><td>32k-token window</td></tr>
+</table>
+
+<h2>6. Civilian applications</h2>
+<p>The chain <i>map image → road graph with confidence → constrained, explained routing</i> does not depend on the military
+purpose: only the rule base, the vehicle list and the default criteria do.</p>
+<ul>
+<li><b>Civil protection, fire and rescue:</b> heavy vehicles or evacuations when OSM is incomplete or outdated; several convoys with deconfliction for staggered evacuations.</li>
+<li><b>Humanitarian mapping:</b> roads read from scanned maps where vector data is sparse, with the uncertainty map telling volunteers where to check first.</li>
+<li><b>Exceptional transport:</b> oversize loads (width, bridges) with the constrained itineraries; the doctrine CSV can be replaced by road regulations.</li>
+<li><b>Historical maps and network maintenance:</b> digitising old road networks; comparing an image-read network with a reference to flag missing or vanished roads.</li>
+</ul>
+<p class="small">Adapting to another map style: rasterise a vector reference onto the images, fine-tune from our weights (6–12k steps, 8–15 min on an H100; two sheets were enough here), recalibrate, re-check λ.</p>
+
+<h2>7. Limitations</h2>
+<ul>
+<li><b>One sheet of evidence:</b> every routing figure comes from the 10 exercises of the hackathon sheet; λ and the thresholds should be re-measured elsewhere.</li>
+<li><b>Vision handles fewer constraints:</b> width, load class, height and road names are not read from a map; the rules that need them are flagged "to check". Scattered gaps in the read network break routes (5 % of sections removed: 73 % feasible).</li>
+<li><b>Static world:</b> no time, weather or moving threats; convoys planned in sequence, not timed at junctions.</li>
+<li><b>Language model:</b> optional and checked (ids, numbers, rule statuses, values in force), but the checks are heuristics; when a check fails, the app gives its deterministic answer instead.</li>
+<li><b>Doctrine:</b> 18 of 214 quotes not found automatically (mostly a scanned manual): flagged in the app; tables and figures of the manuals are not interpreted.</li>
+</ul>
+
+<h2>8. Reproducing</h2>
+<p class="small">Code: git bundle <span class="mono">CARTE_github.bundle</span>; data, models and caches: <span class="mono">CARTE_release.zip</span>.
+<span class="mono">interface/run.sh --llm</span> starts the app and the language model suited to the machine (GPU: vLLM; CPU: llama.cpp 4-bit).
+Experiments: <span class="mono">experiments/</span> (routing and imagery ablations, stress tests, context window, model comparison, doctrine reproduction), each run in its own folder with config, environment, metrics and energy. Full details: <span class="mono">docs/technical_overview.md</span>.</p>
+
+</body>
+</html>
