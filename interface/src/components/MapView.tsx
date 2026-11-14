@@ -31,6 +31,9 @@ interface Props {
   onPolygonClose: () => void;
   onRectangle: (b: BBox) => void;
   onLoading: (what: string, on: boolean) => void;
+  /** Point P : le dernier clic en mode main, utilisable dans un ordre écrit (« ici »). */
+  pointed?: LonLat | null;
+  onPointed?: (p: LonLat) => void;
 }
 
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
@@ -70,7 +73,7 @@ export default function MapView(p: Props) {
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
     map.addControl(new maplibregl.ScaleControl({ maxWidth: 140, unit: 'metric' }), 'bottom-left');
     map.on('load', () => {
-      for (const id of [...VECTOR_LAYERS, 'refs', 'route', 'zones', 'draft', 'rect', 'ext-graph', 'ext-nodes', 'hard', 'its', 'turns']) {
+      for (const id of [...VECTOR_LAYERS, 'refs', 'route', 'zones', 'draft', 'rect', 'ext-graph', 'ext-nodes', 'hard', 'its', 'turns', 'history']) {
         map.addSource(id, { type: 'geojson', data: EMPTY });
       }
       map.addLayer({ id: 'bdtopo', type: 'line', source: 'bdtopo', paint: { 'line-color': '#1f6feb', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 14, 2.2], 'line-opacity': 0.75 } });
@@ -85,6 +88,7 @@ export default function MapView(p: Props) {
       map.addLayer({ id: 'its-casing', type: 'line', source: 'its', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 8 } });
       map.addLayer({ id: 'its', type: 'line', source: 'its', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': itColor, 'line-width': 4.5 } });
       map.addLayer({ id: 'turns', type: 'circle', source: 'turns', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 3, 14, 7], 'circle-color': ['match', ['get', 'severity'], 'critical', '#bf3b2f', '#f59f00'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5 } });
+      map.addLayer({ id: 'history', type: 'line', source: 'history', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#6b7280', 'line-width': 4, 'line-opacity': 0.75, 'line-dasharray': [1.5, 1.2] } });
       map.addLayer({ id: 'route-casing', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 8 } });
       map.addLayer({ id: 'route', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['match', ['get', 'leg'], 1, '#7b2cbf', '#d1495b'], 'line-width': 4.5 } });
       const zoneColor: maplibregl.ExpressionSpecification = ['match', ['get', 'kind'], 'avoid', '#bf3b2f', 'from', '#2b6cb0', 'to', '#7b2cbf', '#1a7f37'];
@@ -103,6 +107,7 @@ export default function MapView(p: Props) {
       const ll: LonLat = [e.lngLat.lng, e.lngLat.lat];
       if (tool === 'start' || tool === 'end' || tool === 'waypoint') return props.current.onPoint(tool, ll);
       if (POLYGON_TOOLS.includes(tool)) return props.current.onPolygonVertex(ll);
+      if (tool === 'pan') props.current.onPointed?.(ll);
       if (tool === 'pan' && turnInfo(map, e)) return;
       if (tool === 'pan') showInfo(map, e);
     });
@@ -239,6 +244,7 @@ export default function MapView(p: Props) {
   useEffect(() => {
     if (!map || !ready) return;
     const sc = p.scenario;
+    setData(map, 'history', { type: 'FeatureCollection', features: (sc.missionLog ?? []).flatMap((l, i) => l.lines.map((c) => ({ type: 'Feature' as const, properties: { leg: i + 1 }, geometry: { type: 'LineString' as const, coordinates: c } }))) });
     const zones: Feature[] = [];
     if (sc.area && sc.area.length >= 3) zones.push({ type: 'Feature', properties: { kind: 'area' }, geometry: { type: 'Polygon', coordinates: [[...sc.area, sc.area[0]]] } });
     if (sc.mode === 'distinct') {
@@ -280,7 +286,14 @@ export default function MapView(p: Props) {
     sc.waypoints.forEach((w, i) => add(w, 'wp', String(i + 1), 'waypoint', i, `Étape ${i + 1}`));
     if (sc.start) add(sc.start, 'start', 'D', 'start', 0, 'Départ');
     if (sc.end) add(sc.end, 'end', 'A', 'end', 0, 'Arrivée');
-  }, [map, ready, p.scenario, p.draftPolygon, p.rect, p.multi]);
+    if (p.pointed) {
+      const el = document.createElement('div');
+      el.className = 'pin-p';
+      el.textContent = 'P';
+      el.title = 'Point P (dernier clic) : « ici » dans un ordre écrit';
+      markers.current.push(new maplibregl.Marker({ element: el }).setLngLat(p.pointed).addTo(map));
+    }
+  }, [map, ready, p.scenario, p.draftPolygon, p.rect, p.multi, p.pointed]);
 
   // ------------------------------------------------------------------ menu du rectangle (suit la carte)
   useEffect(() => {

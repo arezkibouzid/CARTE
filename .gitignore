@@ -7,3 +7,25 @@ outputs/
 cache/
 *.graphml
 .venv128/
+
+# Data handed out at the hackathon (not open) — in the release archive, see README « Data and models »
+examples/*.tif
+examples/*.shp
+examples/*.shx
+examples/*.dbf
+examples/*.cpg
+examples/*.prj
+examples/*.pdf
+examples/orders/
+examples/otherdata/
+# copies of the extracted orders (hackathon documents) made by experiments/context_stress.py
+experiments/runs/*/orders_store/
+# downloads in progress (scripts/fetch_data.py)
+*.part
+# presentation: built files, previews, demo video and images cut from the map scan (in the release archive)
+docs/presentation/slides.html
+docs/presentation/*.pdf
+docs/presentation/preview/
+docs/presentation/demo/
+docs/presentation/img/
+docs/presentation/charts/

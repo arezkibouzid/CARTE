@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280">
+<title>CARTE Presentation</title>
+<!-- Editable source of the deck. Charts and icons are inlined by build_deck.py (chart and icon placeholders);
+     every chart is drawn from a saved experiment run (see charts/data_used.json). -->
+<style>
+@font-face { font-family: "Plex"; src: url(fonts/ibm-plex-sans-latin-400-normal.woff2) format("woff2"); font-weight: 400; }
+@font-face { font-family: "Plex"; src: url(fonts/ibm-plex-sans-latin-400-italic.woff2) format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "Plex"; src: url(fonts/ibm-plex-sans-latin-500-normal.woff2) format("woff2"); font-weight: 500; }
+@font-face { font-family: "Plex"; src: url(fonts/ibm-plex-sans-latin-600-normal.woff2) format("woff2"); font-weight: 600; }
+@font-face { font-family: "Plex"; src: url(fonts/ibm-plex-sans-latin-700-normal.woff2) format("woff2"); font-weight: 700; }
+@font-face { font-family: "IBM Plex Sans"; src: url(fonts/ibm-plex-sans-latin-400-normal.woff2) format("woff2"); font-weight: 400; }
+@font-face { font-family: "IBM Plex Sans"; src: url(fonts/ibm-plex-sans-latin-600-normal.woff2) format("woff2"); font-weight: 600; }
+@font-face { font-family: "PlexMono"; src: url(fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2"); font-weight: 500; }
+
+:root {
+  --ink: #14232A; --muted: #5B6B70; --line: #D5DCDD; --tint: #F1F5F4; --paper: #FFFFFF;
+  --route: #C8382F; --sure: #1F7A6D; --doubt: #B87A00; --doubt-bg: #FFF4DC; --blue: #2A78D6;
+  --dark: #14232A; --dark-2: #1E333B; --on-dark: #F2F5F4; --on-dark-muted: #A9BABE;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+@page { size: 1280px 720px; margin: 0; }
+html, body { background: #8A979A; }
+body { font-family: "Plex", Arial, sans-serif; color: var(--ink); font-size: 20px; line-height: 1.35;
+       -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.slide { position: relative; width: 1280px; height: 720px; overflow: hidden; background: var(--paper);
+         padding: 44px 64px 40px; page-break-after: always; break-after: page; margin: 0 auto 24px; }
+@media print { html, body { background: none; } .slide { margin: 0; } }
+.slide.dark { background: var(--dark); color: var(--on-dark); }
+aside.notes { display: none; }
+
+/* header: a waypoint pin (the app's map marker) + section label, then the message title */
+.kicker { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; letter-spacing: .08em;
+          text-transform: uppercase; color: var(--muted); height: 28px; }
+.pin { width: 28px; height: 28px; border-radius: 50% 50% 50% 4px; transform: rotate(-45deg); background: var(--route);
+       display: grid; place-items: center; flex: none; }
+.pin b { transform: rotate(45deg); color: #fff; font-size: 13px; font-weight: 700; letter-spacing: 0; }
+h1 { font-size: 38px; line-height: 1.15; font-weight: 600; letter-spacing: -0.01em; margin: 12px 0 0; max-width: 1150px; }
+.dark .kicker { color: var(--on-dark-muted); }
+.foot { position: absolute; right: 64px; bottom: 18px; font-size: 12px; color: var(--muted); }
+.foot.left { left: 64px; right: auto; }
+.dark .foot { color: var(--on-dark-muted); }
+
+.body { position: absolute; left: 64px; right: 64px; top: 150px; bottom: 48px; }
+.row { display: flex; gap: 32px; }
+.col { display: flex; flex-direction: column; gap: 16px; }
+.small { font-size: 16px; color: var(--muted); }
+.cap { font-size: 14px; color: var(--muted); margin-top: 6px; }
+.dark .cap { color: var(--on-dark-muted); }
+b, strong { font-weight: 600; }
+.shot { border-radius: 14px; overflow: hidden; box-shadow: 0 6px 20px rgba(20,35,42,.18); background: var(--tint); }
+.shot img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: left top; }
+.chart svg { display: block; }
+.ic { width: 100%; height: 100%; }
+.badge { width: 46px; height: 46px; border-radius: 50%; background: var(--tint); color: var(--sure); padding: 11px; flex: none; }
+.badge.red { color: var(--route); background: #FBEAE8; }
+.badge.amber { color: var(--doubt); background: var(--doubt-bg); }
+.badge.blue { color: var(--blue); background: #E8F1FC; }
+
+/* "measured" vs "illustrative" tags */
+.tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; letter-spacing: .04em;
+       text-transform: uppercase; padding: 3px 9px; border-radius: 999px; border: 1.5px solid; white-space: nowrap; }
+.tag.m { color: var(--sure); border-color: var(--sure); }
+.tag.i { color: var(--doubt); border-color: #E3B04B; }
+.tag .src { text-transform: none; letter-spacing: 0; font-weight: 400; font-family: "PlexMono", monospace; font-size: 11.5px; }
+
+.chip { display: inline-block; font-size: 15px; padding: 5px 12px; border-radius: 999px; background: var(--tint); color: var(--ink); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips.tight { gap: 6px; } .chips.tight .chip { font-size: 13.5px; padding: 4px 10px; }
+.stat .n { font-size: 50px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
+.stat .l { font-size: 16px; color: var(--muted); margin-top: 6px; line-height: 1.3; }
+.card { background: var(--tint); border-radius: 14px; padding: 16px 18px; }
+.arrow { color: var(--muted); font-size: 34px; font-weight: 600; align-self: center; }
+.mono { font-family: "PlexMono", monospace; }
+/* pipeline scheme */
+.nd { position: absolute; border-radius: 12px; background: var(--tint); padding: 9px 12px; font-size: 14px; line-height: 1.3; }
+.nd .h { display: block; font-size: 15.5px; font-weight: 600; margin-bottom: 2px; }
+.nd.opt { background: #fff; border: 2px dashed #9AA6A9; }
+.nd.in { background: #fff; border: 1.5px solid var(--line); }
+.core { position: absolute; background: #FBEAE8; border: 2px solid var(--route); border-radius: 16px; }
+.core .nd { background: #fff; }
+.lbl { position: absolute; font-size: 12.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.otag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--muted); border: 1.5px solid #9AA6A9; border-radius: 999px; padding: 0 7px; margin-left: 6px; vertical-align: 2px; }
+/* formula */
+.fx { font-size: 30px; font-weight: 500; text-align: center; letter-spacing: 0; }
+.fx i { font-style: italic; }
+.fx sub { font-size: 60%; }
+.big-sum { font-size: 44px; font-weight: 400; vertical-align: -6px; }
+.argmin { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; line-height: 1; }
+.argmin small { font-size: 14px; color: var(--muted); margin-top: 3px; }
+/* problem -> technique table */
+.pt { width: 100%; border-collapse: collapse; font-size: 15px; }
+.pt th { text-align: left; font-size: 12.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 0 10px 6px 0; }
+.pt td { border-top: 1.5px solid var(--line); padding: 7px 10px 7px 0; vertical-align: top; line-height: 1.3; }
+.pt td:first-child { font-weight: 600; }
+.pt td:last-child { color: var(--sure); font-weight: 600; white-space: nowrap; }
+ol.steps { list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 9px; }
+ol.steps li { counter-increment: s; position: relative; padding-left: 34px; font-size: 15.5px; line-height: 1.32; }
+ol.steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--ink); color: #fff; font-size: 12.5px; font-weight: 600; display: grid; place-items: center; }
+.layer3d { position: absolute; left: 40px; width: 220px; height: 220px; transform: perspective(1400px) rotateX(58deg) rotateZ(-38deg);
+  transform-origin: center; box-shadow: 0 10px 22px rgba(20,35,42,.28); border: 2px solid #fff; border-radius: 6px; overflow: hidden; background: #fff; }
+.layer3d img { width: 100%; height: 100%; display: block; }
+.layer-lab { position: absolute; left: 330px; width: 220px; font-size: 13.5px; line-height: 1.25; z-index: 60; }
+.layer-lab span { color: var(--muted); font-size: 12.5px; }
+.var-card { flex: 1; background: #fff; border: 1.5px solid var(--line); border-radius: 14px; padding: 10px; }
+.bar { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12.5px; }
+.bar b { width: 52px; font-weight: 500; color: var(--muted); }
+.bar i { flex: 1; height: 10px; background: var(--tint); border-radius: 5px; position: relative; overflow: hidden; }
+.bar i span { position: absolute; left: 0; top: 0; bottom: 0; background: #6FA8E8; border-radius: 5px; }
+.bar.c i span { background: #4FAE9A; }
+.bar em { font-style: normal; width: 50px; text-align: right; color: var(--ink); font-weight: 600; }
+.concl { margin: 10px 0 0 18px; padding: 0; font-size: 16.5px; line-height: 1.4; }
+.concl li { margin-bottom: 10px; } .concl b { color: #fff; }
+</style>
+</head>
+<body>
+
+<!-- 1 · TITLE -->
+<section class="slide dark">
+  <div style="position:absolute; left:64px; top:64px; width:600px;">
+    <div class="kicker"><span class="pin"><b>A</b></span>Convoy route planning on scanned maps</div>
+    <div style="font-size:76px; font-weight:700; letter-spacing:.05em; line-height:1; margin-top:26px;">CARTE</div>
+    <div style="font-size:19px; color:#E3B04B; margin-top:8px; letter-spacing:.02em;"><b>C</b>onstraint-<b>A</b>ware <b>R</b>outing with <b>T</b>rust <b>E</b>stimation</div>
+    <h1 style="font-size:34px; margin-top:22px; line-height:1.15;">Constraint-aware convoy routing that prices its own doubt</h1>
+    <p style="font-size:19px; color:var(--on-dark-muted); margin-top:14px; line-height:1.4;">
+      One cost function and one solver for every constraint, every route explained, and an optional vision module that reads roads from a scanned map.</p>
+    <div style="display:flex; gap:28px; margin-top:28px;">
+      <div class="stat"><div class="n" style="font-size:38px;">0.14 s</div><div class="l" style="color:var(--on-dark-muted)">per route on the<br>whole sheet, 1 core</div></div>
+      <div class="stat"><div class="n" style="font-size:38px;">64</div><div class="l" style="color:var(--on-dark-muted)">convoys planned<br>in 33 s</div></div>
+      <div class="stat"><div class="n" style="font-size:38px;">−9 %</div><div class="l" style="color:var(--on-dark-muted)">km on roads absent<br>from BD TOPO</div></div>
+    </div>
+  </div>
+  <div class="shot" style="position:absolute; right:56px; top:56px; width:520px; height:608px; border-radius:22px;">
+    <img src="img/convoys_map.png" alt="Eight convoys planned on the Hackathon sheet, screenshot of the interface">
+  </div>
+  <div class="foot left">Hackathon sheet · IGN 1:100,000 · Châlons / Verdun / Bar-le-Duc · November 2026</div>
+  <aside class="notes" data-time="15">CARTE, constraint-aware routing with trust estimation, and carte is also French for map. We plan convoy routes under many constraints at once, and the heart of the work is the routing engine: one cost function and one solver that take every constraint, and that also pay for how unsure we are about each road. Every route comes with its reasons. Reading roads from a scanned map is an optional module that feeds this engine. The image is the application planning eight convoys at once; the three numbers are measured.</aside>
+</section>
+
+<!-- 2 · PROBLEM -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>1</b></span>The problem</div>
+  <h1>Many constraints, uncertain roads, decisions to justify</h1>
+  <div class="body row" style="gap:48px;">
+    <div style="width:500px;">
+      <div class="shot" style="height:440px;"><img src="img/route_map.png" alt="A route through four waypoints inside a deployment area" style="object-position:center"></div>
+      <div class="cap">Exercise 7: deployment area, 4 waypoints in free order, convoy speed cap (screenshot).</div>
+    </div>
+    <div class="col" style="flex:1; gap:24px; padding-top:4px;">
+      <div class="row" style="gap:18px; align-items:flex-start;"><div class="badge red"><!--icon:LuSlidersHorizontal--></div>
+        <div><div style="font-size:22px; font-weight:600;">Constraints pile up</div>
+        <div class="small" style="margin-top:3px;">Area, zones to avoid, waypoints, round trips, speed, vehicle, several convoys at once.</div></div></div>
+      <div class="row" style="gap:18px; align-items:flex-start;"><div class="badge amber"><!--icon:LuHelpCircle--></div>
+        <div><div style="font-size:22px; font-weight:600;">The road network is uncertain</div>
+        <div class="small" style="margin-top:3px;">OSM or BD TOPO may be missing or outdated; a network read from a scan is never certain.</div></div></div>
+      <div class="row" style="gap:18px; align-items:flex-start;"><div class="badge"><!--icon:LuMessagesSquare--></div>
+        <div><div style="font-size:22px; font-weight:600;">Every choice must be justified</div>
+        <div class="small" style="margin-top:3px;">Why this road, what was rejected, which rules of the orders apply.</div></div></div>
+      <div class="card" style="margin-top:4px; font-size:19px;"><b>Our approach:</b> one routing core where hard constraints <b>remove</b> roads and soft ones
+        <span style="color:var(--route); font-weight:600;">price</span> them, including the doubt about each road, and a trace of every decision.</div>
+    </div>
+  </div>
+  <div class="foot">2</div>
+  <aside class="notes" data-time="20">Three difficulties. Constraints pile up: deployment area, zones to avoid, waypoints, round trips, speed, vehicles, and several convoys at once. The road network itself is uncertain: databases can be missing or outdated, and a network read from a scan is never certain. And each choice must be justified against the orders. Our answer is one routing core in which hard constraints remove roads and soft constraints price them, the doubt about a road being one of those prices, plus a trace of every decision.</aside>
+</section>
+
+<!-- 3 · PIPELINE SCHEME -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>2</b></span>Proposed solution · architecture</div>
+  <h1>The whole pipeline: any road network in, one routing core</h1>
+  <div class="body">
+    <svg style="position:absolute; left:0; top:0; width:1152px; height:522px; overflow:visible;" viewBox="0 0 1152 522">
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#7C8B8F"/></marker></defs>
+      <g fill="none" stroke="#7C8B8F" stroke-width="2" marker-end="url(#ah)">
+        <path d="M200 36 H236"/><path d="M200 134 H218 V157 H236"/><path d="M200 232 H218 V248 H236"/>
+        <path d="M480 55 H516"/><path d="M480 157 H516"/><path d="M720 94 H756"/>
+        <path d="M200 340 H756"/>
+        <path d="M343 286 V408"/><path d="M820 386 V408"/><path d="M1040 386 V408"/>
+      </g>
+    </svg>
+    <div class="lbl" style="left:0; top:-26px;">Inputs</div>
+    <div class="lbl" style="left:240px; top:-26px;">Network sources</div>
+    <div class="lbl" style="left:520px; top:-26px;">Road graph</div>
+    <div class="nd in" style="left:0; top:0; width:200px; height:72px;"><span class="h">Scanned map</span>GeoTIFF sheet</div>
+    <div class="nd in" style="left:0; top:98px; width:200px; height:72px;"><span class="h">Vector roads</span>OSM / BD TOPO, if any</div>
+    <div class="nd in" style="left:0; top:196px; width:200px; height:72px;"><span class="h">Operation orders</span>PDF</div>
+    <div class="nd in" style="left:0; top:294px; width:200px; height:92px;"><span class="h">Operator scenario</span>map clicks, written orders, earlier legs</div>
+
+    <div class="nd opt" style="left:240px; top:0; width:240px; height:112px;"><span class="h">Vision module<span class="otag">OPTIONAL</span></span>U-Net → road probabilities → graph · fewer constraints, own doubt priced</div>
+    <div class="nd" style="left:240px; top:126px; width:240px; height:62px;"><span class="h">Vector network</span>alone, or filling U-Net gaps</div>
+    <div class="nd" style="left:240px; top:210px; width:240px; height:76px;"><span class="h">Rules from orders</span>local LLM · fixed status per rule</div>
+
+    <div class="nd" style="left:520px; top:0; width:200px; height:188px; background:#E3F1EE;"><span class="h">G = (V, E)</span>each section e: length, legal speed, built-up share, road class, bridge, <b>confidence p(e)</b> when read from the image</div>
+
+    <div class="core" style="left:760px; top:0; width:392px; height:386px;">
+      <div style="position:absolute; left:14px; top:9px; font-size:13px; font-weight:700; letter-spacing:.08em; color:var(--route);">ROUTING CORE · CPU · 0.13–0.18 s PER ROUTE</div>
+      <div class="nd" style="left:12px; top:38px; width:366px; height:96px;"><span class="h">1 · Hard constraints → allowed set A</span>deployment area, zones to avoid, vehicle limits, distinct return, missing data</div>
+      <div class="nd" style="left:12px; top:144px; width:366px; height:104px;"><span class="h">2 · Soft constraints → cost c(e)</span>base × Π (1 + w · φ): model doubt (TIFF only), operator threshold, roads of earlier convoys, turns</div>
+      <div class="nd" style="left:12px; top:258px; width:366px; height:116px;"><span class="h">3 · Search + heuristics</span>Dijkstra on a sparse graph · waypoint orders · distinct round trip · convoys by priority · local alternative per segment</div>
+    </div>
+    <div class="lbl" style="left:560px; top:318px;">scenario</div>
+
+    <div class="nd" style="left:240px; top:412px; width:206px; height:104px; background:#FBEAE8;"><span class="h">Chat</span>trace answers first, local LLM checked</div>
+    <div class="nd" style="left:460px; top:412px; width:220px; height:104px;"><span class="h">Checks</span>vs BD TOPO / OSM routes, never change the route</div>
+    <div class="nd" style="left:694px; top:412px; width:220px; height:104px; background:#FBEAE8;"><span class="h">Segment trace</span>reason, rejected alternative, verdict, data limits</div>
+    <div class="nd" style="left:928px; top:412px; width:224px; height:104px; background:#FBEAE8;"><span class="h">Routes</span>per leg and convoy: km, time, confidence, decision log</div>
+  </div>
+  <div class="foot">3 · dashed = optional · red = routing core and its outputs</div>
+  <aside class="notes" data-time="50">This is the whole pipeline. On the left, the inputs: the scanned map, vector roads if we have any, the orders, and the operator's scenario. Any of three sources gives the road graph: the optional vision module, which reads the roads from the scan; a vector network such as OSM or BD TOPO; or both, with OSM filling the gaps of the image network. Whatever the source, we get the same graph: each road section with its length, legal speed, built-up share, class, and, when it comes from the image, the model's confidence. The red box is the core of the method, on CPU only. First, hard constraints remove sections. Second, soft constraints price the remaining ones. Third, the search finds the cheapest route, with heuristics for waypoints, round trips and convoys. Out come the routes, a trace of every decision, independent checks against reference routes, and a chat that answers from that trace first.</aside>
+</section>
+
+<!-- 4 · GENERIC FORMULATION -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>3</b></span>Route planning · constraints</div>
+  <h1>Every constraint fits one formula: remove a road, or price it</h1>
+  <div class="body">
+    <div class="card" style="background:#fff; border:1.5px solid var(--line); padding:16px 24px 14px;">
+      <div class="fx">R* = <span class="argmin">argmin<small>order π, route R</small></span>
+        &nbsp;<span class="big-sum">Σ</span><sub style="font-size:18px;"><i>e</i> ∈ R</sub>&nbsp;
+        base<sub><i>o</i></sub>(<i>e</i>) · <span class="big-sum" style="font-size:38px;">Π</span><sub style="font-size:18px;"><i>j</i></sub> ( 1 + <span style="color:var(--route);"><i>w<sub>j</sub></i></span> · <span style="color:var(--doubt);"><i>φ<sub>j</sub></i>(<i>e</i>)</span> )</div>
+      <div style="text-align:center; font-size:19px; margin-top:6px;">subject to &nbsp;<i>e</i> ∈ <b>A</b> = E \ (H<sub>area</sub> ∪ H<sub>zones</sub> ∪ H<sub>vehicle</sub> ∪ H<sub>return</sub> ∪ H<sub>history</sub>) &nbsp;and&nbsp; R through P<sub>0</sub> → W<sub>π(1)</sub> → … → W<sub>π(m)</sub> → P<sub>end</sub></div>
+    </div>
+    <div class="row" style="gap:18px; margin-top:16px;">
+      <div class="card" style="flex:1; padding:14px 16px;">
+        <div style="font-size:17px; font-weight:600;">Hard → remove sections (H)</div>
+        <div style="font-size:14.5px; margin-top:6px; line-height:1.45;">Sections leaving the deployment area<br>Sections crossing a zone to avoid<br>Width, load, gauge, slope of the vehicle<br>Return leg / next leg: sections within 20 m of an earlier leg<br>Missing or unreadable data</div>
+      </div>
+      <div class="card" style="flex:1.25; padding:14px 16px; background:#FBEAE8;">
+        <div style="font-size:17px; font-weight:600;">Soft → price sections (<i style="color:var(--route);">w</i> · <i style="color:var(--doubt);">φ</i>)</div>
+        <div style="font-size:14.5px; margin-top:6px; line-height:1.45;"><b>λ · risk(e)</b>: the model's doubt, TIFF only (next slide)<br><b>s · share of e with p &lt; τ</b>: operator threshold<br><b>k · used(e)</b>: road of a higher-priority convoy (k = 2; forbid: 1000)<br><b>turns</b> at junctions, priced on pairs of sections</div>
+      </div>
+      <div class="card" style="flex:1; padding:14px 16px;">
+        <div style="font-size:17px; font-weight:600;">Objective and structure</div>
+        <div style="font-size:14.5px; margin-top:6px; line-height:1.45;"><b>base<sub>o</sub></b>: metres, or minutes at min(legal speed, convoy speed), 50 km/h in towns<br><b>π</b>: waypoints fixed, or free (all m! orders)<br>Round trip, k separated itineraries, convoys in priority order</div>
+      </div>
+    </div>
+    <div class="row" style="gap:12px; align-items:center; margin-top:14px;">
+      <div class="badge" style="width:40px; height:40px; padding:9px;"><!--icon:LuSparkles--></div>
+      <div style="font-size:17px;"><b>A new constraint is a new H or a new (w, φ) pair: the solver does not change.</b> Every pair stays visible in the trace, so its effect on the route can be reported.</div>
+    </div>
+  </div>
+  <div class="foot">4 · "hard" = never violated · "soft" = traded against distance or time</div>
+  <aside class="notes" data-time="50">This one formula covers every constraint we handle. We look for the waypoint order and the route that minimise the sum, over the route's sections, of a base cost times a product of factors one plus w times phi. The base is metres or minutes; minutes use the legal speed, capped by the convoy's speed, and 50 in towns. Hard constraints never get traded: they remove sections from the allowed set A: leaving the area, crossing a zone to avoid, a vehicle that does not fit, and for a round trip, any section within 20 metres of the outbound leg. Soft constraints are traded against distance: each is a feature phi of a section with a weight w: the model's doubt with weight lambda, the operator's threshold, roads already taken by a higher-priority convoy, and turns at junctions. Structure, the waypoint order, round trips and convoy priority, is handled by the search. The practical consequence: adding a constraint means adding an H or a (w, phi) pair, never a new solver.</aside>
+</section>
+
+<!-- 5 · UNCERTAINTY TERM -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>3</b></span>Route planning · uncertainty</div>
+  <h1>The key soft constraint: a price for the model's doubt</h1>
+  <div class="body row" style="gap:40px;">
+    <div class="col" style="width:620px; gap:18px;">
+      <div class="card" style="padding:20px 18px; text-align:center; font-size:29px; font-weight:500; background:#fff; border:1.5px solid var(--line); white-space:nowrap;">
+        cost(<i>e</i>) = <span style="font-weight:600;">base</span>(<i>e</i>) × ( 1 + <span style="color:var(--route); font-weight:600;">λ</span> · <span style="color:var(--doubt); font-weight:600;">risk</span>(<i>e</i>) ) × …
+      </div>
+      <div class="row" style="gap:12px;">
+        <div class="card" style="flex:1; padding:14px 16px; background:#FBEAE8;"><div style="font-weight:600; font-size:18px; color:var(--route);">λ = 0.5</div>
+          <div style="font-size:15px; margin-top:4px;">extra metres (or minutes) the convoy accepts per unit of doubt; slider in the interface</div></div>
+        <div class="card" style="flex:1.2; padding:14px 16px; background:var(--doubt-bg);"><div style="font-weight:600; font-size:18px; color:var(--doubt);">risk(e) = mean of −ln c</div>
+          <div style="font-size:15px; margin-top:4px;">every 20 m along the section, c = clip(p / 0.78, 0.05, 1), p = calibrated U-Net probability</div></div>
+      </div>
+      <div class="card" style="padding:12px 16px; font-size:15px; line-height:1.45; background:#E8F1FC;"><b>Where p comes from:</b> the U-Net reading the scan (the vision extension, presented at the end). Its calibrated probability is sampled <b>every 20 m</b> and <b>aggregated per section</b> into risk = mean(−ln c); 0.78 is its value on sure roads, so a sure road costs its length.</div>
+      <div class="row" style="gap:12px; align-items:center;">
+        <div class="badge" style="width:40px; height:40px; padding:9px;"><!--icon:LuShieldCheck--></div>
+        <div style="font-size:15.5px;"><b>Added to the cost only when the route relies on the TIFF alone.</b> With OSM filling the network, or with BD TOPO / OSM and no model, risk = 0 and the interface says why.</div>
+      </div>
+    </div>
+    <div class="col" style="flex:1; gap:8px;">
+      <div><span class="tag i">Illustrative · plot of the formula</span></div>
+      <!--chart:risk_curve-->
+      <div class="card" style="font-size:17px;">At λ = 0.5, <b>1 km of road the model is half sure of costs as much as 1.35 km</b> of a sure road. A detour wins only if it avoids enough doubt.</div>
+    </div>
+  </div>
+  <div class="foot">5</div>
+  <aside class="notes" data-time="30">The most important soft constraint is the model's doubt. Its probability comes from the U-Net that reads the scan, which I present at the end. Risk is minus the log of the confidence, averaged every 20 metres along the road: zero on a sure road, 0.69 where the model is half as sure, 3 at the floor. With lambda 0.5, one kilometre of a half-sure road costs like 1.35 kilometres of a sure one, so a detour is taken only if it avoids enough doubt. In effect the route trades length against the likelihood that its roads exist. This term is active only when the route depends on the image alone; with OSM filling the network, or with no model, it switches off and the interface says so. The curve is the formula itself, not a measurement.</aside>
+</section>
+
+<!-- 6 · UNCERTAINTY RESULTS -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>4</b></span>Uncertainty awareness · effect</div>
+  <h1>Pricing doubt keeps routes on real roads, for almost no extra length</h1>
+  <div class="body row" style="gap:36px;">
+    <div class="col" style="width:330px; gap:26px; padding-top:6px;">
+      <div class="stat"><div class="n" style="color:var(--sure);">−9 %</div><div class="l">km driven on roads absent from BD TOPO<br>(117.6 → 107.3 km over the 10 exercises)</div></div>
+      <div class="stat"><div class="n">+0.5 %</div><div class="l">route length (152.3 → 153.0 km on average)</div></div>
+      <div class="stat"><div class="n" style="font-size:40px;">0.85 → 0.86</div><div class="l">mean model confidence along the route</div></div>
+    </div>
+    <div class="col" style="flex:1; gap:6px;">
+      <div><span class="tag m">Measured · <span class="src">runs/20261113-204810_routing_ablation</span></span></div>
+      <div class="row" style="gap:20px;"><!--chart:lambda_km--><!--chart:lambda_overlap--></div>
+      <div class="card" style="font-size:17px; margin-top:4px;"><b>λ = 0.5 is the knee.</b> At λ = 1 the gain is the same but routes move far from the reference route (overlap 0.52); beyond, the solver detours onto other doubtful roads and km off real roads rise again.</div>
+    </div>
+  </div>
+  <div class="foot">6 · "real road" = within 25 m of any BD TOPO road · same 10 PDF exercises, same points and settings</div>
+  <aside class="notes" data-time="30">Does it help? We ran the ten exercises of the brief with lambda from 0 to 8, everything else fixed, and checked each route against BD TOPO, which the router never sees. At 0.5, the kilometres driven on roads that are not in BD TOPO fall by 9 percent, for half a percent of extra length. The right chart shows why we stop there: at 1 the gain is the same but routes move away from the reference route, and beyond, the solver takes detours over other doubtful roads and the error rises again. So 0.5 is the knee, chosen by measurement, and it is the default.</aside>
+</section>
+
+<!-- 7 · HEURISTICS & GRAPH -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>5</b></span>Graph construction · search heuristics</div>
+  <h1>Heuristics that keep every request under a second</h1>
+  <div class="body row" style="gap:36px;">
+    <div class="col" style="width:470px; gap:10px;">
+      <div style="font-size:17px; font-weight:600;">Graph extraction from the probability raster</div>
+      <ol class="steps">
+        <li><b>Threshold</b> p ≥ 0.5, drop blobs under 30 px</li>
+        <li><b>Thin</b> to 1-px centre lines (skeleton)</li>
+        <li><b>Junctions</b>: touching branch pixels merged into one node</li>
+        <li><b>Sections</b>: pixel chains between nodes, both directions, 1 point every 4 px</li>
+        <li><b>Attributes</b>: class from the importance head, bridge from the structure head; confidence and built-up share sampled every 20 m</li>
+      </ol>
+      <div class="card" style="font-size:15px; padding:12px 14px;"><b>32,475 junctions · 73,305 sections · 10,330 km</b>, about 40 s of CPU per sheet. Tried and not kept: straight-line gap bridging (only 30 % of its links on real roads), hysteresis (centre lines wander).</div>
+    </div>
+    <div class="col" style="flex:1; gap:9px;">
+      <div style="font-size:17px; font-weight:600;">Search heuristics</div>
+      <div class="card row" style="gap:12px; padding:10px 14px; align-items:center;"><div class="badge" style="background:#fff; width:38px;height:38px;padding:8px;"><!--icon:LuNetwork--></div>
+        <div style="font-size:15px;"><b>Sparse matrix + compiled Dijkstra</b>, prices precomputed once per network: <b>0.14 s</b> on the whole sheet, whatever the distance.</div></div>
+      <div class="card row" style="gap:12px; padding:10px 14px; align-items:center;"><div class="badge" style="background:#fff; width:38px;height:38px;padding:8px;"><!--icon:LuSplit--></div>
+        <div style="font-size:15px;"><b>Free waypoints</b>: m + 1 Dijkstras fill a cost matrix, then all m! orders are scored on it: <b>5,040 orders in 0.34 s</b>.</div></div>
+      <div class="card row" style="gap:12px; padding:10px 14px; align-items:center;"><div class="badge" style="background:#fff; width:38px;height:38px;padding:8px;"><!--icon:LuRefreshCw--></div>
+        <div style="font-size:15px;"><b>Distinct round trip</b>: solve one leg, forbid it plus a 20 m corridor, solve the other; both orders tried; relaxed only near the end points, and reported.</div></div>
+      <div class="card row" style="gap:12px; padding:10px 14px; align-items:center;"><div class="badge" style="background:#fff; width:38px;height:38px;padding:8px;"><!--icon:LuTruck--></div>
+        <div style="font-size:15px;"><b>Convoys</b> in priority order; roads already taken cost ×(1 + k). <b>64 convoys in 33 s</b>.</div></div>
+      <div class="card row" style="gap:12px; padding:10px 14px; align-items:center;"><div class="badge" style="background:#fff; width:38px;height:38px;padding:8px;"><!--icon:LuMap--></div>
+        <div style="font-size:15px;"><b>Snapping</b> to the largest strongly connected part (KD-tree), so no point is stranded; the distance is reported.</div></div>
+    </div>
+  </div>
+  <div class="foot">7 · timings: runs/20261113-202358_stress_test · extraction: docs/prc_inference.md, docs/prc_retrace_results.md</div>
+  <aside class="notes" data-time="25">Two kinds of engineering keep this fast. On the left, how the graph is built from the probability map: threshold at 0.5, remove small blobs, thin to centre lines, merge junction pixels into nodes, trace the pixel chains into sections, and attach each section's class, bridges, confidence and built-up share. That gives 32 thousand junctions and 73 thousand sections in about 40 seconds of CPU. We tried bridging gaps with straight lines and a hysteresis threshold; neither was trustworthy, so they are off. On the right, the search heuristics. The graph is a sparse matrix with compiled Dijkstra, so a route costs 0.14 seconds on the whole sheet. Free waypoints: instead of routing every order, we fill a small cost matrix and score all orders on it, 5,040 orders in a third of a second. A distinct round trip solves one leg, forbids it, solves the other. Convoys go in priority order. And points snap only to the main connected part of the network.</aside>
+</section>
+
+<!-- 8 · EXPLAINABILITY -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>6</b></span>Explainability</div>
+  <h1>Every segment comes with its reason and its rejected alternative</h1>
+  <div class="body row" style="gap:40px;">
+    <div style="width:540px;">
+      <div class="shot" style="height:362px;"><img src="img/why_table.png" alt="Segment table: segment, road class, km, confidence, detour of the best alternative, verdict"></div>
+      <div class="cap">"Why this route?" in the Results tab · exercise 7, 13 segments (screenshot).</div>
+      <div class="row" style="gap:22px; margin-top:14px; font-size:15px; white-space:nowrap;">
+        <div><span class="chip" style="background:#DDF3E4; font-weight:600;">net</span> next best ≥ 10 % costlier</div>
+        <div><span class="chip" style="background:#FFF4DC; font-weight:600;">serré</span> within 10 %</div>
+        <div><span class="chip" style="background:#E3E8FB; font-weight:600;">obligé</span> no other way</div>
+      </div>
+    </div>
+    <div class="col" style="flex:1; gap:10px;">
+      <div style="font-size:17px; font-weight:600; color:var(--muted);">A question is answered by the cheapest reliable step</div>
+      <div class="card row" style="gap:14px; align-items:center; padding:12px 16px;"><div class="badge" style="background:#fff"><!--icon:LuNetwork--></div>
+        <div style="font-size:16px;"><b>1 · Solver trace.</b> "Why segment 3?", "alternatives?" answered from the solver's numbers. <b>0.001 s</b>, exact.</div></div>
+      <div class="card row" style="gap:14px; align-items:center; padding:12px 16px;"><div class="badge blue" style="background:#fff"><!--icon:LuBrainCircuit--></div>
+        <div style="font-size:16px;"><b>2 · Local model.</b> Other questions, with the orders: context packed under <b>6,000 tokens</b>.</div></div>
+      <div class="card row" style="gap:14px; align-items:center; padding:12px 16px;"><div class="badge amber" style="background:#fff"><!--icon:LuShieldCheck--></div>
+        <div style="font-size:16px;"><b>3 · Checks.</b> Every id, number, rule text and status must come from the context, or the answer is rejected.</div></div>
+      <div class="card row" style="gap:14px; align-items:center; padding:12px 16px;"><div class="badge red" style="background:#fff"><!--icon:LuCheck--></div>
+        <div style="font-size:16px;"><b>4 · Fallback.</b> A deterministic answer from the trace and the rules, always available.</div></div>
+      <div class="row" style="gap:12px; align-items:center; margin-top:4px;">
+        <span class="tag m">Measured</span><span style="font-size:15px;">7 orders at once: <b>5,286 / 6,000 tokens</b>, nothing dropped; answer in 2.8 s.</span></div>
+    </div>
+  </div>
+  <div class="foot">8</div>
+  <aside class="notes" data-time="30">Because every constraint is a term of the cost, the solver can explain itself. The route is cut into readable segments; for each one we rerun Dijkstra with that segment forbidden, so we know the best alternative and its extra cost: 'net' means at least 10 percent more, 'serré' a close call, 'obligé' no other way. On the right, how the chat answers: segment and alternative questions come straight from this trace, in a millisecond. Other questions go to a local 8-billion-parameter model with the orders' rules packed under a 6,000-token budget; even seven orders fit. Answers citing anything absent from the context are rejected and replaced by a deterministic answer. The checks are heuristics, so the trace answers remain the reference.</aside>
+</section>
+
+<!-- 8a · NATO DOCTRINE (RAG) -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>6</b></span>Explainability · NATO doctrine (RAG)</div>
+  <h1>NATO doctrine as a checked rule base, matched to each order</h1>
+  <div class="body row" style="gap:30px;">
+    <div class="col" style="width:380px; gap:8px;">
+      <!--chart:doctrine_docs-->
+      <div class="chips" style="font-size:13px;">
+        <span class="chip" style="font-size:13px;">116 conditional requirements</span><span class="chip" style="font-size:13px;">39 values</span>
+        <span class="chip" style="font-size:13px;">31 recommendations</span><span class="chip" style="font-size:13px;">15 thresholds</span><span class="chip" style="font-size:13px;">13 mandatory</span>
+      </div>
+      <div class="card" style="font-size:14px; padding:10px 14px; line-height:1.4;">Each rule keeps its <b>quote, value, scope, conditions and PDF page</b>, then was reviewed: quote found in the PDF for <b>92</b> rules, partly for <b>23</b>, <b>99</b> still to check (flagged to the user).</div>
+    </div>
+    <div class="col" style="flex:1; gap:8px;">
+      <div style="font-size:16px; font-weight:600; color:var(--muted);">For each extracted order</div>
+      <ol class="steps">
+        <li><b>Requirements</b> of the order (speed, gaps, loads, halts…) as search queries</li>
+        <li><b>BM25 search</b> over the 214 rules → 120 candidates</li>
+        <li><b>Conditions vs what the order says</b> (country, bridges, expressway, halts, MLC): <i>applicable</i>, <i>to confirm</i>, <i>background</i> or <i>not applicable</i>. Unknown is never taken as false.</li>
+        <li><b>Number check:</b> rule limit vs the order's values (ok / exceeds / stricter)</li>
+        <li><b>Explained</b> by the local model with the status fixed; document and page added by code</li>
+      </ol>
+      <div class="row" style="gap:12px; margin-top:4px;">
+        <div class="card" style="flex:1; padding:10px 14px; font-size:14px; line-height:1.4;"><span class="mono" style="font-size:12.5px;">DR-0029</span> <b>≤ 40 km/h</b> on a normal bridge crossing<br>
+          <span style="color:var(--muted);">FM 5-36 / STANAG 2015, p. 74 · <b style="color:var(--sure);">applicable</b> · to check: does the route cross a classified bridge?</span></div>
+        <div class="stat" style="width:210px;"><div class="n" style="font-size:30px;">3–36</div><div class="l" style="font-size:13.5px;">rules kept per order (8 orders): 24 applicable, 50 to confirm, 32 not applicable</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot">9 · RAG/rules/doctrine_final_unique_rules.csv (read only) · RAG/search/rank_extraction.js · lenient policy</div>
+  <aside class="notes" data-time="35">The rules come from NATO and US Army doctrine on road movements and bridges: STANAG 2174, STANAG 2015, AEP-3.12.1.5 and AJP-4.4, 214 rules, each kept with its quote, value, scope, conditions and page, and reviewed; 99 quotes are still to check, and the app says so. For each extracted order, its requirements are searched with BM25, then each rule's conditions are compared with what the order says: country, bridges, expressways, halts, load class. That gives the status: applicable, to confirm, background, or not applicable; something the order does not say is never treated as false. A number check compares the rule's limit with the order's values. The local model only explains; the status and the sources are fixed by code. On our eight orders, 3 to 36 rules are kept per order.</aside>
+</section>
+
+<!-- 8b · ONE MODEL, FOUR ROLES -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>6</b></span>Explainability · one frozen language model</div>
+  <h1>One frozen model, four jobs: only the decoding changes</h1>
+  <div class="body" style="top:170px;">
+    <svg style="position:absolute; left:0; top:0; width:1152px; height:430px; overflow:visible;" viewBox="0 0 1152 430">
+      <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#7C8B8F"/></marker></defs>
+      <g fill="none" stroke-width="2.4" marker-end="url(#ah2)">
+        <path d="M232 46 C252 46, 252 190, 270 190" stroke="#2A78D6"/><path d="M232 154 C252 154, 252 200, 270 200" stroke="#1F7A6D"/>
+        <path d="M232 262 C252 262, 252 210, 270 210" stroke="#B87A00"/><path d="M232 370 C252 370, 252 220, 270 220" stroke="#C8382F"/>
+        <path d="M528 205 H560" stroke="#7C8B8F"/>
+        <path d="M842 205 C858 205, 858 46, 874 46" stroke="#2A78D6"/><path d="M842 205 C858 205, 858 154, 874 154" stroke="#1F7A6D"/>
+        <path d="M842 205 C858 205, 858 262, 874 262" stroke="#B87A00"/><path d="M842 205 C858 205, 858 370, 874 370" stroke="#C8382F"/>
+      </g>
+    </svg>
+    <div class="lbl" style="left:0; top:-24px;">Input of each job</div>
+    <div class="lbl" style="left:560px; top:-24px;">Decoding · changes per job</div>
+    <div class="lbl" style="left:874px; top:-24px;">Output it can only produce</div>
+    <div class="nd" style="left:0; top:0; width:232px; height:92px; background:#E8F1FC;"><span class="h">1 · Extraction</span>pages of a PDF order, as images</div>
+    <div class="nd" style="left:0; top:108px; width:232px; height:92px; background:#E3F1EE;"><span class="h">2 · Rule explanations</span>facts of the order + candidate rules</div>
+    <div class="nd" style="left:0; top:216px; width:232px; height:92px; background:var(--doubt-bg);"><span class="h">3 · Chat (orders, route)</span>route trace + rules, ≤ 6,000 tokens</div>
+    <div class="nd" style="left:0; top:324px; width:232px; height:92px; background:#FBEAE8;"><span class="h">4 · Written order <span class="otag" style="color:var(--route); border-color:var(--route);">NEW</span></span>text + points of the PDF, of the map, coordinates</div>
+
+    <div style="position:absolute; left:270px; top:0; width:258px; height:416px; background:var(--dark); border-radius:16px; color:var(--on-dark); padding:14px 16px;">
+      <div class="row" style="gap:10px; align-items:center;"><div style="width:34px; height:34px; color:#9CD3FF;"><!--icon:LuSnowflake--></div>
+        <div><div style="font-size:17px; font-weight:600;">Qwen3-VL-8B</div><div style="font-size:12.5px; color:var(--on-dark-muted);">frozen · shared · never fine-tuned</div></div></div>
+      <div style="margin-top:16px; background:var(--dark-2); border-radius:10px; padding:10px 12px; font-size:14px;"><b>Encoder</b><br><span style="color:var(--on-dark-muted);">image patches + text tokens</span></div>
+      <div style="text-align:center; color:var(--on-dark-muted); font-size:18px; line-height:1.2;">↓</div>
+      <div style="background:var(--dark-2); border-radius:10px; padding:10px 12px; font-size:14px;"><b>Transformer, 8 B parameters</b><br><span style="color:var(--on-dark-muted);">same weights for every job</span></div>
+      <div style="text-align:center; color:var(--on-dark-muted); font-size:18px; line-height:1.2;">↓</div>
+      <div style="background:var(--dark-2); border-radius:10px; padding:10px 12px; font-size:14px;"><b>Next-token scores</b><br><span style="color:var(--on-dark-muted);">one vLLM server, half an H100</span></div>
+      <div class="row" style="gap:6px; align-items:center; margin-top:14px; font-size:12.5px; color:var(--on-dark-muted);"><div style="width:16px; height:16px;"><!--icon:LuLock--></div>weights loaded once, in memory</div>
+    </div>
+
+    <div style="position:absolute; left:560px; top:0; width:282px; height:416px; border:2px solid var(--route); border-radius:16px; background:#fff; padding:12px 14px;">
+      <div style="font-size:15px; font-weight:600;">Greedy + JSON grammar</div>
+      <div style="font-size:13px; color:var(--muted);">temperature 0 · a mask lets through only tokens that keep the answer valid</div>
+      <div style="font-size:13px; margin-top:10px;">Next token of <span class="mono" style="font-size:12px;">"start":</span> for « Va de PD4 à Verdun »</div>
+      <div style="margin-top:6px; display:flex; flex-direction:column; gap:5px; font-size:13px;">
+        <div class="row" style="gap:6px; align-items:center;"><span class="mono" style="width:56px; font-size:12px;">PD4</span><div style="height:12px; width:150px; background:var(--route); border-radius:3px;"></div><span>✓</span></div>
+        <div class="row" style="gap:6px; align-items:center;"><span class="mono" style="width:56px; font-size:12px; text-decoration:line-through; color:var(--muted);">Verdun</span><div style="height:12px; width:96px; background:#D5DCDD; border-radius:3px;"></div><span style="color:var(--muted);">masked</span></div>
+        <div class="row" style="gap:6px; align-items:center;"><span class="mono" style="width:56px; font-size:12px;">P</span><div style="height:12px; width:50px; background:var(--route); opacity:.55; border-radius:3px;"></div><span>✓</span></div>
+        <div class="row" style="gap:6px; align-items:center;"><span class="mono" style="width:56px; font-size:12px; text-decoration:line-through; color:var(--muted);">49.2</span><div style="height:12px; width:36px; background:#D5DCDD; border-radius:3px;"></div><span style="color:var(--muted);">masked</span></div>
+      </div>
+      <div style="font-size:13px; margin-top:10px; line-height:1.4;">Only the mask changes per job:<br>
+        <span style="color:#2A78D6;">■</span> order schema &nbsp;<span style="color:#1F7A6D;">■</span> rule ids<br><span style="color:#B87A00;">■</span> cited ids &nbsp;<span style="color:#C8382F;">■</span> point ids</div>
+      <div style="margin-top:8px;"><span class="tag i" style="font-size:10.5px;">Illustrative scores</span></div>
+    </div>
+
+    <div class="nd" style="left:874px; top:0; width:278px; height:92px; background:#E8F1FC;"><span class="mono" style="font-size:12px;">{"speed_cap": 80, "page": 2}</span><br>every value with its page · 10–30 s</div>
+    <div class="nd" style="left:874px; top:108px; width:278px; height:92px; background:#E3F1EE;"><span class="mono" style="font-size:12px;">{"rule_id": "DR-0031"}</span><br>only selected rules · 3,970 → 964 tokens</div>
+    <div class="nd" style="left:874px; top:216px; width:278px; height:92px; background:var(--doubt-bg);"><span class="mono" style="font-size:12px;">{"cited": ["L1S2"]}</span><br>only ids in the context · ≈ 4,800 → 250</div>
+    <div class="nd" style="left:874px; top:324px; width:278px; height:92px; background:#FBEAE8;"><span class="mono" style="font-size:12px;">{"start": "PD4", "end": "P"}</span><br>never a position · 928 → 82 · 0.6–1 s</div>
+
+    <div class="row" style="position:absolute; left:0; right:0; top:432px; gap:14px;">
+      <div class="card" style="flex:1; font-size:14.5px; padding:10px 14px;"><b>Frugal:</b> one frozen model in memory instead of four; no invalid output, so few retries; common questions never reach it.</div>
+      <div class="card" style="flex:1; font-size:14.5px; padding:10px 14px;"><b>Checked:</b> every point must be named in the text, every number written in it; otherwise the rule reader takes over.</div>
+    </div>
+  </div>
+  <div class="foot">10 · token counts: mean per call, outputs/orders/llm_calls.jsonl · tests/test_text_order.py</div>
+  <aside class="notes" data-time="30">One language model does four jobs, and it is never retrained: it is frozen, loaded once, shared. Reading PDF orders, explaining rules, the chat, and turning a written order into a scenario: same weights, same greedy decoding. The only thing that changes per job is the decoding mask in the middle. At each step, a JSON grammar lets through only the tokens that keep the answer valid. In this illustration, the model wants to write Verdun as the departure, but Verdun is not a known point, so the token is masked and it must choose among the allowed ids: a PDF point, the point P clicked on the map, a waypoint, a coordinate found in the text. So it can never invent a position. One model instead of four, few retries, and the common questions never reach it.</aside>
+</section>
+
+<!-- 8c · LINKED ORDERS -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>6</b></span>Explainability · orders that depend on each other</div>
+  <h1>When orders amend each other, the code decides what is in force</h1>
+  <div class="body row" style="gap:30px;">
+    <div class="col" style="width:600px; gap:12px;">
+      <div style="position:relative; height:210px;">
+        <svg style="position:absolute; left:0; top:0; width:600px; height:210px;" viewBox="0 0 600 210">
+          <defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#7C8B8F"/></marker></defs>
+          <g fill="none" stroke="#7C8B8F" stroke-width="2" marker-end="url(#ah3)">
+            <path d="M200 42 C240 42, 250 60, 286 62"/><path d="M200 112 C240 112, 250 82, 286 80"/><path d="M200 180 C246 180, 256 100, 286 96" stroke-dasharray="5 4"/>
+          </g>
+          <text x="208" y="36" font-size="12" fill="#5B6B70">modifie</text><text x="208" y="106" font-size="12" fill="#5B6B70">modifie</text><text x="206" y="198" font-size="12" fill="#5B6B70">complète</text>
+        </svg>
+        <div class="nd" style="left:0; top:14px; width:200px; height:56px; background:#FBEAE8;"><span class="h">FRAGO 2 · 18:00</span>vitesse 40 km/h</div>
+        <div class="nd" style="left:0; top:84px; width:200px; height:56px;"><span class="h">FRAGO 1 · 14:00</span>vitesse 50 km/h · 150 m</div>
+        <div class="nd" style="left:0; top:152px; width:200px; height:56px;"><span class="h">Annexe B</span>charge 35 t</div>
+        <div class="nd" style="left:290px; top:36px; width:160px; height:88px; background:#fff; border:1.5px solid var(--line);"><span class="h">OPORD 7 · 08:00</span>60 km/h · 100 m · 40 t</div>
+        <div class="nd" style="left:470px; top:36px; width:130px; height:88px; background:#fff; border:2px dashed #9AA6A9;"><span class="h">OPORD 9</span>70 km/h · not linked: kept apart</div>
+      </div>
+      <table class="pt" style="font-size:14.5px;">
+        <tr><th>Item</th><th>In force (computed)</th><th style="width:170px;">Why</th></tr>
+        <tr><td>max speed</td><td style="color:var(--ink); font-weight:400;"><b>40 km/h</b> <s style="color:var(--muted);">60, 50</s></td><td>later FRAGO wins</td></tr>
+        <tr><td>spacing</td><td style="color:var(--ink); font-weight:400;"><b>150 m</b> <s style="color:var(--muted);">100</s></td><td>FRAGO 1 amends</td></tr>
+        <tr><td>max load</td><td style="color:var(--doubt); font-weight:600;">40 t vs 35 t</td><td style="color:var(--doubt);">conflict: to command</td></tr>
+      </table>
+      <div style="font-size:13px; color:var(--muted);"><span class="tag i" style="font-size:10.5px;">Synthetic test orders</span> scripts/make_test_orders.py · tests/test_order_links.py</div>
+    </div>
+    <div class="col" style="flex:1; gap:9px;">
+      <div style="font-size:16px; font-weight:600; color:var(--muted);">In the context window</div>
+      <div class="card" style="padding:9px 14px; font-size:14.5px;"><b>1 · The chain comes in by itself.</b> Pick FRAGO 2: the OPORD, FRAGO 1 and Annexe B are added.</div>
+      <div class="card" style="padding:9px 14px; font-size:14.5px;"><b>2 · One required block first:</b> links, values in force, conflicts, ahead of rules and fragments.</div>
+      <div class="card" style="padding:9px 14px; font-size:14.5px;"><b>3 · Old fragments last,</b> marked [REMPLACÉ]: cut first when the budget is tight.</div>
+      <div class="card" style="padding:9px 14px; font-size:14.5px; background:#FBEAE8;"><b>4 · Checked:</b> « 60 km/h » given as current → answer rejected, rule-based answer instead.</div>
+      <div class="shot" style="height:150px; margin-top:4px;"><img src="img/order_links.png" alt="Linked orders card in the Orders tab" style="object-position:left 80%"></div>
+      <div class="cap" style="margin-top:0;">Ordres tab: links (rejectable), values in force, conflict · 5 linked orders fit in 1,305 tokens</div>
+    </div>
+  </div>
+  <div class="foot">11 · links read from the fragments (« modifie », « annule et remplace », « complète », FRAGO / annex headers, DTG) or added by the operator</div>
+  <aside class="notes" data-time="30">Orders depend on each other: a FRAGO amends an OPORD, an annex completes it. Side by side, the model would see 60, 50 and 40 kilometres per hour as equals. So the code reads the links from the fragments, with their dates, and decides what is in force: 40, because the later FRAGO wins; 150 metres; and for the load, the annex contradicts the OPORD without amending it, so it is a conflict for the command, not something the model settles. In the context window: pick one order and its whole chain comes in; one required block states what is in force; replaced fragments go last and are cut first; and an answer that gives 60 as current is rejected. These are synthetic test orders, since the exercise PDFs are independent.</aside>
+</section>
+
+<!-- 8d · DEPENDENCIES AND LIMITS -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>6</b></span>Dependencies taken into account</div>
+  <h1>Every dependency the app takes into account, and where it stops</h1>
+  <div class="body">
+    <table class="pt" style="font-size:14px;">
+      <tr><th style="width:190px;">Dependency</th><th>How the app handles it</th><th style="width:330px;">Limit</th></tr>
+      <tr><td>Leg → next leg <span class="otag" style="color:var(--route); border-color:var(--route);">NEW</span></td><td style="color:var(--ink); font-weight:400; white-space:normal;">starts at the previous arrival; earlier paths <b>forbidden</b> (20 m), reopened only around the shared point if needed, and said</td><td style="color:var(--muted); font-weight:400; white-space:normal;">reopening up to 5 km around that point; matched on geometry</td></tr>
+      <tr><td>Order → order</td><td style="color:var(--ink); font-weight:400; white-space:normal;">FRAGO / annex / cancel links; values in force along the chain, by date; conflicts to command</td><td style="color:var(--muted); font-weight:400; white-space:normal;">needs an explicit reference; only quantified items (speed, spacing, load, height, gaps, halts)</td></tr>
+      <tr><td>Order → doctrine</td><td style="color:var(--ink); font-weight:400; white-space:normal;">rule status from its conditions vs the order's facts; number check</td><td style="color:var(--muted); font-weight:400; white-space:normal;">unknown conditions stay « to check »; 99 quotes not yet verified</td></tr>
+      <tr><td>Map ↔ written order</td><td style="color:var(--ink); font-weight:400; white-space:normal;">point P, departure, waypoints, zones, rectangle, PDF points, coordinates</td><td style="color:var(--muted); font-weight:400; white-space:normal;">place names not resolved (offline by design)</td></tr>
+      <tr><td>Convoy → convoy</td><td style="color:var(--ink); font-weight:400; white-space:normal;">priority order; roads of earlier convoys priced or forbidden</td><td style="color:var(--muted); font-weight:400; white-space:normal;">planned in sequence, no timing at junctions</td></tr>
+      <tr><td>Constraint → route</td><td style="color:var(--ink); font-weight:400; white-space:normal;">one formula: hard removes, soft prices, doubt included</td><td style="color:var(--muted); font-weight:400; white-space:normal;">each section's doubt priced on its own</td></tr>
+      <tr><td>Question → context</td><td style="color:var(--ink); font-weight:400; white-space:normal;">linked orders added, links block first, replaced text cut first</td><td style="color:var(--muted); font-weight:400; white-space:normal;">6,000 tokens: beyond ~10 orders, some orders' text is left out (reported)</td></tr>
+    </table>
+    <div class="row" style="gap:14px; margin-top:12px; align-items:center;">
+      <span class="tag m">Measured</span>
+      <span style="font-size:14.5px;">Return leg B → A with the outbound forbidden: <b>94.8 → 119.3 km</b>, only <b>1.7 km</b> reused, around B (the only way out). Written order: « Puis va à WP1 sans repasser par le trajet précédent ».</span>
+    </div>
+  </div>
+  <div class="foot">12 · interface/backend/amiad_api.py (history), order_links.py, text_order.py · tests/test_mission_history.py, test_order_links.py</div>
+  <aside class="notes" data-time="30">Here is every dependency the app takes into account, and honestly where each one stops. New: legs of a mission. The next leg starts where the previous one ended and may not reuse its path; it is reopened only around the shared point if there is no other way out, and the app says so: on a return trip, 1.7 kilometres reused, all around the turning point. Orders amending orders, doctrine rules matched to orders, the map referenced from a written order, convoys deconflicted, constraints in one formula, and the context window. The limits are on the right: explicit references only, quantified items only, sequential convoys, and a 6,000-token budget.</aside>
+</section>
+
+<!-- 8e · CONTEXT STRESS -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>6</b></span>Stress test · context window</div>
+  <h1>Under load, details go first; the dependencies always stay</h1>
+  <div class="body">
+    <div><span class="tag m">Measured · <span class="src">runs/20261114-033644_context_stress</span> · Qwen3-VL-8B · one question per setting</span></div>
+    <div class="row" style="gap:20px; margin-top:8px;"><!--chart:ctx_orders--><!--chart:ctx_chain--><!--chart:ctx_budget--></div>
+    <div class="row" style="gap:12px; margin-top:10px;">
+      <div class="card" style="flex:1; padding:10px 14px; font-size:14.5px;"><b>1 → 40 orders</b> stay under 6,000 tokens; at 40, 16 orders' text is left out, their rules and links kept, and the answer says so.</div>
+      <div class="card" style="flex:1; padding:10px 14px; font-size:14.5px;"><b>Chain of 1 → 20 FRAGOs</b>: value in force right <b>5/5</b>, never an old value <b>0/5</b>; links block 124 → 1,068 tokens.</div>
+      <div class="card" style="flex:1; padding:10px 14px; font-size:14.5px;"><b>Conflicts</b> reported <b>3/3</b>, never settled. Below ~2,000 tokens the required blocks alone (1,726) no longer fit.</div>
+    </div>
+  </div>
+  <div class="foot">13 · experiments/context_stress.py · synthetic orders in the run folder · 80 s, 1 CPU job + the shared model</div>
+  <aside class="notes" data-time="30">We stress-tested the context window. Left: from 1 to 40 orders, the context stays under the 6,000-token budget; beyond 10 orders some orders' text is left out, but never their rules or links, and the answer reports it. Middle: a chain of up to 20 successive FRAGOs, only the last one selected: the whole chain comes in, and the model gave the value in force every time, never an old one. Right: shrinking the budget drops more blocks, but the links block is kept every time. Conflicts were reported, never settled. One question per setting, so a small sample.</aside>
+</section>
+
+<!-- 9 · FLEXIBILITY -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>7</b></span>Flexibility</div>
+  <h1>Many convoys on one network, with no hard-coded scenario</h1>
+  <div class="body row" style="gap:40px;">
+    <div style="width:500px;">
+      <div class="shot" style="height:400px;"><img src="img/convoys_map.png" alt="Eight PDF exercises planned as convoys"></div>
+      <div class="cap">The 8 PDF exercises planned as 8 convoys, by priority, deconflicted (screenshot).</div>
+    </div>
+    <div class="col" style="flex:1; gap:12px;">
+      <div><span class="tag m">Measured · <span class="src">runs/20261113-202358_stress_test</span></span></div>
+      <!--chart:deconflict-->
+      <div style="font-size:17px;"><b>Pricing shared roads</b> (k · used) cuts sharing from 139 km to 3.6 km for +1 % total distance.</div>
+      <div style="font-size:16px; font-weight:600; color:var(--muted); margin-top:6px;">Every scenario is data for the same formula:</div>
+      <div class="chips tight">
+        <span class="chip">TIFF / + OSM / + BD TOPO / no model, 4 U-Nets</span>
+        <span class="chip">waypoints, free order</span><span class="chip">round trip</span><span class="chip">zones to avoid</span>
+        <span class="chip">deployment area</span><span class="chip">shortest / fastest, convoy speed</span>
+        <span class="chip">priority per convoy</span><span class="chip">λ</span><span class="chip">saved scenarios, never overwritten</span><span class="chip" style="background:#FBEAE8;">written orders (PDF / map points)</span><span class="chip" style="background:#FBEAE8;">mission legs, no reuse of earlier paths</span>
+      </div>
+    </div>
+  </div>
+  <div class="foot">14</div>
+  <aside class="notes" data-time="25">Flexibility follows from the formula. Each convoy has its own points, speed, objective and priority, and convoys are planned in priority order on the same network. On 16 random convoys, without deconfliction they share 139 kilometres of road; pricing the roads already taken brings that down to 3.6 kilometres for one percent more distance; forbidding them costs 19 percent. None of this is hard-coded: every option on the right is data passed to the same formula, and scenarios are saved as new files, never overwritten.</aside>
+</section>
+
+<!-- 11 · STRESS -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>9</b></span>Stress testing</div>
+  <h1>Flat in distance, linear in convoys, fragile only to scattered gaps</h1>
+  <div class="body">
+    <div class="row" style="gap:12px; align-items:center;">
+      <span class="tag m">Measured · <span class="src">runs/20261113-202358_stress_test</span></span>
+      <span class="tag m">Measured · <span class="src">analysis/stress_test_feasibility_relative.json</span></span>
+    </div>
+    <div class="row" style="gap:16px; margin-top:10px;"><!--chart:scale_distance--><!--chart:scale_convoys--><!--chart:robust_patches--><!--chart:robust_random--></div>
+    <div class="row" style="gap:16px; margin-top:2px; font-size:15px; line-height:1.3;">
+      <div style="width:275px;">25 routes, 3–110 km apart: 0.13–0.18 s each.</div>
+      <div style="width:275px;">Linear: 64 convoys in 33 s.</div>
+      <div style="width:275px;">Stains, folds, labels: up to 20 % of the sheet still routes 87–100 %.</div>
+      <div style="width:275px;">5 % of sections missing at random breaks a quarter of routes.</div>
+    </div>
+    <div class="chips" style="margin-top:18px;">
+      <span class="chip">noise σ ≤ 0.3 on confidence: all routed, length ±0.5 %</span><span class="chip">7 free waypoints: 0.34 s</span>
+      <span class="chip">60 zones to avoid: 0.59 s</span><span class="chip">40 / 40 random parameter combinations</span><span class="chip">1 → 16 cores: same 5.0 s</span>
+    </div>
+  </div>
+  <div class="foot">15 · feasible = route found and no point pushed > 500 m further from the network than on the intact one · 10 exercises × 3 draws per level</div>
+  <aside class="notes" data-time="30">Stress tests on the whole sheet. Distance does not matter: 3 to 110 kilometres all solve in under 0.2 seconds. Convoys scale linearly: 64 in 33 seconds. Then degraded data. Unreadable patches, like stains or folds, are tolerated: up to 20 percent of the sheet still routes almost every exercise. Scattered random gaps are the weak point: 5 percent of sections missing breaks a quarter of the routes, and 10 percent almost all. That is why OSM can fill gaps and why learned gap bridging is next. Noise on the confidence changes almost nothing, every constraint stays cheap, and extra cores do not speed up one route, they serve more users. One note: these feasibility figures use a corrected relative criterion, stored as a separate analysis; the run is untouched.</aside>
+</section>
+
+<!-- 12 · VISION MODULE -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>10</b></span>Extension · when no shapefile exists</div>
+  <h1>Ambitious extension: the roads read from the scan itself</h1>
+  <div class="body row" style="gap:20px;">
+    <div style="position:relative; width:560px; height:470px;">
+      <div class="layer3d" style="top:-30px; z-index:10;"><img src="img/step_1_scan.png" alt=""></div>
+      <div class="layer-lab" style="top:18px;"><b>1 · Scan tile</b><br><span>512 px RGB · rotations / flips in training</span></div>
+      <div class="layer3d" style="top:30px; z-index:11;"><img src="img/step_2_probability.png" alt=""></div>
+      <div class="layer-lab" style="top:78px;"><b>2 · U-Net road probability</b><br><span>per pixel, then calibrated</span></div>
+      <div class="layer3d" style="top:90px; z-index:12;"><img src="img/step_3_classes.png" alt=""></div>
+      <div class="layer-lab" style="top:138px;"><b>3 · Class probabilities</b><br><span>5 maps; most likely one shown</span></div>
+      <div class="layer3d" style="top:150px; z-index:13;"><img src="img/step_4_mask.png" alt=""></div>
+      <div class="layer-lab" style="top:198px;"><b>4 · Road mask</b><br><span>p ≥ 0.5, small blobs removed</span></div>
+      <div class="layer3d" style="top:210px; z-index:14;"><img src="img/step_5_centrelines.png" alt=""></div>
+      <div class="layer-lab" style="top:258px;"><b>5 · Centre lines</b><br><span>thinned to 1 px (skeleton)</span></div>
+      <div class="layer3d" style="top:270px; z-index:15;"><img src="img/step_6_graph.png" alt=""></div>
+      <div class="layer-lab" style="top:318px;"><b>6 · Road graph</b><br><span>46 junctions · 86 sections, each with p(e)</span></div>
+    </div>
+    <div class="col" style="flex:1; gap:10px;">
+      <div class="card" style="padding:10px 14px; font-size:14.5px; background:#E8F1FC;"><b>Why:</b> with <b>no BD TOPO or OSM shapefile</b>, the route can still be computed on the network the U-Net reads from the scan, with its confidence.</div>
+      <div style="font-size:14px; font-weight:600; color:var(--muted);">Architecture · PRC Attention Res-U-Net, 15.2 M parameters</div>
+      <div style="position:relative; height:200px;">
+        <svg style="position:absolute; inset:0; width:100%; height:200px;" viewBox="0 0 560 200">
+          <g font-family="Plex, Arial" font-size="11.5" fill="#14232A">
+            <rect x="10" y="80" width="60" height="40" rx="6" fill="#F1F5F4"/><text x="40" y="104" text-anchor="middle">tile</text>
+            <rect x="90" y="10" width="64" height="26" rx="5" fill="#2A78D6"/><text x="122" y="27" text-anchor="middle" fill="#fff">64</text>
+            <rect x="110" y="48" width="64" height="26" rx="5" fill="#2A78D6"/><text x="142" y="65" text-anchor="middle" fill="#fff">128</text>
+            <rect x="130" y="86" width="64" height="26" rx="5" fill="#2A78D6"/><text x="162" y="103" text-anchor="middle" fill="#fff">256</text>
+            <rect x="150" y="124" width="64" height="26" rx="5" fill="#2A78D6"/><text x="182" y="141" text-anchor="middle" fill="#fff">512</text>
+            <text x="150" y="172" text-anchor="middle" fill="#5B6B70">encoder: ResNet-18 (residual)</text>
+            <rect x="370" y="10" width="64" height="26" rx="5" fill="#1F7A6D"/><text x="402" y="27" text-anchor="middle" fill="#fff">32</text>
+            <rect x="350" y="48" width="64" height="26" rx="5" fill="#1F7A6D"/><text x="382" y="65" text-anchor="middle" fill="#fff">64</text>
+            <rect x="330" y="86" width="64" height="26" rx="5" fill="#1F7A6D"/><text x="362" y="103" text-anchor="middle" fill="#fff">128</text>
+            <rect x="310" y="124" width="64" height="26" rx="5" fill="#1F7A6D"/><text x="342" y="141" text-anchor="middle" fill="#fff">256</text>
+            <text x="380" y="172" text-anchor="middle" fill="#5B6B70">decoder: upsampling ×2</text><text x="506" y="96" text-anchor="middle" fill="#5B6B70" font-size="10.5">7 probability maps</text>
+            <g stroke="#B87A00" stroke-width="1.8" stroke-dasharray="4 3" fill="none"><path d="M154 23 H370"/><path d="M174 61 H350"/><path d="M194 99 H330"/></g>
+            <g fill="#FFF4DC" stroke="#B87A00" stroke-width="1.5"><circle cx="262" cy="23" r="10"/><circle cx="262" cy="61" r="10"/><circle cx="262" cy="99" r="10"/></g>
+            <g font-size="9.5" fill="#B87A00" text-anchor="middle"><text x="262" y="26.5">AG</text><text x="262" y="64.5">AG</text><text x="262" y="102.5">AG</text></g>
+            <path d="M214 137 H310" stroke="#7C8B8F" stroke-width="1.8" fill="none"/>
+            <rect x="460" y="4" width="92" height="22" rx="5" fill="#FBEAE8"/><text x="506" y="19" text-anchor="middle">p(road)</text>
+            <rect x="460" y="30" width="92" height="22" rx="5" fill="#FBEAE8"/><text x="506" y="45" text-anchor="middle">p(class 1–5)</text>
+            <rect x="460" y="56" width="92" height="22" rx="5" fill="#FBEAE8"/><text x="506" y="71" text-anchor="middle">p(bridge)</text>
+            <path d="M434 23 L458 15 M434 23 L458 41 M434 23 L458 67" stroke="#7C8B8F" stroke-width="1.5" fill="none"/>
+            <path d="M70 100 L88 25" stroke="#7C8B8F" stroke-width="1.5" fill="none"/>
+            <text x="262" y="196" text-anchor="middle" fill="#B87A00">AG = attention gate on each skip link: keeps road-like features, damps text and hatching</text>
+          </g>
+        </svg>
+      </div>
+      <div class="card" style="padding:9px 14px; font-size:14px; background:var(--doubt-bg); line-height:1.4;"><b>Fewer constraints, but its own doubt priced:</b> a scan holds less information than a road database (no width, load class, bridge MLC, names), so those rules stay « to check »; but every section read from it carries its confidence p(e), used in the route cost.</div>
+    </div>
+  </div>
+  <div class="foot">16 · images: the same 640 px window of the sheet at each step, out of fold (docs/presentation/make_figures.py)</div>
+  <aside class="notes" data-time="40">Finally, the ambitious part, useful when there is no shapefile at all, no BD TOPO and no OSM: reading the roads from the scan itself. On the left, one window of the map at each step: the scan tile; the U-Net's road probability; the road class it reads; the mask above 0.5; the centre lines; and the road graph, each section with its confidence. On the right, the network: a ResNet-18 encoder, a decoder, and attention gates on the skip links that keep road-like features and damp text and hatching; three outputs: road, class and bridge. It outputs only probabilities: road, five road classes, and bridges. Honestly, it cannot carry every constraint, because a scan holds less information than a road database: no width, load class or bridge class, so those rules stay to check. But unlike a database, it knows how unsure it is, and that doubt is priced in the route.</aside>
+</section>
+
+<!-- 12b · U-NET VERSION AND TECHNIQUES -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>10</b></span>Extension · the four models of the app</div>
+  <h1>Four trained variants, chosen in the app by what you need</h1>
+  <div class="body">
+    <div class="row" style="gap:14px;">
+      <div class="var-card" style="border:2px solid var(--blue);">
+        <div class="shot" style="height:200px;"><img src="img/var_coverage.png" alt="" style="object-position:center"></div>
+        <div style="font-size:16.5px; font-weight:600; margin-top:8px;">Couverture maximale ★</div>
+        <div style="font-size:13px; color:var(--muted);">default · train no Dice · 1 pass · 15 s</div>
+        <div class="bar"><b>found</b><i><span style="width:71.1%"></span></i><em>71 %</em></div>
+        <div class="bar c"><b>correct</b><i><span style="width:82.2%"></span></i><em>82.2 %</em></div>
+        <div style="font-size:13.5px; margin-top:4px;">length gap 4.0 %</div>
+      </div>
+      <div class="var-card">
+        <div class="shot" style="height:200px;"><img src="img/var_compromise.png" alt="" style="object-position:center"></div>
+        <div style="font-size:16.5px; font-weight:600; margin-top:8px;">Compromis</div>
+        <div style="font-size:13px; color:var(--muted);">cleaner network · train no Dice · TTA 8 views · 32 s</div>
+        <div class="bar"><b>found</b><i><span style="width:69.9%"></span></i><em>70 %</em></div>
+        <div class="bar c"><b>correct</b><i><span style="width:84.2%"></span></i><em>84.2 %</em></div>
+        <div style="font-size:13.5px; margin-top:4px;">overlap 75 %</div>
+      </div>
+      <div class="var-card">
+        <div class="shot" style="height:200px;"><img src="img/var_precision.png" alt="" style="object-position:center"></div>
+        <div style="font-size:16.5px; font-weight:600; margin-top:8px;">Précision maximale</div>
+        <div style="font-size:13px; color:var(--muted);">fewest false roads · train + Dice · TTA 8 views · 32 s</div>
+        <div class="bar"><b>found</b><i><span style="width:68.5%"></span></i><em>68 %</em></div>
+        <div class="bar c"><b>correct</b><i><span style="width:85.7%"></span></i><em>85.7 %</em></div>
+        <div style="font-size:13.5px; margin-top:4px;">99 % connected</div>
+      </div>
+      <div class="var-card">
+        <div class="shot" style="height:200px;"><img src="img/var_reference.png" alt="" style="object-position:center"></div>
+        <div style="font-size:16.5px; font-weight:600; margin-top:8px;">Référence</div>
+        <div style="font-size:13px; color:var(--muted);">baseline · train + Dice · 1 pass · 15 s</div>
+        <div class="bar"><b>found</b><i><span style="width:69.7%"></span></i><em>70 %</em></div>
+        <div class="bar c"><b>correct</b><i><span style="width:84.0%"></span></i><em>84.0 %</em></div>
+        <div style="font-size:13.5px; margin-top:4px;">length gap 5.1 %</div>
+      </div>
+    </div>
+    <div class="row" style="gap:12px; margin-top:12px;">
+      <div class="card" style="flex:1; padding:9px 14px; font-size:13.5px; line-height:1.38;"><b>TTA</b> → average 8 rotations / flips at inference: cleaner network (16k vs 25k sections), +17 s per sheet, routes not shorter.</div>
+      <div class="card" style="flex:1; padding:9px 14px; font-size:13.5px; line-height:1.38;"><b>More tiles where unsure</b> → half the training tiles from the 20 % most uncertain cells: hurt ordinary roads (gap 5.1 → 5.7–6 %), not kept.</div>
+      <div class="card" style="flex:1; padding:9px 14px; font-size:13.5px; line-height:1.38;"><b>Dice / clDice</b> → overlap / connectivity losses: more precise, cleaner, but longer routes; the default drops Dice.</div>
+    </div>
+  </div>
+  <div class="foot">17 · same window for the four, out of fold · found / correct = BD TOPO roads found / traced roads that are real, whole sheet, 25 m (docs/prc_best_config.md)</div>
+  <aside class="notes" data-time="30">The app offers four trained variants of the same network, named as in the Configure tab. On the same window they read almost the same roads; the differences are in minor roads and junctions, and in the whole-sheet figures: coverage finds the most roads and gives the routes closest to the reference; compromise and precision average eight rotated views at inference, 32 seconds instead of 15, for a cleaner and more precise network. Two training ideas did not help routes: more tiles where the model is unsure, and the Dice losses.</aside>
+</section>
+
+<!-- 13 · ADAPTABILITY & CIVILIAN USE -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>10</b></span>Extension · adapting to new maps</div>
+  <h1>Pretrained on Swiss maps; two IGN images are enough to adapt it</h1>
+  <div class="body">
+    <div class="row" style="gap:12px; align-items:flex-start;">
+      <div style="width:206px;"><div class="shot" style="height:206px;"><img src="img/siegfried.png" alt="" style="object-position:center"></div>
+        <div class="cap"><b style="color:var(--ink)">Pretraining</b>: Swiss Siegfried maps</div></div>
+      <div style="width:206px;"><div class="shot" style="height:206px;"><img src="img/step_1_scan.png" alt="" style="object-position:center"></div>
+        <div class="cap"><b style="color:var(--ink)">Our scan</b>: IGN 1:100,000, Lavoye</div></div>
+      <div class="arrow" style="margin-top:80px;">›</div>
+      <div style="width:206px;"><div class="shot" style="height:206px;"><img src="img/ver_zeroshot.png" alt=""></div>
+        <div class="cap"><b style="color:var(--ink)">Zero-shot</b> · road F1 <b>0.09</b>: almost nothing read</div></div>
+      <div style="width:206px;"><div class="shot" style="height:206px;"><img src="img/ver_1sheet.png" alt=""></div>
+        <div class="cap"><b style="color:var(--ink)">1 sheet</b> · F1 <b>0.59</b> · exercise gap 7.4 %</div></div>
+      <div style="width:206px;"><div class="shot" style="height:206px;"><img src="img/ver_2sheets.png" alt=""></div>
+        <div class="cap"><b style="color:var(--ink)">2 sheets</b> · F1 0.58 · gap <b>5.1 %</b> · more robust</div></div>
+    </div>
+    <div class="row" style="gap:16px; margin-top:16px;">
+      <div class="stat" style="flex:1;"><div class="n" style="font-size:32px;">2 images</div><div class="l">208 + 191 Mpx, labels from BD TOPO, no hand labelling</div></div>
+      <div class="stat" style="flex:1;"><div class="n" style="font-size:32px;">≈ 6–9 m</div><div class="l">per pixel, 512-px tiles</div></div>
+      <div class="stat" style="flex:1;"><div class="n" style="font-size:32px;">1.3 GPU-h</div><div class="l">4 folds + final, one H100</div></div>
+      <div class="stat" style="flex:1.3;"><div class="n" style="font-size:32px; color:var(--sure);">enough</div><div class="l">one sheet already reads the roads; the second improves routes (7.4 → 5.1 %) and robustness to blur and resolution</div></div>
+    </div>
+    <div class="row" style="gap:12px; align-items:center; margin-top:14px;">
+      <div class="badge" style="width:34px; height:34px; padding:8px;"><!--icon:LuRefreshCw--></div>
+      <span style="font-size:15.5px;"><b>Same recipe for any civilian scan:</b> label from a vector map → fine-tune ≈ 15 min per fold → recalibrate.</span>
+      <div class="chips tight" style="margin-left:auto;"><span class="chip">civil protection</span><span class="chip">humanitarian mapping</span><span class="chip">historical maps</span></div>
+    </div>
+  </div>
+  <div class="foot">18 · same window, out of fold · F1: runs/20261113-202429_imagery_ablation · gaps: docs/prc_mix_results.md · Siegfried crop: ProbRoadClass (MIT, © swisstopo)</div>
+  <aside class="notes" data-time="25">How much data does it take? The network was pretrained on Swiss Siegfried maps; on our IGN scan it reads almost nothing, F1 0.09. Fine-tuned on one sheet, it reads the roads, F1 0.59; with a second sheet the routes get closer to the reference and it holds better under blur or lower resolution. So two images, with labels taken for free from BD TOPO, are enough; the same recipe applies to any civilian scan with a vector map.</aside>
+</section>
+
+<!-- 14 · FRUGALITY & HARDWARE -->
+<section class="slide">
+  <div class="kicker"><span class="pin"><b>11</b></span>Frugality</div>
+  <h1>Routing needs only a CPU; the GPU is used once, offline</h1>
+  <div class="body">
+    <div class="row" style="gap:18px;">
+      <div class="card" style="flex:1; padding:18px 20px; background:#E3F1EE;">
+        <div style="font-size:13px; font-weight:700; letter-spacing:.06em; color:var(--sure);">EVERY ROUTE · CPU</div>
+        <div class="stat" style="margin-top:8px;"><div class="n" style="font-size:44px; color:var(--sure);">0.14 s</div><div class="l">on <b>1 core</b>, about <b>1 J</b>, whole sheet</div></div>
+        <div class="stat" style="margin-top:12px;"><div class="n" style="font-size:30px;">4.6 GB RAM</div><div class="l">for all 4 networks · no GPU</div></div>
+      </div>
+      <div class="card" style="flex:1; padding:18px 20px; background:#E8F1FC;">
+        <div style="font-size:13px; font-weight:700; letter-spacing:.06em; color:var(--blue);">ONCE PER NEW SHEET · GPU</div>
+        <div class="stat" style="margin-top:8px;"><div class="n" style="font-size:44px;">15 s</div><div class="l">U-Net on the whole sheet, <b>3.1 kJ</b></div></div>
+        <div class="stat" style="margin-top:12px;"><div class="n" style="font-size:30px;">7.9 GB VRAM</div><div class="l">an 8 GB card is enough</div></div>
+      </div>
+      <div class="card" style="flex:1; padding:18px 20px;">
+        <div style="font-size:13px; font-weight:700; letter-spacing:.06em; color:var(--muted);">ONCE PER NEW KIND OF MAP · GPU</div>
+        <div class="stat" style="margin-top:8px;"><div class="n" style="font-size:44px;">1.3 GPU-h</div><div class="l">fine-tuning, 4 folds + final, one H100</div></div>
+        <div class="stat" style="margin-top:12px;"><div class="n" style="font-size:30px;">0 h</div><div class="l">for the language model: frozen, optional</div></div>
+      </div>
+    </div>
+    <div class="row" style="gap:12px; align-items:center; margin-top:22px;">
+      <span class="tag m">Measured</span>
+      <span style="font-size:16px;"><b>To deploy routing:</b> 2 cores, 4 GB RAM, no GPU. Optional: 8 GB GPU for a new sheet, 24 GB for the local language model.</span>
+    </div>
+    <div class="small" style="font-size:13px; margin-top:8px;">Server 2× Xeon Gold 6430, GPU NVIDIA H100 80 GB · CPU energy estimated from CPU time (no RAPL), GPU energy measured.</div>
+  </div>
+  <div class="foot">19 · experiments/runs/*/environment.json · docs/prc_inference.md</div>
+  <aside class="notes" data-time="25">Frugality in three numbers. Every route runs on one CPU core in a seventh of a second, about one joule, no GPU. A GPU is needed once per new sheet, 15 seconds, and an 8-gigabyte card is enough. Training happens once per new kind of map: 1.3 GPU-hours; the language model is never trained and is optional. To deploy routing: two cores and 4 gigabytes.</aside>
+</section>
+
+<!-- 15 · CONCLUSION -->
+<section class="slide dark">
+  <div class="kicker"><span class="pin"><b>B</b></span>Conclusion</div>
+  <h1>What CARTE brings, and where it stops</h1>
+  <div class="body row" style="top:150px; gap:28px;">
+    <div style="flex:1.15;">
+      <div style="font-size:14px; font-weight:700; letter-spacing:.08em; color:#9FD2C7;">BENEFITS</div>
+      <ul class="concl">
+        <li><b>One formula for every constraint</b>: hard ones remove roads, soft ones price them, the doubt included: −9 % km off real roads for +0.5 %.</li>
+        <li><b>Every decision explained</b> from the solver; NATO rules matched with a fixed status; one frozen local model, checked.</li>
+        <li><b>Dependencies kept</b>: orders that amend orders, earlier legs never reused, convoys deconflicted, the context window under stress.</li>
+        <li><b>Frugal and flexible</b>: 0.14 s per route on 1 core; any scenario as data, typed or clicked.</li>
+        <li><b>Vision extension</b>: routes even without any shapefile and prices its own uncertainty; two images adapt it to a new map style.</li>
+      </ul>
+    </div>
+    <div style="flex:1;">
+      <div style="font-size:14px; font-weight:700; letter-spacing:.08em; color:#E3B04B;">LIMITS</div>
+      <ul class="concl">
+        <li><b>Core</b>: one sheet of evidence; convoys planned in sequence; chat checks are heuristics; links between orders need explicit references.</li>
+        <li><b>Vision</b>: less information in a scan than in a database, so not every constraint (no width, load class, bridge MLC: « to check »); scattered missing roads break routes; new styles need fine-tuning.</li>
+      </ul>
+      <div style="font-size:14px; font-weight:700; letter-spacing:.08em; color:var(--on-dark-muted); margin-top:18px;">NEXT</div>
+      <div style="font-size:16.5px; margin-top:6px; line-height:1.5;">New area · read widths and bridges from the image · learned gap bridging · joint convoy timing</div>
+    </div>
+  </div>
+  <div class="foot">All figures: experiments/INDEX.md · docs/technical_overview.md</div>
+  <aside class="notes" data-time="20">To conclude. What the pipeline brings: one formula for every constraint with the model's doubt priced in; every decision explained, with NATO rules and a frozen, checked local model; dependencies kept, between orders, legs and convoys; and a frugal core on one CPU core. The vision extension makes routing possible without any shapefile. Its limits: one sheet of evidence and sequential convoys for the core; for vision, no width, load class or bridge class on a map, and fragility to scattered gaps. Thank you.</aside>
+</section>
+
+</body>
+</html>

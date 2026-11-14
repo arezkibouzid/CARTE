@@ -502,6 +502,48 @@ class RouteRequest(BaseModel):
     uncertainty_cost: bool = True
     uncertainty_strength: float = Field(0.5, ge=0, le=10)  # 0.5: knee of the ablation (experiments/INDEX.md)
     explain: bool = True  # segment-by-segment trace (local alternatives: about 0.1 s per segment)
+    # mission history: the paths of the previous legs (lon/lat polylines), and what to do with them
+    previous_legs: list[list[LonLat]] = Field(default_factory=list)
+    history_mode: Literal["forbid", "penalize", "free"] = "forbid"
+    history_penalty: float = Field(2.0, ge=0, le=100)
+
+
+HISTORY_BUFFER_M = 20.0  # a section running within 20 m of an earlier leg on more than half its length is that leg
+HISTORY_RELAX_M = (0, 500, 1000, 2000, 5000)
+
+
+def history_mask(N, legs: list[list[LonLat]]):
+    """Sections of the network that an earlier leg used: within 20 m of its path on more than half their length."""
+    import numpy as np
+    import shapely
+
+    from coa_net.pdfexercises import to_l93
+
+    lines = [shapely.LineString(to_l93(l)) for l in legs if len(l) >= 2]
+    m = np.zeros(len(N.edges), bool)
+    if not lines:
+        return m
+    buf = shapely.union_all(lines).buffer(HISTORY_BUFFER_M)
+    near = N.tree.query(buf, predicate="intersects")
+    if len(near):
+        inside = shapely.length(shapely.intersection(N.lines[near], buf)) / np.maximum(shapely.length(N.lines[near]), 1e-6)
+        m[near[inside > 0.5]] = True
+    return m
+
+
+def near_points_mask(N, pts: list[LonLat], r_m: float):
+    """Sections with both ends within ``r_m`` of one of ``pts`` (the shared point where the new leg starts)."""
+    import numpy as np
+
+    from coa_net.pdfexercises import to_l93
+
+    m = np.zeros(len(N.edges), bool)
+    for p in pts:
+        x, y = to_l93([p])[0]
+        du = np.hypot(N.xy[N.u, 0] - x, N.xy[N.u, 1] - y)
+        dv = np.hypot(N.xy[N.v, 0] - x, N.xy[N.v, 1] - y)
+        m |= (du <= r_m) & (dv <= r_m)
+    return m
 
 
 def make_exercise(req: RouteRequest, sheet_bounds):
@@ -617,10 +659,50 @@ def route(req: RouteRequest):
         priced, conf_priced, conf_note, tiff_only = pr["priced"], pr["conf_priced"], pr["conf_note"], pr["tiff_only"]
         ex = make_exercise(req, scan_raster(req.sheet).bounds)
         t = time.perf_counter()
+        hist, used = None, None
+        if req.previous_legs and req.history_mode != "free":
+            used = history_mask(N, req.previous_legs)
+            hist = {"mode": req.history_mode, "legs": len(req.previous_legs), "km_of_previous_legs": round(float(N.length_m[used].sum()) / 2000, 1)}
         try:
-            res = px.solve(ex, N, avoid=req.avoid)
+            if hist and req.history_mode == "forbid":
+                # the previous paths are forbidden; only if no route exists, they are opened again around the shared point
+                shared = [req.start] + [p for p in [*req.waypoints, req.end] if bool(near_points_mask(N, [p], 50.0)[used].any())]
+                free = px.solve(ex, N, avoid=req.avoid)  # snapping without the history: a point must not be pushed away by it
+                base_snap = {k: v["snap_m"] for k, v in free["points"].items()}
+                res = None
+                for r in HISTORY_RELAX_M:
+                    forbid = used & ~near_points_mask(N, shared, r) if r else used
+                    try:
+                        cand = px.solve(ex, N, avoid=req.avoid, forbid=forbid)
+                    except RuntimeError:
+                        continue
+                    if all(v["snap_m"] <= base_snap.get(k, 0) + 100 for k, v in cand["points"].items()):
+                        res = cand
+                        hist["relaxed_m"] = r
+                        break
+                if res is None:
+                    raise RuntimeError("aucun itinéraire sans repasser par les trajets des étapes précédentes, même en les rouvrant "
+                                       f"sur {HISTORY_RELAX_M[-1] / 1000:g} km autour du point de départ")
+            elif hist and req.history_mode == "penalize":
+                base_price = N.price.copy()
+                try:
+                    N.price = base_price * (1.0 + req.history_penalty * used)
+                    res = px.solve(ex, N, avoid=req.avoid)
+                finally:
+                    N.price = base_price
+            else:
+                res = px.solve(ex, N, avoid=req.avoid)
         except RuntimeError as e:
             raise HTTPException(422, f"Aucun itinéraire : {e}")
+        if hist:
+            edges = sorted({e for le in res["_leg_edges"] for e in le})
+            hist["km_reused"] = round(float(N.length_m[[e for e in edges if used[e]]].sum()) / 1000, 2)
+            if req.history_mode == "forbid":
+                res["log"].append(f"mission history: the {hist['km_of_previous_legs']} km of road used by the {hist['legs']} previous leg(s) are "
+                                  "forbidden" + (f", reopened only within {hist['relaxed_m']} m of the shared point(s) because no route "
+                                                 "existed otherwise" if hist.get("relaxed_m") else "") + f"; reused: {hist['km_reused']} km")
+            else:
+                res["log"].append(f"mission history: roads of the previous legs cost x{1 + req.history_penalty:g}; reused: {hist['km_reused']} km")
         T["route"] = time.perf_counter() - t
         if conf_priced:
             res["log"].append(f"uncertainty-aware cost (TIFF only): cost x (1 + {req.uncertainty_strength:g} x risk), risk = -ln(calibrated "
@@ -634,9 +716,19 @@ def route(req: RouteRequest):
             t = time.perf_counter()
             trace = explain_route(N, res, req.objective, req.speed_cap_kmh)
             T["explain"] = time.perf_counter() - t
+            if hist and trace:
+                if req.history_mode == "forbid":
+                    trace["criteria"].append(f"trajets des {hist['legs']} étape(s) précédente(s) interdits ({hist['km_of_previous_legs']} km de routes)"
+                                             + (f", rouverts seulement à moins de {hist['relaxed_m']} m du point partagé faute d’autre passage"
+                                                if hist.get("relaxed_m") else ""))
+                else:
+                    trace["criteria"].append(f"routes des étapes précédentes pénalisées (coût x{1 + req.history_penalty:g})")
+                if hist["km_reused"]:
+                    trace["limitations"].append(f"{hist['km_reused']} km repris d’une étape précédente"
+                                                + (" (autour du point partagé, seul passage possible)" if req.history_mode == "forbid" else ""))
     out = {"route": legs_geojson(res), "total": res["total"], "log": res["log"], "points": res["points"],
            "objective": req.objective, "network": N.name, "probability_penalty": priced,
-           "uncertainty_cost": conf_priced, "uncertainty_cost_note": conf_note, "tiff_only": tiff_only, "explanation": trace,
+           "uncertainty_cost": conf_priced, "uncertainty_cost_note": conf_note, "tiff_only": tiff_only, "explanation": trace, "history": hist,
            "legs": [{k: v for k, v in l.items() if k != "_line"} for l in px.jsonable(res)["legs"]], "references": {}}
     if "visit_order" in res:
         out["visit_order"] = res["visit_order"]
@@ -1041,6 +1133,22 @@ def pdf_from_sheet(sheet: str = "hackathon"):
     return exercises_json(*read_pdf(rp(f)))
 
 
+class TextOrderRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+    sheet: str = "hackathon"
+    mode: Literal["command", "auto"] = "command"  # auto: the chat asks; a question comes back as is_command = False
+    use_llm: bool = True
+    map: dict | None = None  # what is on the map: start, end, waypoints, avoid, area, rect (bbox), pointed (point P)
+
+
+@app.post("/api/order-text")
+def order_text(req: TextOrderRequest):
+    """An order written as text -> a scenario patch to preview (named points of the PDF and coordinates only, offline)."""
+    from interface.backend import text_order as TO
+
+    return TO.parse(req.text, pdf_from_sheet(req.sheet)["exercises"], mode=req.mode, use_llm=req.use_llm, mapctx=req.map)
+
+
 @app.post("/api/pdf/upload")
 async def pdf_upload(file: UploadFile = File(...)):
     import tempfile
@@ -1253,6 +1361,33 @@ async def orders_upload(file: UploadFile = File(...)):
     except (UnicodeDecodeError, json.JSONDecodeError):
         raise HTTPException(422, "ce fichier n’est pas un JSON valide")
     return {"id": _orders_call(O.save_upload, obj)}
+
+
+class OrderLinkRequest(BaseModel):
+    from_id: str
+    to_id: str
+    relation: Literal["amends", "replaces", "cancels", "complements"] | None = None
+    action: Literal["add", "reject", "reset"] = "add"
+
+
+@app.get("/api/orders/links")
+def orders_links(ids: str = ""):
+    """Links between orders and what is in force: over ``ids`` (comma separated) and their chain, or every link."""
+    from interface.backend import order_links as OL
+
+    sel = [i for i in ids.split(",") if i]
+    if sel:
+        return _orders_call(OL.resolve, sel)
+    hs = OL.headers()
+    return {"orders": list(hs.values()), "links": OL.links(hs)}
+
+
+@app.post("/api/orders/links")
+def orders_link_set(req: OrderLinkRequest):
+    """The operator adds a missed link, rejects a wrong one, or goes back to what was detected."""
+    from interface.backend import order_links as OL
+
+    return _orders_call(OL.set_link, req.from_id, req.to_id, req.relation, req.action)
 
 
 @app.post("/api/orders/{order_id}/chat")

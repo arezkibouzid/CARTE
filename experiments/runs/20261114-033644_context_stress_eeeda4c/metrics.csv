@@ -1,0 +1,20 @@
+test,orders,used_tokens,budget,rules_tokens,order_blocks_full,order_blocks_short,order_blocks_omitted,mode,cited_rules,wall_s,cpu_s,cpu_energy_j,cpu_energy_method,rss_mb,depth,orders_added,expected,computed_in_force,replaced_values,links_block_tokens,links_block_form,omitted,shortened,answer_has_value,answer_stale,orders_selected,orders_total,omitted_blocks,shortened_blocks,annexes,conflict_reported_by_code,conflict_values,answer_flags_conflict
+orders,1,3491,6000,951,1,0,0,model,3,4.3002,0.0208,0.1,estimated,1022.9,,,,,,,,,,,,,,,,,,,
+orders,2,4135,6000,980,2,0,0,model,3,6.1546,0.0105,0.0,estimated,1022.9,,,,,,,,,,,,,,,,,,,
+orders,5,5173,6000,2222,5,0,0,model,3,3.022,0.0143,0.0,estimated,1022.9,,,,,,,,,,,,,,,,,,,
+orders,10,5418,6000,2143,10,0,0,model,3,7.0734,0.0236,0.1,estimated,1022.9,,,,,,,,,,,,,,,,,,,
+orders,20,5967,6000,2214,16,0,4,model,3,4.4148,0.0326,0.1,estimated,1022.9,,,,,,,,,,,,,,,,,,,
+orders,40,5971,6000,1406,24,0,16,model,2,7.6853,0.0544,0.2,estimated,1022.9,,,,,,,,,,,,,,,,,,,
+chain,,4449,,,,,,model,,3.2404,0.0076,0.0,estimated,1022.9,1,1,58 km/h,58 km/h,1,124,full,[],[],True,False,,,,,,,,
+chain,,4644,,,,,,model,,2.2209,0.0062,0.0,estimated,1022.9,2,2,56 km/h,56 km/h,2,173,full,[],[],True,False,,,,,,,,
+chain,,4987,,,,,,model,,3.5219,0.0098,0.0,estimated,1022.9,5,5,50 km/h,50 km/h,5,321,full,[],[],True,False,,,,,,,,
+chain,,5284,,,,,,model,,3.579,0.0145,0.0,estimated,1022.9,10,10,40 km/h,40 km/h,10,568,full,[],[],True,False,,,,,,,,
+chain,,5793,,,,,,model,,3.5462,0.0232,0.1,estimated,1022.9,20,20,20 km/h,20 km/h,20,1068,full,[],[],True,False,,,,,,,,
+budget,,1726,1500,,,,,model,,2.0087,0.015,0.0,estimated,1022.9,,,,,,849,full,,,True,False,20,30,30,0,,,,
+budget,,2974,3000,,,,,model,,2.6982,0.0144,0.0,estimated,1022.9,,,,,,849,full,,,True,False,20,30,22,0,,,,
+budget,,5981,6000,,,,,model,,3.3924,0.0149,0.0,estimated,1022.9,,,,,,849,full,,,True,False,20,30,8,0,,,,
+budget,,10045,12000,,,,,model,,2.6957,0.0157,0.0,estimated,1022.9,,,,,,849,full,,,True,False,20,30,0,0,,,,
+conflicts,,4523,,,,,,model,,2.494,0.0083,0.0,estimated,1022.9,,,,,,,,,,,,,,,,0,False,0,False
+conflicts,,4472,,,,,,model,,2.0116,0.0067,0.0,estimated,1022.9,,,,,,,,,,,,,,,,1,True,2,True
+conflicts,,4874,,,,,,model,,2.4732,0.0092,0.0,estimated,1022.9,,,,,,,,,,,,,,,,3,True,4,True
+conflicts,,4941,,,,,,model,,2.6472,0.0105,0.0,estimated,1022.9,,,,,,,,,,,,,,,,5,True,6,True

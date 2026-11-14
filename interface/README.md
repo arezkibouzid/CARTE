@@ -45,6 +45,30 @@ graphe), en faire une zone de déploiement ou une zone à éviter, zoomer. Couch
 incertitude (rouge = route tracée incertaine, orange = route possible non tracée), réseau extrait (coloré selon le
 seuil), BD TOPO, OSM, itinéraires de contrôle.
 
+### Ordre en texte
+
+Onglet Scénario → « Ordre en texte », ou directement dans « Questions sur l’itinéraire » : par exemple
+« de PD4 à PA4 par WP1 et WP3 dans n’importe quel ordre, le plus rapide, 60 km/h, éviter 2 km autour de WP2 », ou
+« exercice 7 mais le plus rapide à 60 km/h ». Points reconnus : ceux du PDF (PD, PA, WP, DA) et les coordonnées
+(49.10, 5.27 ou Lambert-93), et ce qui est sur la carte : « ici » (point P : dernier clic en mode main), « le départ »,
+« l’arrivée », « l’étape 2 », « la zone 1 », « le rectangle » (« évite le rectangle », « dans le rectangle » = zone de
+déploiement) ; un nom de lieu est signalé comme non résolu (hors ligne, aucun géocodage). Les modifications
+sont affichées avant d’être appliquées (« Appliquer » / « Appliquer et calculer »).
+
+### Journal de mission
+
+Après un calcul, « Étape suivante depuis l’arrivée → » : le trajet entre dans le journal de mission (onglet Scénario), la
+prochaine étape part de son arrivée et ne repasse pas par les trajets précédents (Interdits par défaut ; Pénalisés ou
+Autorisés au choix). Par écrit : « puis va à WP1 sans repasser par le trajet précédent ».
+
+### Ordres liés
+
+Onglet Ordres → carte « Ordres liés » : les liens détectés entre ordres (un FRAGO modifie un OPORD, une annexe le complète,
+un ordre en annule ou en remplace un autre), les valeurs en vigueur calculées le long de la chaîne et les conflits à faire
+trancher. Un lien faux se rejette, un lien manquant s’ajoute. Dans « Questions sur l’itinéraire », choisir un ordre ajoute
+automatiquement les ordres qui lui sont liés. Données de test : `.venv/bin/python scripts/make_test_orders.py` (ordres
+synthétiques « TEST synthétique »).
+
 ## Configuration
 
 `backend/sheets.json` : feuilles de carte (TIFF, BD TOPO, OSM, PDF, zones bâties, étiquettes de calibration) et

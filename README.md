@@ -1,4 +1,50 @@
-# COA-Net: survivable road networks and courses of action for logistic convoys
+# CARTE — Constraint-Aware Routing with Trust Estimation
+
+Convoy route planning on a scanned 1:100,000 map: one cost function and one solver for every constraint, the doubt of the
+road reading priced in, and every decision explained. *Carte* is French for map. Built for the AMIAD hackathon
+(Rennes, November 2026); the hackathon design (COA-Net) is kept below.
+
+- **Routing core** (`src/coa_net/pdfexercises.py`, `interface/backend/`): hard constraints remove road sections (deployment
+  area, zones to avoid, vehicle limits, earlier legs of the mission), soft ones price them (the U-Net's doubt, convoy
+  deconfliction, turns); Dijkstra on a sparse graph, 0.14 s per route on one CPU core.
+- **Explanation** (`src/coa_net/route_explain.py`, `interface/backend/route_chat.py`, `orders.py`, `order_links.py`): segment
+  by segment, with the rejected alternative; NATO doctrine rules matched to each order (`RAG/`); one frozen local language
+  model (Qwen3-VL-8B) with grammar-constrained decoding, checked; orders that amend orders; written orders
+  (`text_order.py`).
+- **Vision extension** (`scripts/prc_unet.py`, `src/coa_net/scanunet.py`): a fine-tuned Attention Res-U-Net reads the roads
+  from the scan, with their probability, for when no road database exists.
+- **Interface** (`interface/`, React + FastAPI): `interface/run.sh`, then http://localhost:8008. See `interface/README.md`.
+- **Evidence**: `experiments/` (every run kept: config, environment, metrics, figures; `experiments/INDEX.md`),
+  `docs/technical_overview.md`, the presentation in `docs/presentation/`.
+
+## Data and models
+
+| what | licence | how to get it |
+|---|---|---|
+| PRC U-Net code and pretrained weights | MIT | `python scripts/fetch_data.py --prc` (GitHub + Hugging Face) |
+| BD TOPO roads of the sheet (IGN) | Licence Ouverte Etalab 2.0 | `python scripts/fetch_data.py --bdtopo` (Géoplateforme WFS, no key) |
+| OpenStreetMap roads of the sheet | ODbL (© OpenStreetMap contributors) | `python scripts/fetch_data.py --osm` (Geofabrik) |
+| Qwen3-VL-8B-Instruct (optional) | Apache 2.0 | `python scripts/fetch_data.py --llm` (Hugging Face, 17 GB) |
+| Scanned IGN 1:100,000 sheet, exercise and order PDFs | handed out at the hackathon, not open | release archive, `examples/` |
+| Our fine-tuned U-Net rasters, checkpoints, calibration and network caches | ours (derived from the sheet) | release archive, `outputs/` |
+
+`fetch_data.py` writes the BD TOPO and OSM roads in the fields of the hackathon extracts, so the code reads them unchanged;
+they are today's data, not the organisers' snapshot. Without the release archive the routing core still runs on BD TOPO or
+OSM alone (« Sans modèle de segmentation » in the interface); the scan and the U-Net rasters are needed for the vision part.
+
+```bash
+python -m venv .venv && .venv/bin/pip install -e ".[dev]"        # Python 3.10+
+.venv/bin/python scripts/fetch_data.py --all                      # open data and the PRC weights
+# unzip the release archive at the repository root (examples/, outputs/), then:
+interface/run.sh                                                  # http://localhost:8008 (Node.js 18+ builds the interface)
+sbatch deploy/serve_llm.sbatch                                    # optional: the local language model (one GPU)
+.venv/bin/python -m pytest -q                                     # 160 tests
+```
+
+---
+
+## Background: COA-Net, the hackathon design
+
 
 Prototype for the AMIAD hackathon (Rennes, 12-14 Nov 2026): design the maneuver road network for military logistic convoys from a map, doctrine, a logistic order and live incident reports, with language models of at most a few tens of billions of parameters.
 

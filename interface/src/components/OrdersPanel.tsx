@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { chatOrder, extractOrder, getOrderAnalysis, getOrders, uploadOrder } from '../api';
+import OrderLinksCard from './OrderLinks';
 import type { ChatMessage, ExplainLevel, OrderAnalysis, OrderFact, OrderInfo, OrderRule, OrdersStatus } from '../types';
 
 interface Props {
@@ -181,6 +182,7 @@ export default function OrdersPanel({ uiContext, onApplyToMap }: Props) {
               </div>
             )}
           </div>
+          <OrderLinksCard orderId={orderId} orders={orders} />
           {a.explanation.model
             ? <p className="small muted">Explications rédigées par {a.explanation.model} en {a.explanation.seconds} s ; statuts et sources fixés par le moteur de règles.</p>
             : <p className="small muted">Explications tirées du moteur de règles (sans modèle de langue{a.explanation.fallback_reason ? ` : ${String(a.explanation.fallback_reason)}` : ''}).</p>}

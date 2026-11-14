@@ -1,0 +1,1064 @@
+diff --git a/docs/technical_overview.md b/docs/technical_overview.md
+index 3b4a47d..a71574c 100644
+--- a/docs/technical_overview.md
++++ b/docs/technical_overview.md
+@@ -185,6 +185,54 @@ at once:
+ e.g. "aucune règle ne s'applique à ces ponts" when it should be "à vérifier". This is why the trace answers and the
+ deterministic fallback are the reference, and the model only rephrases.
+ 
++### 3.3 Orders written as text, applied to the scenario
++
++`POST /api/order-text` (`interface/backend/text_order.py`); in the interface, the "Ordre en texte" box of the Scénario
++tab, and the route chat, which previews an order instead of answering it.
++- **Offline points only.** A point is a named point of the sheet's exercise PDF (PD1–4, PA1–4, WP1–4, DA1–4), "exercice N"
++  as a base, coordinates found by the code (decimal degrees, Lambert-93), or what is on the map: the point P (last click in
++  hand mode: "ici", "ce point"), the departure and arrival placed ("le départ", "l'arrivée"), waypoint n ("l'étape 2"),
++  zone to avoid n ("la zone 1") and the selected rectangle ("évite le rectangle", "dans le rectangle" = deployment area).
++  A reference to something not on the map is reported ("étape 5 (absente de la carte)"). Place names are listed as
++  unresolved, never guessed.
++- **Settings need words.** An objective, order or round trip the model returns without a word of the order saying it is
++  dropped; the same point as departure and arrival without "aller-retour" rejects the answer.
++- **One model, grammar-constrained.** The same Qwen3-VL-8B, greedy, fills a JSON schema in which every point is an id from
++  that closed list, so it never writes a position. Checks: every point must be cited in the text, every number (speed,
++  radius, exercise) must appear in it. A rejected answer falls back to the rule parser (regular expressions), which also
++  runs without the model.
++- **Preview, then apply.** The result lists the changes (departure, arrival, waypoints, order, round trip, objective,
++  speed, zones to avoid as squares around a point, deployment area, λ); "Appliquer" or "Appliquer et calculer".
++- **Measured.** 928 prompt / 82 answer tokens per call; 0.6–1 s; tests in `tests/test_text_order.py`, browser test in
++  `interface/scripts/ui_smoke.py`.
++
++**One model, four jobs.** Extraction, rule explanations, the two chats and text orders all use the same Qwen3-VL-8B on one
++vLLM server (half an H100), always greedy. Only the grammar changes: each job has its own JSON schema, enforced token by
++token (xgrammar), with the allowed ids taken from its context.
++
++### 3.4 Orders that depend on each other
++
++`interface/backend/order_links.py`; API `GET/POST /api/orders/links`; interface: the "Ordres liés" card of the Ordres
++tab, and the order picker of the route chat.
++- **Links.** Read from the extracted fragments: each order's own reference (OPORD, FRAGO, annexe, ordre…) and issue date
++  (DTG or date), then the fragments naming another order with a relation: *modifie* / *amends*, *annule et remplace* /
++  *replaces*, *annule* / *cancels*, *complète* / *supplements*; a FRAGO naming an order amends it, an annex completes it.
++  The operator can add a missed link or reject a wrong one (`outputs/orders/order_links.json`).
++- **Values in force, decided by code.** Comparable items (maximum speed, spacing, load, height, route separation, halts)
++  are taken from the fragments' quantities. Along a chain, an amending / replacing order overrides the values it changes;
++  a cancelled or replaced order is void. Two amendments of the same order are settled by the later issue date; values
++  still different inside a group of linked orders (e.g. an annex that completes, not amends) are a **conflict** for the
++  command. Orders not linked at all are independent: their values are listed per order, never merged.
++- **Context window.** Selecting one order brings its whole chain into the chat (reported as "ordres liés ajoutés"). A
++  required block placed ahead of the rules states the links, the values in force with what they replace, and the
++  conflicts; replaced fragments are marked `[REMPLACÉ]` and placed last, so they are cut first when the budget is tight.
++- **Checks.** An answer that gives a replaced value as current (no "remplace / ancien / modifié…" near it) is rejected;
++  the answer without a model starts with the values in force and the conflicts.
++- **Evidence.** The exercise PDFs are independent orders, so this was tested on five **synthetic** orders
++  (`scripts/make_test_orders.py`: OPORD, two FRAGOs, an annex, an independent order; labelled "TEST synthétique"):
++  `tests/test_order_links.py` (5 tests), and with the model: 40 km/h and 150 m given with their sources, the load
++  conflict reported; 5 linked orders in 1,305 context tokens (orders chat).
++
+ ## 4. Flexibility and scenario simulation
+ 
+ Nothing below required a new hard-coded rule in the solver: every scenario is data passed to the same cost-and-Dijkstra
+diff --git a/interface/README.md b/interface/README.md
+index c7f4960..46c1960 100644
+--- a/interface/README.md
++++ b/interface/README.md
+@@ -45,6 +45,24 @@ graphe), en faire une zone de déploiement ou une zone à éviter, zoomer. Couch
+ incertitude (rouge = route tracée incertaine, orange = route possible non tracée), réseau extrait (coloré selon le
+ seuil), BD TOPO, OSM, itinéraires de contrôle.
+ 
++### Ordre en texte
++
++Onglet Scénario → « Ordre en texte », ou directement dans « Questions sur l’itinéraire » : par exemple
++« de PD4 à PA4 par WP1 et WP3 dans n’importe quel ordre, le plus rapide, 60 km/h, éviter 2 km autour de WP2 », ou
++« exercice 7 mais le plus rapide à 60 km/h ». Points reconnus : ceux du PDF (PD, PA, WP, DA) et les coordonnées
++(49.10, 5.27 ou Lambert-93), et ce qui est sur la carte : « ici » (point P : dernier clic en mode main), « le départ »,
++« l’arrivée », « l’étape 2 », « la zone 1 », « le rectangle » (« évite le rectangle », « dans le rectangle » = zone de
++déploiement) ; un nom de lieu est signalé comme non résolu (hors ligne, aucun géocodage). Les modifications
++sont affichées avant d’être appliquées (« Appliquer » / « Appliquer et calculer »).
++
++### Ordres liés
++
++Onglet Ordres → carte « Ordres liés » : les liens détectés entre ordres (un FRAGO modifie un OPORD, une annexe le complète,
++un ordre en annule ou en remplace un autre), les valeurs en vigueur calculées le long de la chaîne et les conflits à faire
++trancher. Un lien faux se rejette, un lien manquant s’ajoute. Dans « Questions sur l’itinéraire », choisir un ordre ajoute
++automatiquement les ordres qui lui sont liés. Données de test : `.venv/bin/python scripts/make_test_orders.py` (ordres
++synthétiques « TEST synthétique »).
++
+ ## Configuration
+ 
+ `backend/sheets.json` : feuilles de carte (TIFF, BD TOPO, OSM, PDF, zones bâties, étiquettes de calibration) et
+diff --git a/interface/backend/amiad_api.py b/interface/backend/amiad_api.py
+index 91ac986..b7d57a4 100644
+--- a/interface/backend/amiad_api.py
++++ b/interface/backend/amiad_api.py
+@@ -502,6 +502,48 @@ class RouteRequest(BaseModel):
+     uncertainty_cost: bool = True
+     uncertainty_strength: float = Field(0.5, ge=0, le=10)  # 0.5: knee of the ablation (experiments/INDEX.md)
+     explain: bool = True  # segment-by-segment trace (local alternatives: about 0.1 s per segment)
++    # mission history: the paths of the previous legs (lon/lat polylines), and what to do with them
++    previous_legs: list[list[LonLat]] = Field(default_factory=list)
++    history_mode: Literal["forbid", "penalize", "free"] = "forbid"
++    history_penalty: float = Field(2.0, ge=0, le=100)
++
++
++HISTORY_BUFFER_M = 20.0  # a section running within 20 m of an earlier leg on more than half its length is that leg
++HISTORY_RELAX_M = (0, 500, 1000, 2000, 5000)
++
++
++def history_mask(N, legs: list[list[LonLat]]):
++    """Sections of the network that an earlier leg used: within 20 m of its path on more than half their length."""
++    import numpy as np
++    import shapely
++
++    from coa_net.pdfexercises import to_l93
++
++    lines = [shapely.LineString(to_l93(l)) for l in legs if len(l) >= 2]
++    m = np.zeros(len(N.edges), bool)
++    if not lines:
++        return m
++    buf = shapely.union_all(lines).buffer(HISTORY_BUFFER_M)
++    near = N.tree.query(buf, predicate="intersects")
++    if len(near):
++        inside = shapely.length(shapely.intersection(N.lines[near], buf)) / np.maximum(shapely.length(N.lines[near]), 1e-6)
++        m[near[inside > 0.5]] = True
++    return m
++
++
++def near_points_mask(N, pts: list[LonLat], r_m: float):
++    """Sections with both ends within ``r_m`` of one of ``pts`` (the shared point where the new leg starts)."""
++    import numpy as np
++
++    from coa_net.pdfexercises import to_l93
++
++    m = np.zeros(len(N.edges), bool)
++    for p in pts:
++        x, y = to_l93([p])[0]
++        du = np.hypot(N.xy[N.u, 0] - x, N.xy[N.u, 1] - y)
++        dv = np.hypot(N.xy[N.v, 0] - x, N.xy[N.v, 1] - y)
++        m |= (du <= r_m) & (dv <= r_m)
++    return m
+ 
+ 
+ def make_exercise(req: RouteRequest, sheet_bounds):
+@@ -617,10 +659,50 @@ def route(req: RouteRequest):
+         priced, conf_priced, conf_note, tiff_only = pr["priced"], pr["conf_priced"], pr["conf_note"], pr["tiff_only"]
+         ex = make_exercise(req, scan_raster(req.sheet).bounds)
+         t = time.perf_counter()
++        hist, used = None, None
++        if req.previous_legs and req.history_mode != "free":
++            used = history_mask(N, req.previous_legs)
++            hist = {"mode": req.history_mode, "legs": len(req.previous_legs), "km_of_previous_legs": round(float(N.length_m[used].sum()) / 2000, 1)}
+         try:
+-            res = px.solve(ex, N, avoid=req.avoid)
++            if hist and req.history_mode == "forbid":
++                # the previous paths are forbidden; only if no route exists, they are opened again around the shared point
++                shared = [req.start] + [p for p in [*req.waypoints, req.end] if bool(near_points_mask(N, [p], 50.0)[used].any())]
++                free = px.solve(ex, N, avoid=req.avoid)  # snapping without the history: a point must not be pushed away by it
++                base_snap = {k: v["snap_m"] for k, v in free["points"].items()}
++                res = None
++                for r in HISTORY_RELAX_M:
++                    forbid = used & ~near_points_mask(N, shared, r) if r else used
++                    try:
++                        cand = px.solve(ex, N, avoid=req.avoid, forbid=forbid)
++                    except RuntimeError:
++                        continue
++                    if all(v["snap_m"] <= base_snap.get(k, 0) + 100 for k, v in cand["points"].items()):
++                        res = cand
++                        hist["relaxed_m"] = r
++                        break
++                if res is None:
++                    raise RuntimeError("aucun itinéraire sans repasser par les trajets des étapes précédentes, même en les rouvrant "
++                                       f"sur {HISTORY_RELAX_M[-1] / 1000:g} km autour du point de départ")
++            elif hist and req.history_mode == "penalize":
++                base_price = N.price.copy()
++                try:
++                    N.price = base_price * (1.0 + req.history_penalty * used)
++                    res = px.solve(ex, N, avoid=req.avoid)
++                finally:
++                    N.price = base_price
++            else:
++                res = px.solve(ex, N, avoid=req.avoid)
+         except RuntimeError as e:
+             raise HTTPException(422, f"Aucun itinéraire : {e}")
++        if hist:
++            edges = sorted({e for le in res["_leg_edges"] for e in le})
++            hist["km_reused"] = round(float(N.length_m[[e for e in edges if used[e]]].sum()) / 1000, 2)
++            if req.history_mode == "forbid":
++                res["log"].append(f"mission history: the {hist['km_of_previous_legs']} km of road used by the {hist['legs']} previous leg(s) are "
++                                  "forbidden" + (f", reopened only within {hist['relaxed_m']} m of the shared point(s) because no route "
++                                                 "existed otherwise" if hist.get("relaxed_m") else "") + f"; reused: {hist['km_reused']} km")
++            else:
++                res["log"].append(f"mission history: roads of the previous legs cost x{1 + req.history_penalty:g}; reused: {hist['km_reused']} km")
+         T["route"] = time.perf_counter() - t
+         if conf_priced:
+             res["log"].append(f"uncertainty-aware cost (TIFF only): cost x (1 + {req.uncertainty_strength:g} x risk), risk = -ln(calibrated "
+@@ -634,9 +716,19 @@ def route(req: RouteRequest):
+             t = time.perf_counter()
+             trace = explain_route(N, res, req.objective, req.speed_cap_kmh)
+             T["explain"] = time.perf_counter() - t
++            if hist and trace:
++                if req.history_mode == "forbid":
++                    trace["criteria"].append(f"trajets des {hist['legs']} étape(s) précédente(s) interdits ({hist['km_of_previous_legs']} km de routes)"
++                                             + (f", rouverts seulement à moins de {hist['relaxed_m']} m du point partagé faute d’autre passage"
++                                                if hist.get("relaxed_m") else ""))
++                else:
++                    trace["criteria"].append(f"routes des étapes précédentes pénalisées (coût x{1 + req.history_penalty:g})")
++                if hist["km_reused"]:
++                    trace["limitations"].append(f"{hist['km_reused']} km repris d’une étape précédente"
++                                                + (" (autour du point partagé, seul passage possible)" if req.history_mode == "forbid" else ""))
+     out = {"route": legs_geojson(res), "total": res["total"], "log": res["log"], "points": res["points"],
+            "objective": req.objective, "network": N.name, "probability_penalty": priced,
+-           "uncertainty_cost": conf_priced, "uncertainty_cost_note": conf_note, "tiff_only": tiff_only, "explanation": trace,
++           "uncertainty_cost": conf_priced, "uncertainty_cost_note": conf_note, "tiff_only": tiff_only, "explanation": trace, "history": hist,
+            "legs": [{k: v for k, v in l.items() if k != "_line"} for l in px.jsonable(res)["legs"]], "references": {}}
+     if "visit_order" in res:
+         out["visit_order"] = res["visit_order"]
+@@ -1041,6 +1133,22 @@ def pdf_from_sheet(sheet: str = "hackathon"):
+     return exercises_json(*read_pdf(rp(f)))
+ 
+ 
++class TextOrderRequest(BaseModel):
++    text: str = Field(min_length=1, max_length=2000)
++    sheet: str = "hackathon"
++    mode: Literal["command", "auto"] = "command"  # auto: the chat asks; a question comes back as is_command = False
++    use_llm: bool = True
++    map: dict | None = None  # what is on the map: start, end, waypoints, avoid, area, rect (bbox), pointed (point P)
++
++
++@app.post("/api/order-text")
++def order_text(req: TextOrderRequest):
++    """An order written as text -> a scenario patch to preview (named points of the PDF and coordinates only, offline)."""
++    from interface.backend import text_order as TO
++
++    return TO.parse(req.text, pdf_from_sheet(req.sheet)["exercises"], mode=req.mode, use_llm=req.use_llm, mapctx=req.map)
++
++
+ @app.post("/api/pdf/upload")
+ async def pdf_upload(file: UploadFile = File(...)):
+     import tempfile
+@@ -1255,6 +1363,33 @@ async def orders_upload(file: UploadFile = File(...)):
+     return {"id": _orders_call(O.save_upload, obj)}
+ 
+ 
++class OrderLinkRequest(BaseModel):
++    from_id: str
++    to_id: str
++    relation: Literal["amends", "replaces", "cancels", "complements"] | None = None
++    action: Literal["add", "reject", "reset"] = "add"
++
++
++@app.get("/api/orders/links")
++def orders_links(ids: str = ""):
++    """Links between orders and what is in force: over ``ids`` (comma separated) and their chain, or every link."""
++    from interface.backend import order_links as OL
++
++    sel = [i for i in ids.split(",") if i]
++    if sel:
++        return _orders_call(OL.resolve, sel)
++    hs = OL.headers()
++    return {"orders": list(hs.values()), "links": OL.links(hs)}
++
++
++@app.post("/api/orders/links")
++def orders_link_set(req: OrderLinkRequest):
++    """The operator adds a missed link, rejects a wrong one, or goes back to what was detected."""
++    from interface.backend import order_links as OL
++
++    return _orders_call(OL.set_link, req.from_id, req.to_id, req.relation, req.action)
++
++
+ @app.post("/api/orders/{order_id}/chat")
+ def orders_chat(order_id: str, req: OrderChatRequest):
+     from interface.backend import orders as O
+diff --git a/interface/backend/orders.py b/interface/backend/orders.py
+index db87420..3784df6 100644
+--- a/interface/backend/orders.py
++++ b/interface/backend/orders.py
+@@ -70,7 +70,10 @@ def list_orders() -> list[dict]:
+                     "extracted": p is not None, **(_meta(p) if p else {})})
+     for sid, p in sorted(stored.items()):
+         x = _read(p)
+-        out.append({"id": sid, "label": f"Exercice {x.get('exercise_id', sid)} ({'revu' if 'reviewed' in sid else 'importé'})",
++        am = x.get("_amiad") or {}
++        label = (f"TEST synthétique — {am.get('title', sid)}" if am.get("synthetic")
++                 else f"Exercice {x.get('exercise_id', sid)} ({'revu' if 'reviewed' in sid else 'importé'})")
++        out.append({"id": sid, "label": label, "synthetic": bool(am.get("synthetic")),
+                     "exercise_id": str(x.get("exercise_id", sid)), "document_id": (x.get("document") or {}).get("id"),
+                     "pages": x.get("main_pages"), "task_types": x.get("task_types"), "extracted": True, **_meta(p)})
+     return out
+@@ -542,6 +545,14 @@ def chat(order_id: str, messages: list[dict], level: str = "standard", ui: dict
+     by_id = {r["rule_id"]: r for r in rules}
+     fids = [f["id"] for f in a["facts"]]
+     t0 = time.perf_counter()
++    from interface.backend import order_links as OL
++
++    try:  # orders linked to this one: what is in force along the chain, decided by code
++        lres = OL.resolve([order_id])
++        if not (lres["links"] or lres["void"] or lres["conflicts"]):
++            lres = None
++    except (FileNotFoundError, ValueError, KeyError):
++        lres = None
+     c = llm_client()
+     out, problems = None, []
+     if c is not None:
+@@ -554,6 +565,11 @@ def chat(order_id: str, messages: list[dict], level: str = "standard", ui: dict
+         P = ContextPacker(BUDGET_TOKENS)
+         ob = _order_block(a)
+         P.add("ordre", ob, "\n".join(ob.split("\n")[:16]) + "\n[… fragments suivants omis faute de place]", required=True)
++        if lres:
++            lf, ls_ = OL.context_block(lres)
++            if lf:
++                P.add("liens entre ordres", lf + "\nSeules les valeurs en vigueur s’appliquent ; un conflit se signale, il ne se tranche pas.", ls_, required=True)
++                P.report["linked_orders_added"] = lres["added"]
+         ranked = _retrieve(question, a, k=len(rules)) if rules else []
+         ranked += [r for r in rules if r not in ranked]
+         room = max(BUDGET_TOKENS - P.used - 900, 300)
+@@ -588,11 +604,17 @@ def chat(order_id: str, messages: list[dict], level: str = "standard", ui: dict
+                 return o, ["réponse vide ou trop longue"]
+             extra = _numbers_ok(o["answer"], context + "\n" + history + "\n" + question)
+             bad = [f"nombres ou identifiants absents du contexte : {extra[:4]}"] if extra else []
++            if lres:
++                bad += OL.stale_problems(o["answer"], lres)
+             return o, bad + status_problems(o["answer"], rules)
+         out, problems = call_validated(c, SYSTEM, user, schema, "orders.chat", validate, retries=1)
+     if out is None:
+         hits = _retrieve(question, a)
+-        lines = [f"(Réponse sans modèle de langue{' : ' + problems[0] if problems else ''}.) Règles les plus proches de la question :"]
++        lines = [f"(Réponse sans modèle de langue{' : ' + problems[0] if problems else ''}.)"]
++        fl = OL.fallback_lines(lres, question) if lres else []
++        if fl:
++            lines += ["Ordres liés (valeurs en vigueur calculées par le code) :"] + fl
++        lines.append("Règles les plus proches de la question :")
+         for r in hits:
+             lines.append(f"- {r['rule_id']} — {fallback_explanation(r, level)}")
+         out = {"answer": "\n".join(lines), "cited_rules": [r["rule_id"] for r in hits], "cited_facts": []}
+@@ -605,4 +627,5 @@ def chat(order_id: str, messages: list[dict], level: str = "standard", ui: dict
+     return {"answer": out["answer"], "cited_rules": cited, "sources": sources,
+             "cited_facts": [{"id": f["id"], "page": f["page"], "text": f["text"][:200]} for f in facts],
+             "model": c.model if (c is not None and not problems and out is not None and "sans modèle" not in out["answer"][:40]) else None,
+-            "context": locals().get("packed"), "seconds": round(time.perf_counter() - t0, 1)}
++            "context": locals().get("packed"), "seconds": round(time.perf_counter() - t0, 1),
++            "links": {"added": lres["added"], "conflicts": len(lres["conflicts"]), "links": len(lres["links"])} if lres else None}
+diff --git a/interface/backend/route_chat.py b/interface/backend/route_chat.py
+index f089990..1341c56 100644
+--- a/interface/backend/route_chat.py
++++ b/interface/backend/route_chat.py
+@@ -143,13 +143,14 @@ def _words(s: str) -> set[str]:
+     return {w for w in re.findall(r"[a-z0-9]{3,}", _plain(s))}
+ 
+ 
+-def _order_facts(a: dict, qw: set, share: int) -> tuple[str, str, list[str]]:
+-    """Full and short text of one order (its fragments most related to the question first)."""
+-    facts = sorted([f for f in a["facts"] if f["kind"] != "ignore"], key=lambda f: -len(qw & _words(f["text"])))
++def _order_facts(a: dict, qw: set, share: int, old: set | frozenset = frozenset()) -> tuple[str, str, list[str]]:
++    """Full and short text of one order (its fragments most related to the question first; fragments whose value was
++    replaced by a later order last, marked as such)."""
++    facts = sorted([f for f in a["facts"] if f["kind"] != "ignore"], key=lambda f: (f["id"] in old, -len(qw & _words(f["text"]))))
+     head = f"Ordre {a['order']} (exercice {a['exercise_id']}) — objectif : {a.get('objective')}"
+     full, kept = [head], []
+     for f in facts:
+-        line = f"{f['id']} (p. {f['page']}, {f['kind']}) : {f['text'][:300]}"
++        line = f"{f['id']} (p. {f['page']}, {f['kind']}) : {f['text'][:300]}" + (" [REMPLACÉ : plus en vigueur]" if f["id"] in old else "")
+         if tokens("\n".join(full + [line])) > share:
+             break
+         full.append(line)
+@@ -232,6 +233,8 @@ et, s'il y en a, les règles doctrinales des ordres d'opération concernés.
+   si la trace ne dit pas si la situation se présente (par exemple un pont), dis que c'est à vérifier, pas que la règle
+   ne s'applique pas.
+ - Ne cite une règle (DR-xxxx) que si son texte complet figure dans le contexte.
++- Si des ordres sont liés, seules les « valeurs en vigueur » s'appliquent ; une valeur marquée [REMPLACÉ] ne se cite que
++  comme ancienne valeur. Un conflit non résolu se signale, il ne se tranche pas.
+ - Cite les segments (L1S2…), règles (DR-xxxx) et fragments par leur identifiant. Réponds en français."""
+ 
+ 
+@@ -266,6 +269,15 @@ def chat(entry: dict, messages: list[dict], level: str = "standard", order_ids:
+     ids = {"rules": [], "facts": []}
+     analyses = []
+     order_ids = list(dict.fromkeys(order_ids or []))
++    links_res = None
++    if order_ids:  # orders linked to the selected ones (amended, amending, completing) come in automatically
++        from interface.backend import order_links as OL
++
++        try:
++            links_res = OL.resolve(order_ids)
++            order_ids += [o for o in links_res["added"] if o not in order_ids]
++        except (FileNotFoundError, ValueError, KeyError):
++            links_res = None
+     if order_ids:
+         qw = _words(question) | {O.FR_EN[w] for w in _words(question) if w in O.FR_EN}
+         for oid in order_ids:
+@@ -276,6 +288,15 @@ def chat(entry: dict, messages: list[dict], level: str = "standard", order_ids:
+                 continue
+             a = dict(a, order=oid)
+             analyses.append(a)
++        old: dict[str, set] = {}
++        if links_res:
++            full, short = OL.context_block(links_res)
++            if full:  # what is in force along each chain, decided by code, ahead of everything the orders say
++                P.add("liens entre ordres", full, short, required=True)
++            for e in links_res["effective"]:
++                for r in e["replaced"]:
++                    old.setdefault(r["order"], set()).add(r["fact"])
++            P.report["linked_orders_added"] = links_res["added"]
+         if analyses:
+             # rules first (they carry the answer to rule questions), then each order's fragments with what is left
+             room = max(int((budget - P.used) * 0.55), 200)
+@@ -284,7 +305,7 @@ def chat(entry: dict, messages: list[dict], level: str = "standard", order_ids:
+             ids["rules"] = full_ids
+             share = max(int((budget - P.used) * 0.6 / len(analyses)), 80)
+             for a in analyses:
+-                full, short, fids = _order_facts(a, qw, share)
++                full, short, fids = _order_facts(a, qw, share, old.get(a["order"], frozenset()))
+                 P.add(f"ordre {a['order']}", full, short)
+                 if P.report["blocks"][-1]["form"] != "omitted":
+                     ids["facts"] += fids
+@@ -325,6 +346,8 @@ def chat(entry: dict, messages: list[dict], level: str = "standard", order_ids:
+                     bad.append(f"{', '.join(sorted(rid))} : règle(s) explicitement applicable(s), pas « ne s'applique pas » (dire « à vérifier »)")
+             if not o["cited_segments"] and not o["cited_rules"] and not re.search(r"ne permet pas|pas d.information|aucune information|a verifier|à vérifier", o["answer"], re.I):
+                 bad.append("affirmation sans segment ni règle cités : cite tes sources ou dis que le contexte ne permet pas de conclure")
++            if links_res:
++                bad += OL.stale_problems(o["answer"], links_res)
+             return o, bad + O.status_problems(o["answer"], rules_all)
+ 
+         out, problems = call_validated(c, SYSTEM, f"{context}\n\n{length}", schema, "route.chat", validate, retries=1)
+@@ -333,6 +356,9 @@ def chat(entry: dict, messages: list[dict], level: str = "standard", order_ids:
+         # no model, or the model's answer failed the checks: what the trace and the rule engine say about the question
+         note = "(Réponse sans modèle de langue" + (f" : {problems[0]}" if problems else "") + ". Voici ce que disent la trace du solveur et le moteur de règles.)"
+         text, segs = fallback_answer(tr, question, analyses, level)
++        fl = OL.fallback_lines(links_res, question) if links_res else []
++        if fl:
++            text = "Ordres liés (valeurs en vigueur calculées par le code) :\n" + "\n".join(fl) + "\n" + text
+         out = {"answer": note + "\n" + text, "cited_segments": segs, "cited_rules": []}
+     by_rule = {r["rule_id"]: r for a in analyses for r in a["rules"]}
+     cited = [r for r in out["cited_rules"] if r in by_rule]
+diff --git a/interface/scripts/ui_smoke.py b/interface/scripts/ui_smoke.py
+index 7bc3717..39c5d40 100644
+--- a/interface/scripts/ui_smoke.py
++++ b/interface/scripts/ui_smoke.py
+@@ -69,6 +69,86 @@ def main():
+         page.wait_for_timeout(400)
+         page.screenshot(path=str(out / "4a_why_and_chat.png"), full_page=True)
+ 
++        # an order written in the chat: previewed (not answered), then applied and computed
++        t = time.perf_counter()
++        page.locator(".route-chat .chat-input").fill("De PD4 à PA4 par WP1 et WP3 dans n'importe quel ordre, le plus rapide, 60 km/h, "
++                                                     "éviter 2 km autour de WP2")
++        page.keyboard.press("Enter")
++        page.wait_for_selector(".route-chat .text-order button:has-text('Appliquer et calculer')", timeout=60_000)
++        timings["text order read (chat)"] = time.perf_counter() - t
++        page.wait_for_timeout(300)
++        page.screenshot(path=str(out / "4d_chat_order.png"), full_page=True)
++        t = time.perf_counter()
++        page.click(".route-chat .text-order button:has-text('Appliquer et calculer')")
++        page.wait_for_timeout(500)
++        page.wait_for_selector("table.segs tbody tr", timeout=120_000)
++        timings["text order applied + route"] = time.perf_counter() - t
++        page.wait_for_timeout(1500)
++        page.screenshot(path=str(out / "4e_order_route.png"))
++        # the same from the Scenario tab
++        page.click("text=2 · Scénario")
++        page.locator(".text-order-box textarea").fill("Exercice 7 mais le plus rapide à 60 km/h")
++        page.click(".text-order-box button:has-text('Lire l’ordre')")
++        page.wait_for_selector(".text-order-box .text-order button:has-text('Appliquer')", timeout=60_000)
++        page.screenshot(path=str(out / "4f_text_box.png"))
++        page.click(".text-order-box .text-order button:text-is('Appliquer')")
++        page.wait_for_selector(".text-order-box .ok-text", timeout=10_000)
++        # what is on the map: a click in hand mode marks P (« ici »); the waypoints are « l'étape n »
++        page.wait_for_timeout(800)
++        box = page.locator(".map-wrap canvas").first.bounding_box()
++        page.mouse.click(box["x"] + box["width"] * 0.42, box["y"] + box["height"] * 0.55)
++        page.wait_for_selector(".pin-p", timeout=5_000)
++        page.keyboard.press("Escape")
++        page.locator(".text-order-box textarea").fill("Va de PD4 à ici par l'étape 2, évite 2 km autour de l'étape 1")
++        page.click(".text-order-box button:has-text('Lire l’ordre')")
++        page.wait_for_selector(".text-order-box .text-order:has-text('point P') button:has-text('Appliquer et calculer')", timeout=60_000)
++        page.screenshot(path=str(out / "4g_map_refs.png"))
++        t = time.perf_counter()
++        page.click(".text-order-box .text-order button:has-text('Appliquer et calculer')")
++        page.wait_for_timeout(500)
++        page.wait_for_selector("table.segs tbody tr", timeout=120_000)
++        timings["map-reference order + route"] = time.perf_counter() - t
++        page.wait_for_timeout(1500)
++        page.screenshot(path=str(out / "4h_map_refs_route.png"))
++
++        # mission log: the next leg starts at this arrival and may not reuse this path
++        page.click("button:has-text('Étape suivante depuis l’arrivée')")
++        page.wait_for_selector(".card.mission", timeout=10_000)
++        page.locator(".text-order-box textarea").fill("Puis va à WP1 sans repasser par le trajet précédent")
++        page.click(".text-order-box button:has-text('Lire l’ordre')")
++        page.wait_for_selector(".text-order-box .text-order:has-text('interdits') button:has-text('Appliquer et calculer')", timeout=60_000)
++        t = time.perf_counter()
++        page.click(".text-order-box .text-order button:has-text('Appliquer et calculer')")
++        page.wait_for_selector(".history-note", timeout=120_000)
++        timings["next leg, previous path forbidden"] = time.perf_counter() - t
++        page.wait_for_timeout(1500)
++        page.screenshot(path=str(out / "4k_mission_next_leg.png"))
++
++        # linked orders (synthetic test orders, scripts/make_test_orders.py): FRAGO 2 brings its chain into the chat
++        if page.locator(".route-chat").count():
++            page.click(".route-chat button:has-text('Ordres pris en compte')")
++            frago = page.locator(".order-pick label", has_text="FRAGO 2")
++            if frago.count():
++                frago.locator("input").check()
++                page.wait_for_selector(".order-pick :text('ordres liés ajoutés')", timeout=30_000)
++                n = page.locator(".route-chat .msg.assistant .meta").count()
++                t = time.perf_counter()
++                page.locator(".route-chat .chat-input").fill("Quelle vitesse maximale les ordres imposent-ils au convoi ?")
++                page.keyboard.press("Enter")
++                page.wait_for_function(f"document.querySelectorAll('.route-chat .msg.assistant .meta').length > {n}", timeout=120_000)
++                timings["chat with linked orders"] = time.perf_counter() - t
++                page.wait_for_timeout(400)
++                page.screenshot(path=str(out / "4i_linked_orders_chat.png"), full_page=True)
++        page.click("text=4 · Ordres")
++        sel = page.locator(".panel.orders select").first
++        page.wait_for_selector(".panel.orders select option:has-text('Exercice')", state="attached", timeout=30_000)
++        opt = sel.locator("option", has_text="FRAGO 2")
++        if opt.count():
++            sel.select_option(value=opt.first.get_attribute("value"))
++            page.wait_for_selector(".links-card", timeout=120_000)
++            page.wait_for_timeout(600)
++            page.screenshot(path=str(out / "4j_order_links.png"))
++
+         # TIFF + OSM, OSM filling the gaps, uncertain roads avoided: both comparisons must come back
+         page.click("text=1 · Configurer")
+         page.click("button.choice:has-text('TIFF + OSM')")
+diff --git a/interface/src/App.tsx b/interface/src/App.tsx
+index 02cd8fd..edf0bdd 100644
+--- a/interface/src/App.tsx
++++ b/interface/src/App.tsx
+@@ -7,7 +7,7 @@ import OrdersPanel from './components/OrdersPanel';
+ import MapView, { STAGES } from './components/MapView';
+ import { ExtractionPlayer, HINTS, LayerControl, Toolbar } from './components/MapOverlays';
+ import type {
+-  BackendStatus, BBox, CompareResult, ConvoysResult, ExtractResult, ItinerariesResult, LayerState, LonLat, Options, PdfExercise, RouteResult, Scenario, SheetInfo, ToolId,
++  BackendStatus, BBox, CompareResult, ConvoysResult, ExtractResult, ItinerariesResult, LayerState, LonLat, MapContext, MissionLeg, Options, PdfExercise, RouteResult, Scenario, SheetInfo, TextOrderResult, ToolId,
+ } from './types';
+ 
+ type Tab = 'config' | 'scenario' | 'results' | 'orders';
+@@ -20,7 +20,7 @@ const TABS: { id: Tab; label: string }[] = [
+ 
+ const STORE = 'amiad-ui-v2';
+ const EMPTY_SCENARIO: Scenario = {
+-  waypoints: [], waypointOrder: 'fixed', roundTrip: false, avoid: [], mode: 'single',
++  waypoints: [], waypointOrder: 'fixed', roundTrip: false, avoid: [], mode: 'single', missionLog: [], historyMode: 'forbid',
+   convoys: [], deconflict: 'penalize', sharePenalty: 2,
+   distinct: { k: 3, sepKm: 5, noIntersect: true, vehicle: 'pfm_carrier', turns: true, zoneRadiusKm: 8 },
+ };
+@@ -287,8 +287,54 @@ export default function App() {
+     setFocus(bboxOfPolygon(all));
+   };
+ 
++  // ------------------------------------------------------------------ ordre écrit (prévisualisé, appliqué sur confirmation)
++  const [pendingCompute, setPendingCompute] = useState(0);
++  const [pointed, setPointed] = useState<LonLat | null>(null);
++  const mapCtx = (): MapContext => ({ start: scenario.start, end: scenario.end, waypoints: scenario.waypoints, avoid: scenario.avoid,
++    area: scenario.area, rect, pointed });
++  // ------------------------------------------------------------------ journal de mission : étape suivante depuis l'arrivée
++  const legOf = (r: RouteResult, s: Scenario): MissionLeg => ({
++    name: s.label ?? `Étape ${(s.missionLog?.length ?? 0) + 1}`, start: s.start!, end: s.end!, waypoints: s.waypoints,
++    lines: r.route.features.flatMap((f) => (f.geometry.type === 'LineString' ? [f.geometry.coordinates as LonLat[]]
++      : f.geometry.type === 'MultiLineString' ? (f.geometry.coordinates as LonLat[][]) : [])),
++    length_km: r.total.length_km, duration_min: r.total.duration_min,
++  });
++  const continueFromHere = () => {
++    if (!route) return;
++    const r = route;
++    setScenario((s) => ({ ...s, missionLog: [...(s.missionLog ?? []), legOf(r, s)], start: s.roundTrip ? s.start : s.end, end: undefined, waypoints: [],
++      roundTrip: false, label: undefined, requirements: undefined, historyMode: s.historyMode ?? 'forbid', mode: 'single' }));
++    setRoute(null);
++    setTab('scenario');
++  };
++
++  const applyTextOrder = (r: TextOrderResult, run: boolean) => {
++    const { _avoid_mode, _continue, ...sp } = (r.scenario ?? {}) as NonNullable<TextOrderResult['scenario']> & { _continue?: boolean };
++    const done = route;
++    setScenario((s) => {
++      const base: Scenario = _continue && done && s.start && s.end
++        ? { ...s, missionLog: [...(s.missionLog ?? []), legOf(done, s)], start: s.roundTrip ? s.start : s.end, waypoints: [], roundTrip: false, label: undefined }
++        : s;
++      const n: Scenario = { ...base, ...sp, mode: 'single', area: 'area' in sp ? (sp.area ?? undefined) : base.area } as Scenario;
++      if (_avoid_mode === 'add' && sp.avoid) n.avoid = [...base.avoid, ...sp.avoid];
++      return n;
++    });
++    if (r.options && Object.keys(r.options).length) setOptions((o) => ({ ...o, ...r.options }));
++    setRoute(null);
++    setMulti(null);
++    setConvoyRes(null);
++    const pts = [sp.start, sp.end, ...(sp.waypoints ?? []), ...((sp.avoid ?? []).flat())].filter(Boolean) as LonLat[];
++    if (pts.length) setFocus(bboxOfPolygon(pts));
++    if (r.map_refs?.some((m) => m.id === 'R')) setRect(null);  // the rectangle became a zone
++    if (run) setPendingCompute((k) => k + 1);
++  };
++  useEffect(() => {
++    if (pendingCompute) compute();
++  }, [pendingCompute]); // eslint-disable-line react-hooks/exhaustive-deps
++
+   const clearAll = () => {
+     setScenario((s) => ({ ...EMPTY_SCENARIO, mode: s.mode, distinct: s.distinct }));
++    setPointed(null);
+     setRoute(null);
+     setMulti(null);
+     setConvoyRes(null);
+@@ -376,7 +422,7 @@ export default function App() {
+           {tab === 'config' && <ConfigPanel sheet={sheet} options={options} onChange={patchOptions} />}
+           {tab === 'scenario' && (
+             <ScenarioPanel sheet={sheet} scenario={scenario} tool={tool} setTool={changeTool} onChange={patchScenario}
+-              onLoadExercise={loadExercise} onCompute={compute} computing={computing} options={options}
++              onLoadExercise={loadExercise} onCompute={compute} computing={computing} options={options} onTextOrder={applyTextOrder} mapCtx={mapCtx}
+               onReplace={(sc, o) => { setScenario({ ...EMPTY_SCENARIO, ...sc }); setOptions({ ...DEFAULT_OPTIONS, ...o }); setRoute(null); setMulti(null); setConvoyRes(null);
+                 const pts = [sc.start, sc.end, ...(sc.waypoints ?? []), ...(sc.convoys ?? []).flatMap((c) => [c.start, c.end])].filter(Boolean) as LonLat[];
+                 if (pts.length) setFocus(bboxOfPolygon(pts)); }} />
+@@ -392,7 +438,7 @@ export default function App() {
+             />
+           )}
+           {tab === 'results' && <ResultsPanel route={route} multi={multi} compares={compares} extraction={extraction?.result ?? null} error={error}
+-            convoys={convoyRes} onFocus={(b) => setFocus(b)} uiContext={uiContext} />}
++            convoys={convoyRes} onFocus={(b) => setFocus(b)} uiContext={uiContext} sheetId={sheet?.id} onTextOrder={applyTextOrder} mapCtx={mapCtx} onContinue={scenario.mode === 'single' ? continueFromHere : undefined} />}
+           {tab !== 'scenario' && tab !== 'orders' && (scenario.mode === 'convoys' ? scenario.convoys.length > 0 : scenario.mode === 'distinct' ? (scenario.zoneFrom || scenario.start) && (scenario.zoneTo || scenario.end) : scenario.start && scenario.end) && (
+             <button className="btn primary big sticky" onClick={compute} disabled={computing}>{computing ? 'Calcul en cours…' : scenario.mode === 'convoys' ? 'Planifier les convois' : scenario.mode === 'distinct' ? 'Calculer les itinéraires' : 'Calculer l’itinéraire'}</button>
+           )}
+@@ -402,7 +448,7 @@ export default function App() {
+             sheet={sheet} options={options} layers={layers} scenario={scenario} tool={tool} draftPolygon={draft} rect={rect}
+             rectMenu={rectMenu} route={route} multi={multi ?? convoysAsMulti} compares={readyCompares} extraction={extraction} fitKey={fitKey} focus={focus}
+             onPoint={onPoint} onMovePoint={onMovePoint} onPolygonVertex={(p) => setDraft((d) => [...d, p])} onPolygonClose={onPolygonClose}
+-            onRectangle={(b) => { setRect(b); setTool('pan'); }} onLoading={onLoading}
++            onRectangle={(b) => { setRect(b); setTool('pan'); }} onLoading={onLoading} pointed={pointed} onPointed={setPointed}
+           />
+           <Toolbar tool={tool} setTool={changeTool} onFit={() => setFitKey((k) => k + 1)} onClear={clearAll} />
+           <LayerControl layers={layers} setLayers={setLayers} options={options} setTau={(t) => patchOptions({ tau: t })} loading={loadingLayers} />
+diff --git a/interface/src/api.ts b/interface/src/api.ts
+index ffd1bf3..083c8dc 100644
+--- a/interface/src/api.ts
++++ b/interface/src/api.ts
+@@ -1,5 +1,5 @@
+ import type {
+-  ChatReply, ConvoysResult, RouteChatReply, SavedScenario, ExplainLevel, OrderAnalysis, OrderInfo, OrdersStatus, Capabilities, ItinerariesResult, BackendStatus, BBox, CompareResult, ExtractResult, LonLat, Options, PdfResult, RouteResult, Scenario, SheetInfo,
++  ChatReply, ConvoysResult, RouteChatReply, TextOrderResult, MapContext, OrderLinksResult, SavedScenario, ExplainLevel, OrderAnalysis, OrderInfo, OrdersStatus, Capabilities, ItinerariesResult, BackendStatus, BBox, CompareResult, ExtractResult, LonLat, Options, PdfResult, RouteResult, Scenario, SheetInfo,
+ } from './types';
+ 
+ /** Le back end est servi par la même origine (FastAPI sert aussi l'interface ; proxy Vite en développement). */
+@@ -39,6 +39,7 @@ export function postRoute(sheet: string, sc: Scenario, o: Options, signal?: Abor
+     use_osm: o.useOsm, osm_mode: o.osmMode, use_bdtopo: o.useBdtopo,
+     prob_threshold: o.penalize && o.model !== 'none' ? o.tau : null, prob_penalty: o.strength,
+     uncertainty_cost: o.uncertaintyCost, uncertainty_strength: o.lambda,
++    previous_legs: (sc.missionLog ?? []).flatMap((l) => l.lines), history_mode: sc.historyMode ?? 'forbid',
+   };
+   return fetch(`${API}/api/route`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
+     .then((r) => json<RouteResult>(r));
+@@ -125,3 +126,17 @@ export function chatOrder(id: string, messages: { role: string; content: string
+ export const bboxOfPolygon = (pts: LonLat[]): BBox => [
+   Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1])),
+ ];
++
++/** Ordre écrit → modifications proposées (rien n'est appliqué côté serveur). ``auto`` : renvoie is_command = false pour une question. */
++export function parseTextOrder(text: string, sheet: string, mode: 'command' | 'auto' = 'command', map?: MapContext) {
++  return fetch(`${API}/api/order-text`, {
++    method: 'POST', headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify({ text, sheet, mode, map }),
++  }).then((r) => json<TextOrderResult>(r));
++}
++
++/** Liens entre ordres et valeurs en vigueur sur ``ids`` et leur chaîne (ordres liés ajoutés). */
++export const getOrderLinks = (ids: string[]) => fetch(`${API}/api/orders/links?ids=${encodeURIComponent(ids.join(','))}`).then((r) => json<OrderLinksResult>(r));
++export const setOrderLink = (from_id: string, to_id: string, action: 'add' | 'reject' | 'reset', relation?: string) =>
++  fetch(`${API}/api/orders/links`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from_id, to_id, action, relation }) })
++    .then((r) => json<unknown>(r));
+diff --git a/interface/src/components/MapOverlays.tsx b/interface/src/components/MapOverlays.tsx
+index 2824e3b..a5ddacb 100644
+--- a/interface/src/components/MapOverlays.tsx
++++ b/interface/src/components/MapOverlays.tsx
+@@ -47,7 +47,7 @@ export function Toolbar({ tool, setTool, onFit, onClear }: { tool: ToolId; setTo
+ }
+ 
+ export const HINTS: Record<ToolId, string> = {
+-  pan: 'Glissez pour vous déplacer · molette pour zoomer · clic sur une route pour ses informations.',
++  pan: 'Glissez pour vous déplacer · molette pour zoomer · clic : informations de la route et point P (« ici » dans un ordre écrit).',
+   start: 'Cliquez sur la carte pour placer le départ.',
+   end: 'Cliquez sur la carte pour placer l’arrivée.',
+   waypoint: 'Cliquez pour ajouter des étapes (dans l’ordre). Échap pour terminer.',
+diff --git a/interface/src/components/MapView.tsx b/interface/src/components/MapView.tsx
+index 427a9b2..068eff3 100644
+--- a/interface/src/components/MapView.tsx
++++ b/interface/src/components/MapView.tsx
+@@ -31,6 +31,9 @@ interface Props {
+   onPolygonClose: () => void;
+   onRectangle: (b: BBox) => void;
+   onLoading: (what: string, on: boolean) => void;
++  /** Point P : le dernier clic en mode main, utilisable dans un ordre écrit (« ici »). */
++  pointed?: LonLat | null;
++  onPointed?: (p: LonLat) => void;
+ }
+ 
+ const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
+@@ -70,7 +73,7 @@ export default function MapView(p: Props) {
+     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+     map.addControl(new maplibregl.ScaleControl({ maxWidth: 140, unit: 'metric' }), 'bottom-left');
+     map.on('load', () => {
+-      for (const id of [...VECTOR_LAYERS, 'refs', 'route', 'zones', 'draft', 'rect', 'ext-graph', 'ext-nodes', 'hard', 'its', 'turns']) {
++      for (const id of [...VECTOR_LAYERS, 'refs', 'route', 'zones', 'draft', 'rect', 'ext-graph', 'ext-nodes', 'hard', 'its', 'turns', 'history']) {
+         map.addSource(id, { type: 'geojson', data: EMPTY });
+       }
+       map.addLayer({ id: 'bdtopo', type: 'line', source: 'bdtopo', paint: { 'line-color': '#1f6feb', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 14, 2.2], 'line-opacity': 0.75 } });
+@@ -85,6 +88,7 @@ export default function MapView(p: Props) {
+       map.addLayer({ id: 'its-casing', type: 'line', source: 'its', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 8 } });
+       map.addLayer({ id: 'its', type: 'line', source: 'its', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': itColor, 'line-width': 4.5 } });
+       map.addLayer({ id: 'turns', type: 'circle', source: 'turns', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 3, 14, 7], 'circle-color': ['match', ['get', 'severity'], 'critical', '#bf3b2f', '#f59f00'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5 } });
++      map.addLayer({ id: 'history', type: 'line', source: 'history', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#6b7280', 'line-width': 4, 'line-opacity': 0.75, 'line-dasharray': [1.5, 1.2] } });
+       map.addLayer({ id: 'route-casing', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 8 } });
+       map.addLayer({ id: 'route', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['match', ['get', 'leg'], 1, '#7b2cbf', '#d1495b'], 'line-width': 4.5 } });
+       const zoneColor: maplibregl.ExpressionSpecification = ['match', ['get', 'kind'], 'avoid', '#bf3b2f', 'from', '#2b6cb0', 'to', '#7b2cbf', '#1a7f37'];
+@@ -103,6 +107,7 @@ export default function MapView(p: Props) {
+       const ll: LonLat = [e.lngLat.lng, e.lngLat.lat];
+       if (tool === 'start' || tool === 'end' || tool === 'waypoint') return props.current.onPoint(tool, ll);
+       if (POLYGON_TOOLS.includes(tool)) return props.current.onPolygonVertex(ll);
++      if (tool === 'pan') props.current.onPointed?.(ll);
+       if (tool === 'pan' && turnInfo(map, e)) return;
+       if (tool === 'pan') showInfo(map, e);
+     });
+@@ -239,6 +244,7 @@ export default function MapView(p: Props) {
+   useEffect(() => {
+     if (!map || !ready) return;
+     const sc = p.scenario;
++    setData(map, 'history', { type: 'FeatureCollection', features: (sc.missionLog ?? []).flatMap((l, i) => l.lines.map((c) => ({ type: 'Feature' as const, properties: { leg: i + 1 }, geometry: { type: 'LineString' as const, coordinates: c } }))) });
+     const zones: Feature[] = [];
+     if (sc.area && sc.area.length >= 3) zones.push({ type: 'Feature', properties: { kind: 'area' }, geometry: { type: 'Polygon', coordinates: [[...sc.area, sc.area[0]]] } });
+     if (sc.mode === 'distinct') {
+@@ -280,7 +286,14 @@ export default function MapView(p: Props) {
+     sc.waypoints.forEach((w, i) => add(w, 'wp', String(i + 1), 'waypoint', i, `Étape ${i + 1}`));
+     if (sc.start) add(sc.start, 'start', 'D', 'start', 0, 'Départ');
+     if (sc.end) add(sc.end, 'end', 'A', 'end', 0, 'Arrivée');
+-  }, [map, ready, p.scenario, p.draftPolygon, p.rect, p.multi]);
++    if (p.pointed) {
++      const el = document.createElement('div');
++      el.className = 'pin-p';
++      el.textContent = 'P';
++      el.title = 'Point P (dernier clic) : « ici » dans un ordre écrit';
++      markers.current.push(new maplibregl.Marker({ element: el }).setLngLat(p.pointed).addTo(map));
++    }
++  }, [map, ready, p.scenario, p.draftPolygon, p.rect, p.multi, p.pointed]);
+ 
+   // ------------------------------------------------------------------ menu du rectangle (suit la carte)
+   useEffect(() => {
+diff --git a/interface/src/components/OrdersPanel.tsx b/interface/src/components/OrdersPanel.tsx
+index 184cc6b..500bbca 100644
+--- a/interface/src/components/OrdersPanel.tsx
++++ b/interface/src/components/OrdersPanel.tsx
+@@ -1,5 +1,6 @@
+ import { useEffect, useMemo, useRef, useState } from 'react';
+ import { chatOrder, extractOrder, getOrderAnalysis, getOrders, uploadOrder } from '../api';
++import OrderLinksCard from './OrderLinks';
+ import type { ChatMessage, ExplainLevel, OrderAnalysis, OrderFact, OrderInfo, OrderRule, OrdersStatus } from '../types';
+ 
+ interface Props {
+@@ -181,6 +182,7 @@ export default function OrdersPanel({ uiContext, onApplyToMap }: Props) {
+               </div>
+             )}
+           </div>
++          <OrderLinksCard orderId={orderId} orders={orders} />
+           {a.explanation.model
+             ? <p className="small muted">Explications rédigées par {a.explanation.model} en {a.explanation.seconds} s ; statuts et sources fixés par le moteur de règles.</p>
+             : <p className="small muted">Explications tirées du moteur de règles (sans modèle de langue{a.explanation.fallback_reason ? ` : ${String(a.explanation.fallback_reason)}` : ''}).</p>}
+diff --git a/interface/src/components/ResultsPanel.tsx b/interface/src/components/ResultsPanel.tsx
+index d4eebe3..3cec32e 100644
+--- a/interface/src/components/ResultsPanel.tsx
++++ b/interface/src/components/ResultsPanel.tsx
+@@ -1,5 +1,6 @@
+ import { useState } from 'react';
+-import type { BBox, CompareResult, ConvoysResult, ExtractResult, ItinerariesResult, RouteResult } from '../types';
++import type { ApplyTextOrder } from './TextOrder';
++import type { MapContext, BBox, CompareResult, ConvoysResult, ExtractResult, ItinerariesResult, RouteResult } from '../types';
+ import { IT_COLORS } from './MapView';
+ import { ConvoysView, RouteChat, WhyPanel } from './RouteExplain';
+ 
+@@ -12,6 +13,11 @@ interface Props {
+   convoys: ConvoysResult | null;
+   onFocus: (b: BBox) => void;
+   uiContext: () => Record<string, unknown>;
++  sheetId?: string;
++  onTextOrder?: ApplyTextOrder;
++  mapCtx?: () => MapContext;
++  /** Étape suivante : ce trajet entre dans le journal de mission, la suivante part de son arrivée. */
++  onContinue?: () => void;
+ }
+ 
+ const pct = (v?: number) => (v === undefined || v === null ? '—' : `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)} %`);
+@@ -26,7 +32,7 @@ function download(name: string, data: unknown) {
+   URL.revokeObjectURL(url);
+ }
+ 
+-export default function ResultsPanel({ route, multi, compares, extraction, error, convoys, onFocus, uiContext }: Props) {
++export default function ResultsPanel({ route, multi, compares, extraction, error, convoys, onFocus, uiContext, sheetId, onTextOrder, mapCtx, onContinue }: Props) {
+   const [showLog, setShowLog] = useState(false);
+   return (
+     <div className="panel">
+@@ -89,6 +95,12 @@ export default function ResultsPanel({ route, multi, compares, extraction, error
+               {route.legs[0]?.uncertainty_cost_share !== undefined && <> Il représente {Math.round((route.legs[0].uncertainty_cost_share ?? 0) * 100)} % du coût du trajet.</>}</p>
+           )}
+           {route.uncertainty_cost_note && <p className="small muted">{route.uncertainty_cost_note[0].toUpperCase() + route.uncertainty_cost_note.slice(1)}.</p>}
++          {route.history && (
++            <p className="small history-note">Journal de mission : {route.history.mode === 'forbid'
++              ? <>les {route.history.km_of_previous_legs} km des {route.history.legs} étape(s) précédente(s) sont interdits{route.history.relaxed_m ? <>, rouverts à moins de {route.history.relaxed_m} m du point partagé faute d’autre passage</> : null}</>
++              : <>routes des étapes précédentes pénalisées</>} ; repris : {route.history.km_reused} km.</p>
++          )}
++          {onContinue && <button className="btn small" onClick={onContinue} title="Ce trajet entre dans le journal de mission ; la prochaine étape part de son arrivée, sans repasser par lui">Étape suivante depuis l’arrivée →</button>}
+           <WhyPanel route={route} onFocus={onFocus} />
+           {route.probability_penalty && (
+             <p className="small muted">Routes incertaines pénalisées : {route.probability_penalty.km_below_threshold} km du réseau sous le seuil de {Math.round(route.probability_penalty.threshold * 100)} %.</p>
+@@ -98,7 +110,7 @@ export default function ResultsPanel({ route, multi, compares, extraction, error
+             <button className="link" onClick={() => setShowLog((s) => !s)}>{showLog ? '▾' : '▸'} Décisions du calcul</button>
+           </div>
+           {showLog && <ul className="log small">{route.log.map((l, i) => <li key={i}>{l}</li>)}</ul>}
+-          <RouteChat route={route} uiContext={uiContext} />
++          <RouteChat route={route} uiContext={uiContext} sheetId={sheetId} onTextOrder={onTextOrder} mapCtx={mapCtx} />
+         </>
+       )}
+ 
+diff --git a/interface/src/components/RouteExplain.tsx b/interface/src/components/RouteExplain.tsx
+index c0f6f77..469054f 100644
+--- a/interface/src/components/RouteExplain.tsx
++++ b/interface/src/components/RouteExplain.tsx
+@@ -1,6 +1,7 @@
+ import { useEffect, useRef, useState } from 'react';
+-import { chatRoute, getOrders } from '../api';
+-import type { BBox, ConvoysResult, ExplainLevel, OrderInfo, RouteChatReply, RouteResult, RouteSegment } from '../types';
++import { chatRoute, getOrderLinks, getOrders, parseTextOrder } from '../api';
++import { TextOrderPreview, type ApplyTextOrder } from './TextOrder';
++import type { BBox, ConvoysResult, ExplainLevel, MapContext, OrderInfo, OrderLinksResult, RouteChatReply, RouteResult, RouteSegment, TextOrderResult } from '../types';
+ import { IT_COLORS } from './MapView';
+ 
+ const VERDICT: Record<RouteSegment['verdict'], { label: string; cls: string; hint: string }> = {
+@@ -73,10 +74,11 @@ export function WhyPanel({ route, onFocus }: { route: RouteResult; onFocus: (b:
+ 
+ const QUICK = ['Pourquoi cet itinéraire ?', 'Détaille l’itinéraire segment par segment', 'Quelles alternatives ont été rejetées ?', 'Quelles sont les limites et incertitudes ?'];
+ 
+-interface Msg { role: 'user' | 'assistant'; content: string; reply?: RouteChatReply }
++interface Msg { role: 'user' | 'assistant'; content: string; reply?: RouteChatReply; order?: TextOrderResult }
+ 
+ /** Questions sur l'itinéraire : réponses tirées de la trace du solveur (sans modèle) ou du modèle local, avec les ordres choisis. */
+-export function RouteChat({ route, uiContext }: { route: RouteResult; uiContext: () => Record<string, unknown> }) {
++export function RouteChat({ route, uiContext, sheetId, onTextOrder, mapCtx }: { route: RouteResult; uiContext: () => Record<string, unknown>;
++  sheetId?: string; onTextOrder?: ApplyTextOrder; mapCtx?: () => MapContext }) {
+   const [msgs, setMsgs] = useState<Msg[]>([]);
+   const [q, setQ] = useState('');
+   const [busy, setBusy] = useState(false);
+@@ -84,6 +86,11 @@ export function RouteChat({ route, uiContext }: { route: RouteResult; uiContext:
+   const [orders, setOrders] = useState<OrderInfo[]>([]);
+   const [picked, setPicked] = useState<string[]>([]);
+   const [showOrders, setShowOrders] = useState(false);
++  const [linked, setLinked] = useState<OrderLinksResult | null>(null);
++  useEffect(() => {
++    if (!picked.length) { setLinked(null); return; }
++    getOrderLinks(picked).then(setLinked).catch(() => setLinked(null));
++  }, [picked.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+   const end = useRef<HTMLDivElement>(null);
+   useEffect(() => { getOrders().then((r) => setOrders(r.orders.filter((o) => o.extracted))).catch(() => setOrders([])); }, []);
+   useEffect(() => { setMsgs([]); }, [route.route_id]);
+@@ -96,6 +103,13 @@ export function RouteChat({ route, uiContext }: { route: RouteResult; uiContext:
+     setQ('');
+     setBusy(true);
+     try {
++      if (sheetId && onTextOrder) {  // an order ("de PD4 à PA4, le plus rapide") is previewed, not answered
++        const o = await parseTextOrder(text.trim(), sheetId, 'auto', mapCtx?.()).catch(() => null);
++        if (o?.is_command) {
++          setMsgs([...next, { role: 'assistant', content: 'Ordre reconnu : voici ce qui changerait dans le scénario.', order: o }]);
++          return;
++        }
++      }
+       const r = await chatRoute(route.route_id, next.map(({ role, content }) => ({ role, content })), level, picked, uiContext());
+       setMsgs([...next, { role: 'assistant', content: r.answer, reply: r }]);
+     } catch (e) {
+@@ -125,6 +139,11 @@ export function RouteChat({ route, uiContext }: { route: RouteResult; uiContext:
+               {o.label}
+             </label>
+           ))}
++          {linked && linked.added.length > 0 && (
++            <p className="small">+ ordres liés ajoutés automatiquement : <b>{linked.added.map((o) => linked.orders.find((h) => h.order === o)?.ref ?? o).join(', ')}</b>
++              {linked.effective.some((e) => e.replaced.length) && <> · valeurs en vigueur calculées par le code</>}
++              {linked.conflicts.length > 0 && <span className="txt-doubt"> · {linked.conflicts.length} conflit(s) à faire trancher</span>}</p>
++          )}
+           <p className="muted">Avec beaucoup d’ordres, seuls les fragments et règles les plus liés à la question sont envoyés au modèle (budget de contexte) ; la réponse indique ce qui a été omis.</p>
+         </div>
+       )}
+@@ -135,12 +154,14 @@ export function RouteChat({ route, uiContext }: { route: RouteResult; uiContext:
+         {msgs.map((m, i) => (
+           <div key={i} className={`msg ${m.role}`}>
+             <div className="bubble" style={{ whiteSpace: 'pre-line' }}>{m.content.replace(/\*\*/g, '')}</div>
++            {m.order && onTextOrder && <TextOrderPreview r={m.order} onApply={onTextOrder} />}
+             {m.reply && (
+               <div className="meta small muted">
+                 {m.reply.mode === 'trace' ? 'Réponse tirée de la trace du solveur (sans modèle)' : m.reply.model ? `Modèle ${m.reply.model}` : m.reply.mode}
+                 {' · '}{m.reply.seconds} s
+                 {m.reply.cited_segments.length > 0 && <> · segments {m.reply.cited_segments.join(', ')}</>}
+                 {m.reply.cited_rules.length > 0 && <> · règles {m.reply.cited_rules.join(', ')}</>}
++                {m.reply.context?.linked_orders_added && m.reply.context.linked_orders_added.length > 0 && <> · ordres liés ajoutés : {m.reply.context.linked_orders_added.join(', ')}</>}
+                 {m.reply.context && <> · contexte {m.reply.context.used_tokens}/{m.reply.context.budget_tokens} jetons
+                   {m.reply.context.omitted.length > 0 && <> (omis : {m.reply.context.omitted.join(', ')})</>}
+                   {m.reply.context.shortened.length > 0 && <> (raccourcis : {m.reply.context.shortened.join(', ')})</>}</>}
+@@ -152,7 +173,7 @@ export function RouteChat({ route, uiContext }: { route: RouteResult; uiContext:
+         <div ref={end} />
+       </div>
+       <div className="row">
+-        <input className="chat-input" value={q} placeholder="Ex. : pourquoi le segment 3 ? et la route plus courte ?" onChange={(e) => setQ(e.target.value)}
++        <input className="chat-input" value={q} placeholder="Ex. : pourquoi le segment 3 ? — ou un ordre : de PD4 à PA4, le plus rapide" onChange={(e) => setQ(e.target.value)}
+           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); ask(q); } }} disabled={busy} />
+         <button className="btn primary" onClick={() => ask(q)} disabled={busy || !q.trim()}>Envoyer</button>
+       </div>
+diff --git a/interface/src/components/ScenarioPanel.tsx b/interface/src/components/ScenarioPanel.tsx
+index 6d866d2..c003fda 100644
+--- a/interface/src/components/ScenarioPanel.tsx
++++ b/interface/src/components/ScenarioPanel.tsx
+@@ -1,6 +1,7 @@
+ import { useEffect, useRef, useState } from 'react';
++import TextOrderBox, { type ApplyTextOrder } from './TextOrder';
+ import { getCapabilities, getPdf, getScenario, listScenarios, saveScenario, uploadPdf } from '../api';
+-import type { Capabilities, ConvoyDef, DistinctParams, LonLat, Options, PdfExercise, PdfResult, SavedScenario, Scenario, SheetInfo, ToolId } from '../types';
++import type { MapContext, Capabilities, ConvoyDef, DistinctParams, LonLat, Options, PdfExercise, PdfResult, SavedScenario, Scenario, SheetInfo, ToolId } from '../types';
+ import { IT_COLORS } from './MapView';
+ 
+ interface Props {
+@@ -15,11 +16,14 @@ interface Props {
+   options: Options;
+   /** Remplace le scénario et les options par un scénario enregistré. */
+   onReplace: (sc: Scenario, o: Options) => void;
++  /** Ordre écrit : modifications proposées, appliquées sur confirmation. */
++  onTextOrder: ApplyTextOrder;
++  mapCtx?: () => MapContext;
+ }
+ 
+ const fmt = (p?: LonLat) => (p ? `${p[1].toFixed(5)} N, ${p[0].toFixed(5)} E` : '—');
+ 
+-export default function ScenarioPanel({ sheet, scenario: sc, tool, setTool, onChange, onLoadExercise, onCompute, computing, options, onReplace }: Props) {
++export default function ScenarioPanel({ sheet, scenario: sc, tool, setTool, onChange, onLoadExercise, onCompute, computing, options, onReplace, onTextOrder, mapCtx }: Props) {
+   const [pdf, setPdf] = useState<PdfResult | null>(null);
+   const [pdfErr, setPdfErr] = useState('');
+   const [pdfBusy, setPdfBusy] = useState(false);
+@@ -78,6 +82,7 @@ export default function ScenarioPanel({ sheet, scenario: sc, tool, setTool, onCh
+ 
+   return (
+     <div className="panel">
++      {sheet && <TextOrderBox sheetId={sheet.id} onApply={onTextOrder} mapCtx={mapCtx} />}
+       <h3>Type de calcul</h3>
+       <div className="seg">
+         <button className={sc.mode === 'single' ? 'on' : ''} onClick={() => onChange({ mode: 'single' })}>Un itinéraire</button>
+@@ -92,6 +97,25 @@ export default function ScenarioPanel({ sheet, scenario: sc, tool, setTool, onCh
+           : 'Le meilleur itinéraire entre un départ et une arrivée, avec étapes, aller-retour et zones.'}
+       </p>
+ 
++      {(sc.missionLog?.length ?? 0) > 0 && (
++        <div className="card mission">
++          <div className="title">Journal de mission ({sc.missionLog!.length} étape{sc.missionLog!.length > 1 ? 's' : ''})</div>
++          <ol className="small">
++            {sc.missionLog!.map((l, i) => <li key={i}>{l.name} : {l.length_km} km, {Math.round(l.duration_min)} min</li>)}
++            <li className="muted">étape {sc.missionLog!.length + 1} : en cours (départ = arrivée de l’étape {sc.missionLog!.length})</li>
++          </ol>
++          <div className="small">Trajets des étapes précédentes :</div>
++          <div className="seg small">
++            {([['forbid', 'Interdits'], ['penalize', 'Pénalisés'], ['free', 'Autorisés']] as const).map(([k, lab]) => (
++              <button key={k} className={(sc.historyMode ?? 'forbid') === k ? 'on' : ''} onClick={() => onChange({ historyMode: k })}>{lab}</button>
++            ))}
++          </div>
++          <div className="row">
++            <button className="link small" onClick={() => onChange({ missionLog: sc.missionLog!.slice(0, -1) })}>Retirer la dernière étape</button>
++            <button className="link small danger" onClick={() => onChange({ missionLog: [] })}>Vider le journal</button>
++          </div>
++        </div>
++      )}
+       <details className="saved">
+         <summary>Scénarios enregistrés ({saved.length})</summary>
+         <div className="row">
+diff --git a/interface/src/styles.css b/interface/src/styles.css
+index bcd5d74..204fa19 100644
+--- a/interface/src/styles.css
++++ b/interface/src/styles.css
+@@ -287,3 +287,19 @@ details.saved .row, details.saved select { margin-bottom: 6px; }
+ .pts input.pt-name { border: 1px solid transparent; background: transparent; font: inherit; padding: 1px 3px; }
+ .pts input.pt-name:focus { border-color: rgba(127, 127, 127, 0.4); }
+ .seg button { white-space: nowrap; }
++
++/* ordre en texte */
++.text-order-box { margin: 4px 0 12px; }
++.text-order-box summary { font-weight: 600; cursor: pointer; margin-bottom: 6px; }
++.text-order-box textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line, #d0d7da); border-radius: 6px; resize: vertical; }
++.text-order { border: 1px solid var(--line, #d0d7da); border-radius: 8px; padding: 8px 10px; margin-top: 8px; background: #fff; }
++.text-order ul { margin: 4px 0 6px 18px; padding: 0; }
++.text-order .row { margin-top: 6px; gap: 8px; }
++.msg.assistant .text-order { margin-top: 4px; }
++.ok-text { color: #1f7a6d; font-weight: 600; margin-top: 4px; }
++.pin-p { width: 18px; height: 18px; border-radius: 50%; background: #f59f00; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
++.links-card .links { margin: 4px 0 6px 16px; padding: 0; }
++.links-card .links li { margin: 2px 0; }
++.links-card .conflict { background: #fff4dc; border-radius: 6px; padding: 6px 8px; margin: 6px 0; }
++.card.mission ol { margin: 4px 0 6px 18px; padding: 0; }
++.history-note { background: #f1f3f5; border-left: 0; border-radius: 6px; padding: 6px 8px; }
+diff --git a/interface/src/types.ts b/interface/src/types.ts
+index 9df669d..a0adabf 100644
+--- a/interface/src/types.ts
++++ b/interface/src/types.ts
+@@ -42,6 +42,9 @@ export interface Scenario {
+   waypointOrder: 'fixed' | 'free';
+   roundTrip: boolean;
+   area?: LonLat[]; // zone de déploiement (DA)
++  /** Journal de mission : les étapes déjà calculées ; la suivante part de l'arrivée de la dernière. */
++  missionLog?: MissionLeg[];
++  historyMode?: 'forbid' | 'penalize' | 'free';
+   avoid: LonLat[][]; // zones à éviter (RA)
+   requirements?: string[];
+   /** single : un itinéraire (points, étapes) ; distinct : k itinéraires sous contraintes entre deux zones ;
+@@ -142,7 +145,7 @@ export interface RouteChatReply {
+   cited_rules: string[];
+   sources: { rule_id: string; status: string; group: string; pdf_document: string; pdf_page: number; verification_status: string }[];
+   model: string | null;
+-  context: { budget_tokens: number; used_tokens: number; omitted: string[]; shortened: string[] } | null;
++  context: { budget_tokens: number; used_tokens: number; omitted: string[]; shortened: string[]; linked_orders_added?: string[] } | null;
+   seconds: number;
+ }
+ 
+@@ -254,6 +257,7 @@ export interface RouteResult {
+   network: string;
+   probability_penalty: { threshold: number; strength: number; sections_priced: number; km_below_threshold: number } | null;
+   uncertainty_cost: UncertaintyCost | null;
++  history?: { mode: string; legs: number; km_of_previous_legs: number; relaxed_m?: number; km_reused: number } | null;
+   uncertainty_cost_note: string | null;
+   tiff_only: boolean;
+   explanation: RouteTrace | null;
+@@ -402,3 +406,41 @@ export interface ChatMessage {
+   content: string;
+   reply?: ChatReply;
+ }
++
++/** Ordre écrit → modifications du scénario, à prévisualiser (points nommés du PDF et coordonnées uniquement). */
++export interface TextOrderResult {
++  is_command: boolean;
++  method?: 'model' | 'rules';
++  model?: string | null;
++  seconds?: number;
++  scenario?: Partial<Scenario> & { _avoid_mode?: 'add'; area?: LonLat[] | null };
++  options?: Partial<Options>;
++  changes?: string[];
++  notes?: string[];
++  unresolved?: string[];
++  coordinates?: { id: string; text: string; lonlat: LonLat }[];
++  map_refs?: { id: string; text: string; label: string }[];
++  model_problems?: string[];
++  rules_found_more?: string[];
++}
++
++/** Ce qui est sur la carte, pour qu'un ordre écrit puisse y faire référence (« ici », « le départ », « l'étape 2 », « le rectangle »). */
++export interface MapContext {
++  start?: LonLat; end?: LonLat; waypoints: LonLat[]; avoid: LonLat[][]; area?: LonLat[]; rect?: BBox | null; pointed?: LonLat | null;
++}
++
++/** Dépendances entre ordres (calculées par le code) : liens, valeurs en vigueur, conflits. */
++export interface OrderHeader { order: string; ref: string | null; kind: string | null; date: string | null; title: string; synthetic: boolean }
++export interface OrderLink { from: string; to: string; relation: 'amends' | 'replaces' | 'cancels' | 'complements'; source: 'detected' | 'operator'; fact: string | null; page: number | null; evidence: string }
++export interface ItemValue { key: string; label: string; value: number; unit: string; printed: string; order: string; fact: string; page: number | null }
++export interface OrderLinksResult {
++  selected: string[]; added: string[]; orders: OrderHeader[]; links: OrderLink[];
++  void: { order: string; by: string; relation: string }[];
++  effective: { key: string; label: string; in_force: ItemValue; replaced: ItemValue[]; reason: string }[];
++  conflicts: { key: string; label: string; values: ItemValue[]; why: string }[];
++  per_order: { key: string; label: string; values: ItemValue[] }[];
++}
++
++export interface MissionLeg {
++  name: string; start: LonLat; end: LonLat; waypoints: LonLat[]; lines: LonLat[][]; length_km: number; duration_min: number;
++}

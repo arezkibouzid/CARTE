@@ -42,6 +42,9 @@ export interface Scenario {
   waypointOrder: 'fixed' | 'free';
   roundTrip: boolean;
   area?: LonLat[]; // zone de déploiement (DA)
+  /** Journal de mission : les étapes déjà calculées ; la suivante part de l'arrivée de la dernière. */
+  missionLog?: MissionLeg[];
+  historyMode?: 'forbid' | 'penalize' | 'free';
   avoid: LonLat[][]; // zones à éviter (RA)
   requirements?: string[];
   /** single : un itinéraire (points, étapes) ; distinct : k itinéraires sous contraintes entre deux zones ;
@@ -142,7 +145,7 @@ export interface RouteChatReply {
   cited_rules: string[];
   sources: { rule_id: string; status: string; group: string; pdf_document: string; pdf_page: number; verification_status: string }[];
   model: string | null;
-  context: { budget_tokens: number; used_tokens: number; omitted: string[]; shortened: string[] } | null;
+  context: { budget_tokens: number; used_tokens: number; omitted: string[]; shortened: string[]; linked_orders_added?: string[] } | null;
   seconds: number;
 }
 
@@ -254,6 +257,7 @@ export interface RouteResult {
   network: string;
   probability_penalty: { threshold: number; strength: number; sections_priced: number; km_below_threshold: number } | null;
   uncertainty_cost: UncertaintyCost | null;
+  history?: { mode: string; legs: number; km_of_previous_legs: number; relaxed_m?: number; km_reused: number } | null;
   uncertainty_cost_note: string | null;
   tiff_only: boolean;
   explanation: RouteTrace | null;
@@ -401,4 +405,42 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   reply?: ChatReply;
+}
+
+/** Ordre écrit → modifications du scénario, à prévisualiser (points nommés du PDF et coordonnées uniquement). */
+export interface TextOrderResult {
+  is_command: boolean;
+  method?: 'model' | 'rules';
+  model?: string | null;
+  seconds?: number;
+  scenario?: Partial<Scenario> & { _avoid_mode?: 'add'; area?: LonLat[] | null };
+  options?: Partial<Options>;
+  changes?: string[];
+  notes?: string[];
+  unresolved?: string[];
+  coordinates?: { id: string; text: string; lonlat: LonLat }[];
+  map_refs?: { id: string; text: string; label: string }[];
+  model_problems?: string[];
+  rules_found_more?: string[];
+}
+
+/** Ce qui est sur la carte, pour qu'un ordre écrit puisse y faire référence (« ici », « le départ », « l'étape 2 », « le rectangle »). */
+export interface MapContext {
+  start?: LonLat; end?: LonLat; waypoints: LonLat[]; avoid: LonLat[][]; area?: LonLat[]; rect?: BBox | null; pointed?: LonLat | null;
+}
+
+/** Dépendances entre ordres (calculées par le code) : liens, valeurs en vigueur, conflits. */
+export interface OrderHeader { order: string; ref: string | null; kind: string | null; date: string | null; title: string; synthetic: boolean }
+export interface OrderLink { from: string; to: string; relation: 'amends' | 'replaces' | 'cancels' | 'complements'; source: 'detected' | 'operator'; fact: string | null; page: number | null; evidence: string }
+export interface ItemValue { key: string; label: string; value: number; unit: string; printed: string; order: string; fact: string; page: number | null }
+export interface OrderLinksResult {
+  selected: string[]; added: string[]; orders: OrderHeader[]; links: OrderLink[];
+  void: { order: string; by: string; relation: string }[];
+  effective: { key: string; label: string; in_force: ItemValue; replaced: ItemValue[]; reason: string }[];
+  conflicts: { key: string; label: string; values: ItemValue[]; why: string }[];
+  per_order: { key: string; label: string; values: ItemValue[] }[];
+}
+
+export interface MissionLeg {
+  name: string; start: LonLat; end: LonLat; waypoints: LonLat[]; lines: LonLat[][]; length_km: number; duration_min: number;
 }

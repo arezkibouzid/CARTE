@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import TextOrderBox, { type ApplyTextOrder } from './TextOrder';
 import { getCapabilities, getPdf, getScenario, listScenarios, saveScenario, uploadPdf } from '../api';
-import type { Capabilities, ConvoyDef, DistinctParams, LonLat, Options, PdfExercise, PdfResult, SavedScenario, Scenario, SheetInfo, ToolId } from '../types';
+import type { MapContext, Capabilities, ConvoyDef, DistinctParams, LonLat, Options, PdfExercise, PdfResult, SavedScenario, Scenario, SheetInfo, ToolId } from '../types';
 import { IT_COLORS } from './MapView';
 
 interface Props {
@@ -15,11 +16,14 @@ interface Props {
   options: Options;
   /** Remplace le scénario et les options par un scénario enregistré. */
   onReplace: (sc: Scenario, o: Options) => void;
+  /** Ordre écrit : modifications proposées, appliquées sur confirmation. */
+  onTextOrder: ApplyTextOrder;
+  mapCtx?: () => MapContext;
 }
 
 const fmt = (p?: LonLat) => (p ? `${p[1].toFixed(5)} N, ${p[0].toFixed(5)} E` : '—');
 
-export default function ScenarioPanel({ sheet, scenario: sc, tool, setTool, onChange, onLoadExercise, onCompute, computing, options, onReplace }: Props) {
+export default function ScenarioPanel({ sheet, scenario: sc, tool, setTool, onChange, onLoadExercise, onCompute, computing, options, onReplace, onTextOrder, mapCtx }: Props) {
   const [pdf, setPdf] = useState<PdfResult | null>(null);
   const [pdfErr, setPdfErr] = useState('');
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -78,6 +82,7 @@ export default function ScenarioPanel({ sheet, scenario: sc, tool, setTool, onCh
 
   return (
     <div className="panel">
+      {sheet && <TextOrderBox sheetId={sheet.id} onApply={onTextOrder} mapCtx={mapCtx} />}
       <h3>Type de calcul</h3>
       <div className="seg">
         <button className={sc.mode === 'single' ? 'on' : ''} onClick={() => onChange({ mode: 'single' })}>Un itinéraire</button>
@@ -92,6 +97,25 @@ export default function ScenarioPanel({ sheet, scenario: sc, tool, setTool, onCh
           : 'Le meilleur itinéraire entre un départ et une arrivée, avec étapes, aller-retour et zones.'}
       </p>
 
+      {(sc.missionLog?.length ?? 0) > 0 && (
+        <div className="card mission">
+          <div className="title">Journal de mission ({sc.missionLog!.length} étape{sc.missionLog!.length > 1 ? 's' : ''})</div>
+          <ol className="small">
+            {sc.missionLog!.map((l, i) => <li key={i}>{l.name} : {l.length_km} km, {Math.round(l.duration_min)} min</li>)}
+            <li className="muted">étape {sc.missionLog!.length + 1} : en cours (départ = arrivée de l’étape {sc.missionLog!.length})</li>
+          </ol>
+          <div className="small">Trajets des étapes précédentes :</div>
+          <div className="seg small">
+            {([['forbid', 'Interdits'], ['penalize', 'Pénalisés'], ['free', 'Autorisés']] as const).map(([k, lab]) => (
+              <button key={k} className={(sc.historyMode ?? 'forbid') === k ? 'on' : ''} onClick={() => onChange({ historyMode: k })}>{lab}</button>
+            ))}
+          </div>
+          <div className="row">
+            <button className="link small" onClick={() => onChange({ missionLog: sc.missionLog!.slice(0, -1) })}>Retirer la dernière étape</button>
+            <button className="link small danger" onClick={() => onChange({ missionLog: [] })}>Vider le journal</button>
+          </div>
+        </div>
+      )}
       <details className="saved">
         <summary>Scénarios enregistrés ({saved.length})</summary>
         <div className="row">

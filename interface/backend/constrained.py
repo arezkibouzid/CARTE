@@ -218,7 +218,7 @@ def solve(base: Base, origin, destination, k: int, sep_km: float, no_intersect: 
     ok = R.ok.copy()
     if area is not None:  # deployment area: roads leaving it are closed
         inside = np.zeros(len(R.edges), bool)
-        inside[R.tree.query(area, predicate="within")] = True
+        inside[R.tree.query(area, predicate="contains")] = True  # STRtree: predicate(area, road), i.e. roads inside the area
         log.append(f"zone de déploiement : {int((ok & ~inside).sum())} tronçons fermés")
         ok &= inside
     for z in avoid:

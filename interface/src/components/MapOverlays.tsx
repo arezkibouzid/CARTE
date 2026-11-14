@@ -47,7 +47,7 @@ export function Toolbar({ tool, setTool, onFit, onClear }: { tool: ToolId; setTo
 }
 
 export const HINTS: Record<ToolId, string> = {
-  pan: 'Glissez pour vous déplacer · molette pour zoomer · clic sur une route pour ses informations.',
+  pan: 'Glissez pour vous déplacer · molette pour zoomer · clic : informations de la route et point P (« ici » dans un ordre écrit).',
   start: 'Cliquez sur la carte pour placer le départ.',
   end: 'Cliquez sur la carte pour placer l’arrivée.',
   waypoint: 'Cliquez pour ajouter des étapes (dans l’ordre). Échap pour terminer.',

@@ -143,13 +143,14 @@ def _words(s: str) -> set[str]:
     return {w for w in re.findall(r"[a-z0-9]{3,}", _plain(s))}
 
 
-def _order_facts(a: dict, qw: set, share: int) -> tuple[str, str, list[str]]:
-    """Full and short text of one order (its fragments most related to the question first)."""
-    facts = sorted([f for f in a["facts"] if f["kind"] != "ignore"], key=lambda f: -len(qw & _words(f["text"])))
+def _order_facts(a: dict, qw: set, share: int, old: set | frozenset = frozenset()) -> tuple[str, str, list[str]]:
+    """Full and short text of one order (its fragments most related to the question first; fragments whose value was
+    replaced by a later order last, marked as such)."""
+    facts = sorted([f for f in a["facts"] if f["kind"] != "ignore"], key=lambda f: (f["id"] in old, -len(qw & _words(f["text"]))))
     head = f"Ordre {a['order']} (exercice {a['exercise_id']}) — objectif : {a.get('objective')}"
     full, kept = [head], []
     for f in facts:
-        line = f"{f['id']} (p. {f['page']}, {f['kind']}) : {f['text'][:300]}"
+        line = f"{f['id']} (p. {f['page']}, {f['kind']}) : {f['text'][:300]}" + (" [REMPLACÉ : plus en vigueur]" if f["id"] in old else "")
         if tokens("\n".join(full + [line])) > share:
             break
         full.append(line)
@@ -232,6 +233,8 @@ et, s'il y en a, les règles doctrinales des ordres d'opération concernés.
   si la trace ne dit pas si la situation se présente (par exemple un pont), dis que c'est à vérifier, pas que la règle
   ne s'applique pas.
 - Ne cite une règle (DR-xxxx) que si son texte complet figure dans le contexte.
+- Si des ordres sont liés, seules les « valeurs en vigueur » s'appliquent ; une valeur marquée [REMPLACÉ] ne se cite que
+  comme ancienne valeur. Un conflit non résolu se signale, il ne se tranche pas.
 - Cite les segments (L1S2…), règles (DR-xxxx) et fragments par leur identifiant. Réponds en français."""
 
 
@@ -266,6 +269,15 @@ def chat(entry: dict, messages: list[dict], level: str = "standard", order_ids: 
     ids = {"rules": [], "facts": []}
     analyses = []
     order_ids = list(dict.fromkeys(order_ids or []))
+    links_res = None
+    if order_ids:  # orders linked to the selected ones (amended, amending, completing) come in automatically
+        from interface.backend import order_links as OL
+
+        try:
+            links_res = OL.resolve(order_ids)
+            order_ids += [o for o in links_res["added"] if o not in order_ids]
+        except (FileNotFoundError, ValueError, KeyError):
+            links_res = None
     if order_ids:
         qw = _words(question) | {O.FR_EN[w] for w in _words(question) if w in O.FR_EN}
         for oid in order_ids:
@@ -276,6 +288,15 @@ def chat(entry: dict, messages: list[dict], level: str = "standard", order_ids: 
                 continue
             a = dict(a, order=oid)
             analyses.append(a)
+        old: dict[str, set] = {}
+        if links_res:
+            full, short = OL.context_block(links_res)
+            if full:  # what is in force along each chain, decided by code, ahead of everything the orders say
+                P.add("liens entre ordres", full, short, required=True)
+            for e in links_res["effective"]:
+                for r in e["replaced"]:
+                    old.setdefault(r["order"], set()).add(r["fact"])
+            P.report["linked_orders_added"] = links_res["added"]
         if analyses:
             # rules first (they carry the answer to rule questions), then each order's fragments with what is left
             room = max(int((budget - P.used) * 0.55), 200)
@@ -284,7 +305,7 @@ def chat(entry: dict, messages: list[dict], level: str = "standard", order_ids: 
             ids["rules"] = full_ids
             share = max(int((budget - P.used) * 0.6 / len(analyses)), 80)
             for a in analyses:
-                full, short, fids = _order_facts(a, qw, share)
+                full, short, fids = _order_facts(a, qw, share, old.get(a["order"], frozenset()))
                 P.add(f"ordre {a['order']}", full, short)
                 if P.report["blocks"][-1]["form"] != "omitted":
                     ids["facts"] += fids
@@ -325,6 +346,8 @@ def chat(entry: dict, messages: list[dict], level: str = "standard", order_ids: 
                     bad.append(f"{', '.join(sorted(rid))} : règle(s) explicitement applicable(s), pas « ne s'applique pas » (dire « à vérifier »)")
             if not o["cited_segments"] and not o["cited_rules"] and not re.search(r"ne permet pas|pas d.information|aucune information|a verifier|à vérifier", o["answer"], re.I):
                 bad.append("affirmation sans segment ni règle cités : cite tes sources ou dis que le contexte ne permet pas de conclure")
+            if links_res:
+                bad += OL.stale_problems(o["answer"], links_res)
             return o, bad + O.status_problems(o["answer"], rules_all)
 
         out, problems = call_validated(c, SYSTEM, f"{context}\n\n{length}", schema, "route.chat", validate, retries=1)
@@ -333,6 +356,9 @@ def chat(entry: dict, messages: list[dict], level: str = "standard", order_ids: 
         # no model, or the model's answer failed the checks: what the trace and the rule engine say about the question
         note = "(Réponse sans modèle de langue" + (f" : {problems[0]}" if problems else "") + ". Voici ce que disent la trace du solveur et le moteur de règles.)"
         text, segs = fallback_answer(tr, question, analyses, level)
+        fl = OL.fallback_lines(links_res, question) if links_res else []
+        if fl:
+            text = "Ordres liés (valeurs en vigueur calculées par le code) :\n" + "\n".join(fl) + "\n" + text
         out = {"answer": note + "\n" + text, "cited_segments": segs, "cited_rules": []}
     by_rule = {r["rule_id"]: r for a in analyses for r in a["rules"]}
     cited = [r for r in out["cited_rules"] if r in by_rule]

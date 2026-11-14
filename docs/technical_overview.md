@@ -185,6 +185,78 @@ at once:
 e.g. "aucune règle ne s'applique à ces ponts" when it should be "à vérifier". This is why the trace answers and the
 deterministic fallback are the reference, and the model only rephrases.
 
+### 3.3 Orders written as text, applied to the scenario
+
+`POST /api/order-text` (`interface/backend/text_order.py`); in the interface, the "Ordre en texte" box of the Scénario
+tab, and the route chat, which previews an order instead of answering it.
+- **Offline points only.** A point is a named point of the sheet's exercise PDF (PD1–4, PA1–4, WP1–4, DA1–4), "exercice N"
+  as a base, coordinates found by the code (decimal degrees, Lambert-93), or what is on the map: the point P (last click in
+  hand mode: "ici", "ce point"), the departure and arrival placed ("le départ", "l'arrivée"), waypoint n ("l'étape 2"),
+  zone to avoid n ("la zone 1") and the selected rectangle ("évite le rectangle", "dans le rectangle" = deployment area).
+  A reference to something not on the map is reported ("étape 5 (absente de la carte)"). Place names are listed as
+  unresolved, never guessed.
+- **Settings need words.** An objective, order or round trip the model returns without a word of the order saying it is
+  dropped; the same point as departure and arrival without "aller-retour" rejects the answer.
+- **One model, grammar-constrained.** The same Qwen3-VL-8B, greedy, fills a JSON schema in which every point is an id from
+  that closed list, so it never writes a position. Checks: every point must be cited in the text, every number (speed,
+  radius, exercise) must appear in it. A rejected answer falls back to the rule parser (regular expressions), which also
+  runs without the model.
+- **Preview, then apply.** The result lists the changes (departure, arrival, waypoints, order, round trip, objective,
+  speed, zones to avoid as squares around a point, deployment area, λ); "Appliquer" or "Appliquer et calculer".
+- **Measured.** 928 prompt / 82 answer tokens per call; 0.6–1 s; tests in `tests/test_text_order.py`, browser test in
+  `interface/scripts/ui_smoke.py`.
+
+**One model, four jobs.** Extraction, rule explanations, the two chats and text orders all use the same Qwen3-VL-8B on one
+vLLM server (half an H100), always greedy. Only the grammar changes: each job has its own JSON schema, enforced token by
+token (xgrammar), with the allowed ids taken from its context.
+
+### 3.4 Orders that depend on each other
+
+`interface/backend/order_links.py`; API `GET/POST /api/orders/links`; interface: the "Ordres liés" card of the Ordres
+tab, and the order picker of the route chat.
+- **Links.** Read from the extracted fragments: each order's own reference (OPORD, FRAGO, annexe, ordre…) and issue date
+  (DTG or date), then the fragments naming another order with a relation: *modifie* / *amends*, *annule et remplace* /
+  *replaces*, *annule* / *cancels*, *complète* / *supplements*; a FRAGO naming an order amends it, an annex completes it.
+  The operator can add a missed link or reject a wrong one (`outputs/orders/order_links.json`).
+- **Values in force, decided by code.** Comparable items (maximum speed, spacing, load, height, route separation, halts)
+  are taken from the fragments' quantities. Along a chain, an amending / replacing order overrides the values it changes;
+  a cancelled or replaced order is void. Two amendments of the same order are settled by the later issue date; values
+  still different inside a group of linked orders (e.g. an annex that completes, not amends) are a **conflict** for the
+  command. Orders not linked at all are independent: their values are listed per order, never merged.
+- **Context window.** Selecting one order brings its whole chain into the chat (reported as "ordres liés ajoutés"). A
+  required block placed ahead of the rules states the links, the values in force with what they replace, and the
+  conflicts; replaced fragments are marked `[REMPLACÉ]` and placed last, so they are cut first when the budget is tight.
+- **Checks.** An answer that gives a replaced value as current (no "remplace / ancien / modifié…" near it) is rejected;
+  the answer without a model starts with the values in force and the conflicts.
+- **Evidence.** The exercise PDFs are independent orders, so this was tested on five **synthetic** orders
+  (`scripts/make_test_orders.py`: OPORD, two FRAGOs, an annex, an independent order; labelled "TEST synthétique"):
+  `tests/test_order_links.py` (5 tests), and with the model: 40 km/h and 150 m given with their sources, the load
+  conflict reported; 5 linked orders in 1,305 context tokens (orders chat).
+
+### 3.5 Mission legs: the next leg never reuses an earlier path
+
+`POST /api/route` with `previous_legs` (the paths of the earlier legs) and `history_mode` (`forbid` by default,
+`penalize`, `free`); interface: "Étape suivante depuis l’arrivée →" in Résultats, the "Journal de mission" card of the
+Scénario tab, and written orders (« puis va à C sans repasser par le trajet précédent »; « si possible » = penalize,
+« par le même chemin » = free).
+- **Forbidden by default.** Every section within 20 m of an earlier leg on more than half its length is removed (a hard
+  constraint, H_history). Only if no route exists, or a point would be pushed more than 100 m further from the network, are
+  they reopened around the shared point(s) (0.5, 1, 2, 5 km), and the log, the result and "Pourquoi ce tracé" say so.
+- **Measured.** Return B → A with the outbound forbidden: 94.8 → 119.3 km, 1.7 km reused, all within 2 km of B;
+  penalised (×3): 100.3 km, 8.8 km reused. Tests: `tests/test_mission_history.py`; browser: `interface/scripts/ui_smoke.py`.
+
+### 3.6 Context window under stress
+
+Run `20261114-033644_context_stress` (`experiments/context_stress.py`, Qwen3-VL-8B, one question per setting, real route of
+exercise 7, synthetic orders saved in the run folder):
+- **1 → 40 orders**: at most 5,971 / 6,000 tokens; beyond 10 orders some orders' fragments are left out (4 at 20, 16 at 40),
+  their rules and the links are kept, and the answer reports it.
+- **Chain of 1 → 20 FRAGOs** (only the last selected): the chain comes in by itself, the value in force is right in 5/5
+  answers, never a replaced value (0/5); the links block grows from 124 to 1,068 tokens.
+- **Budget 1,500 → 12,000** (30 orders in play): blocks left out 30 → 0, the links block always kept, the answer right 4/4;
+  the required blocks alone need 1,726 tokens, so ~2,000 is the smallest workable budget.
+- **Conflicts** (0 → 5 contradicting annexes): reported by the code and in 3/3 answers, never settled.
+
 ## 4. Flexibility and scenario simulation
 
 Nothing below required a new hard-coded rule in the solver: every scenario is data passed to the same cost-and-Dijkstra

@@ -14,6 +14,7 @@ Derived analyses (each names its source run): `analysis/lambda_choice.json`, `an
 | `20261113-202359_routing_ablation_6ff7618` | ok | routing_ablation.py network cost explain | 180 | 1326.14 | 4636.0 | 4136.6 (estimated) | par2dc5-ai-prd-cl01dgx01 job 8014 | 6ff7618 +dirty | ablation_cost.png, ablation_network.png, lambda_tradeoff.png |
 | `20261113-202429_imagery_ablation_6ff7618` | ok | imagery_ablation.py  | 27 | 783.81 | 9203.8 | 2521.2 (estimated) + GPU 103240.3 | par2dc5-ai-prd-cl01dgx01 job 8017 | 6ff7618 +dirty | imagery_f1.png |
 | `20261113-204810_routing_ablation_6ff7618` | ok | routing_ablation.py cost network | 170 | 1338.75 | 4648.0 | 4086.1 (estimated) | par2dc5-ai-prd-cl01dgx01 job 8029 | 6ff7618 +dirty | ablation_cost.png, ablation_network.png, lambda_tradeoff.png |
+| `20261114-033644_context_stress_eeeda4c` | ok | context_stress.py  | 19 | 79.67 | 2043.6 | 41.4 (estimated) | par2dc5-ai-prd-cl01dgx01 job 8043 | eeeda4c +dirty | context_stress.png |
 
 ## Earlier experiments (kept in `outputs/`, reported in `docs/`)
 

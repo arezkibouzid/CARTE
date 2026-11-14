@@ -69,6 +69,86 @@ def main():
         page.wait_for_timeout(400)
         page.screenshot(path=str(out / "4a_why_and_chat.png"), full_page=True)
 
+        # an order written in the chat: previewed (not answered), then applied and computed
+        t = time.perf_counter()
+        page.locator(".route-chat .chat-input").fill("De PD4 à PA4 par WP1 et WP3 dans n'importe quel ordre, le plus rapide, 60 km/h, "
+                                                     "éviter 2 km autour de WP2")
+        page.keyboard.press("Enter")
+        page.wait_for_selector(".route-chat .text-order button:has-text('Appliquer et calculer')", timeout=60_000)
+        timings["text order read (chat)"] = time.perf_counter() - t
+        page.wait_for_timeout(300)
+        page.screenshot(path=str(out / "4d_chat_order.png"), full_page=True)
+        t = time.perf_counter()
+        page.click(".route-chat .text-order button:has-text('Appliquer et calculer')")
+        page.wait_for_timeout(500)
+        page.wait_for_selector("table.segs tbody tr", timeout=120_000)
+        timings["text order applied + route"] = time.perf_counter() - t
+        page.wait_for_timeout(1500)
+        page.screenshot(path=str(out / "4e_order_route.png"))
+        # the same from the Scenario tab
+        page.click("text=2 · Scénario")
+        page.locator(".text-order-box textarea").fill("Exercice 7 mais le plus rapide à 60 km/h")
+        page.click(".text-order-box button:has-text('Lire l’ordre')")
+        page.wait_for_selector(".text-order-box .text-order button:has-text('Appliquer')", timeout=60_000)
+        page.screenshot(path=str(out / "4f_text_box.png"))
+        page.click(".text-order-box .text-order button:text-is('Appliquer')")
+        page.wait_for_selector(".text-order-box .ok-text", timeout=10_000)
+        # what is on the map: a click in hand mode marks P (« ici »); the waypoints are « l'étape n »
+        page.wait_for_timeout(800)
+        box = page.locator(".map-wrap canvas").first.bounding_box()
+        page.mouse.click(box["x"] + box["width"] * 0.42, box["y"] + box["height"] * 0.55)
+        page.wait_for_selector(".pin-p", timeout=5_000)
+        page.keyboard.press("Escape")
+        page.locator(".text-order-box textarea").fill("Va de PD4 à ici par l'étape 2, évite 2 km autour de l'étape 1")
+        page.click(".text-order-box button:has-text('Lire l’ordre')")
+        page.wait_for_selector(".text-order-box .text-order:has-text('point P') button:has-text('Appliquer et calculer')", timeout=60_000)
+        page.screenshot(path=str(out / "4g_map_refs.png"))
+        t = time.perf_counter()
+        page.click(".text-order-box .text-order button:has-text('Appliquer et calculer')")
+        page.wait_for_timeout(500)
+        page.wait_for_selector("table.segs tbody tr", timeout=120_000)
+        timings["map-reference order + route"] = time.perf_counter() - t
+        page.wait_for_timeout(1500)
+        page.screenshot(path=str(out / "4h_map_refs_route.png"))
+
+        # mission log: the next leg starts at this arrival and may not reuse this path
+        page.click("button:has-text('Étape suivante depuis l’arrivée')")
+        page.wait_for_selector(".card.mission", timeout=10_000)
+        page.locator(".text-order-box textarea").fill("Puis va à WP1 sans repasser par le trajet précédent")
+        page.click(".text-order-box button:has-text('Lire l’ordre')")
+        page.wait_for_selector(".text-order-box .text-order:has-text('interdits') button:has-text('Appliquer et calculer')", timeout=60_000)
+        t = time.perf_counter()
+        page.click(".text-order-box .text-order button:has-text('Appliquer et calculer')")
+        page.wait_for_selector(".history-note", timeout=120_000)
+        timings["next leg, previous path forbidden"] = time.perf_counter() - t
+        page.wait_for_timeout(1500)
+        page.screenshot(path=str(out / "4k_mission_next_leg.png"))
+
+        # linked orders (synthetic test orders, scripts/make_test_orders.py): FRAGO 2 brings its chain into the chat
+        if page.locator(".route-chat").count():
+            page.click(".route-chat button:has-text('Ordres pris en compte')")
+            frago = page.locator(".order-pick label", has_text="FRAGO 2")
+            if frago.count():
+                frago.locator("input").check()
+                page.wait_for_selector(".order-pick :text('ordres liés ajoutés')", timeout=30_000)
+                n = page.locator(".route-chat .msg.assistant .meta").count()
+                t = time.perf_counter()
+                page.locator(".route-chat .chat-input").fill("Quelle vitesse maximale les ordres imposent-ils au convoi ?")
+                page.keyboard.press("Enter")
+                page.wait_for_function(f"document.querySelectorAll('.route-chat .msg.assistant .meta').length > {n}", timeout=120_000)
+                timings["chat with linked orders"] = time.perf_counter() - t
+                page.wait_for_timeout(400)
+                page.screenshot(path=str(out / "4i_linked_orders_chat.png"), full_page=True)
+        page.click("text=4 · Ordres")
+        sel = page.locator(".panel.orders select").first
+        page.wait_for_selector(".panel.orders select option:has-text('Exercice')", state="attached", timeout=30_000)
+        opt = sel.locator("option", has_text="FRAGO 2")
+        if opt.count():
+            sel.select_option(value=opt.first.get_attribute("value"))
+            page.wait_for_selector(".links-card", timeout=120_000)
+            page.wait_for_timeout(600)
+            page.screenshot(path=str(out / "4j_order_links.png"))
+
         # TIFF + OSM, OSM filling the gaps, uncertain roads avoided: both comparisons must come back
         page.click("text=1 · Configurer")
         page.click("button.choice:has-text('TIFF + OSM')")

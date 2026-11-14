@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { BBox, CompareResult, ConvoysResult, ExtractResult, ItinerariesResult, RouteResult } from '../types';
+import type { ApplyTextOrder } from './TextOrder';
+import type { MapContext, BBox, CompareResult, ConvoysResult, ExtractResult, ItinerariesResult, RouteResult } from '../types';
 import { IT_COLORS } from './MapView';
 import { ConvoysView, RouteChat, WhyPanel } from './RouteExplain';
 
@@ -12,6 +13,11 @@ interface Props {
   convoys: ConvoysResult | null;
   onFocus: (b: BBox) => void;
   uiContext: () => Record<string, unknown>;
+  sheetId?: string;
+  onTextOrder?: ApplyTextOrder;
+  mapCtx?: () => MapContext;
+  /** Étape suivante : ce trajet entre dans le journal de mission, la suivante part de son arrivée. */
+  onContinue?: () => void;
 }
 
 const pct = (v?: number) => (v === undefined || v === null ? '—' : `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)} %`);
@@ -26,7 +32,7 @@ function download(name: string, data: unknown) {
   URL.revokeObjectURL(url);
 }
 
-export default function ResultsPanel({ route, multi, compares, extraction, error, convoys, onFocus, uiContext }: Props) {
+export default function ResultsPanel({ route, multi, compares, extraction, error, convoys, onFocus, uiContext, sheetId, onTextOrder, mapCtx, onContinue }: Props) {
   const [showLog, setShowLog] = useState(false);
   return (
     <div className="panel">
@@ -89,6 +95,12 @@ export default function ResultsPanel({ route, multi, compares, extraction, error
               {route.legs[0]?.uncertainty_cost_share !== undefined && <> Il représente {Math.round((route.legs[0].uncertainty_cost_share ?? 0) * 100)} % du coût du trajet.</>}</p>
           )}
           {route.uncertainty_cost_note && <p className="small muted">{route.uncertainty_cost_note[0].toUpperCase() + route.uncertainty_cost_note.slice(1)}.</p>}
+          {route.history && (
+            <p className="small history-note">Journal de mission : {route.history.mode === 'forbid'
+              ? <>les {route.history.km_of_previous_legs} km des {route.history.legs} étape(s) précédente(s) sont interdits{route.history.relaxed_m ? <>, rouverts à moins de {route.history.relaxed_m} m du point partagé faute d’autre passage</> : null}</>
+              : <>routes des étapes précédentes pénalisées</>} ; repris : {route.history.km_reused} km.</p>
+          )}
+          {onContinue && <button className="btn small" onClick={onContinue} title="Ce trajet entre dans le journal de mission ; la prochaine étape part de son arrivée, sans repasser par lui">Étape suivante depuis l’arrivée →</button>}
           <WhyPanel route={route} onFocus={onFocus} />
           {route.probability_penalty && (
             <p className="small muted">Routes incertaines pénalisées : {route.probability_penalty.km_below_threshold} km du réseau sous le seuil de {Math.round(route.probability_penalty.threshold * 100)} %.</p>
@@ -98,7 +110,7 @@ export default function ResultsPanel({ route, multi, compares, extraction, error
             <button className="link" onClick={() => setShowLog((s) => !s)}>{showLog ? '▾' : '▸'} Décisions du calcul</button>
           </div>
           {showLog && <ul className="log small">{route.log.map((l, i) => <li key={i}>{l}</li>)}</ul>}
-          <RouteChat route={route} uiContext={uiContext} />
+          <RouteChat route={route} uiContext={uiContext} sheetId={sheetId} onTextOrder={onTextOrder} mapCtx={mapCtx} />
         </>
       )}
 

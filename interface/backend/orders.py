@@ -70,7 +70,10 @@ def list_orders() -> list[dict]:
                     "extracted": p is not None, **(_meta(p) if p else {})})
     for sid, p in sorted(stored.items()):
         x = _read(p)
-        out.append({"id": sid, "label": f"Exercice {x.get('exercise_id', sid)} ({'revu' if 'reviewed' in sid else 'importé'})",
+        am = x.get("_amiad") or {}
+        label = (f"TEST synthétique — {am.get('title', sid)}" if am.get("synthetic")
+                 else f"Exercice {x.get('exercise_id', sid)} ({'revu' if 'reviewed' in sid else 'importé'})")
+        out.append({"id": sid, "label": label, "synthetic": bool(am.get("synthetic")),
                     "exercise_id": str(x.get("exercise_id", sid)), "document_id": (x.get("document") or {}).get("id"),
                     "pages": x.get("main_pages"), "task_types": x.get("task_types"), "extracted": True, **_meta(p)})
     return out
@@ -542,6 +545,14 @@ def chat(order_id: str, messages: list[dict], level: str = "standard", ui: dict 
     by_id = {r["rule_id"]: r for r in rules}
     fids = [f["id"] for f in a["facts"]]
     t0 = time.perf_counter()
+    from interface.backend import order_links as OL
+
+    try:  # orders linked to this one: what is in force along the chain, decided by code
+        lres = OL.resolve([order_id])
+        if not (lres["links"] or lres["void"] or lres["conflicts"]):
+            lres = None
+    except (FileNotFoundError, ValueError, KeyError):
+        lres = None
     c = llm_client()
     out, problems = None, []
     if c is not None:
@@ -554,6 +565,11 @@ def chat(order_id: str, messages: list[dict], level: str = "standard", ui: dict 
         P = ContextPacker(BUDGET_TOKENS)
         ob = _order_block(a)
         P.add("ordre", ob, "\n".join(ob.split("\n")[:16]) + "\n[… fragments suivants omis faute de place]", required=True)
+        if lres:
+            lf, ls_ = OL.context_block(lres)
+            if lf:
+                P.add("liens entre ordres", lf + "\nSeules les valeurs en vigueur s’appliquent ; un conflit se signale, il ne se tranche pas.", ls_, required=True)
+                P.report["linked_orders_added"] = lres["added"]
         ranked = _retrieve(question, a, k=len(rules)) if rules else []
         ranked += [r for r in rules if r not in ranked]
         room = max(BUDGET_TOKENS - P.used - 900, 300)
@@ -588,11 +604,17 @@ def chat(order_id: str, messages: list[dict], level: str = "standard", ui: dict 
                 return o, ["réponse vide ou trop longue"]
             extra = _numbers_ok(o["answer"], context + "\n" + history + "\n" + question)
             bad = [f"nombres ou identifiants absents du contexte : {extra[:4]}"] if extra else []
+            if lres:
+                bad += OL.stale_problems(o["answer"], lres)
             return o, bad + status_problems(o["answer"], rules)
         out, problems = call_validated(c, SYSTEM, user, schema, "orders.chat", validate, retries=1)
     if out is None:
         hits = _retrieve(question, a)
-        lines = [f"(Réponse sans modèle de langue{' : ' + problems[0] if problems else ''}.) Règles les plus proches de la question :"]
+        lines = [f"(Réponse sans modèle de langue{' : ' + problems[0] if problems else ''}.)"]
+        fl = OL.fallback_lines(lres, question) if lres else []
+        if fl:
+            lines += ["Ordres liés (valeurs en vigueur calculées par le code) :"] + fl
+        lines.append("Règles les plus proches de la question :")
         for r in hits:
             lines.append(f"- {r['rule_id']} — {fallback_explanation(r, level)}")
         out = {"answer": "\n".join(lines), "cited_rules": [r["rule_id"] for r in hits], "cited_facts": []}
@@ -605,4 +627,5 @@ def chat(order_id: str, messages: list[dict], level: str = "standard", ui: dict 
     return {"answer": out["answer"], "cited_rules": cited, "sources": sources,
             "cited_facts": [{"id": f["id"], "page": f["page"], "text": f["text"][:200]} for f in facts],
             "model": c.model if (c is not None and not problems and out is not None and "sans modèle" not in out["answer"][:40]) else None,
-            "context": locals().get("packed"), "seconds": round(time.perf_counter() - t0, 1)}
+            "context": locals().get("packed"), "seconds": round(time.perf_counter() - t0, 1),
+            "links": {"added": lres["added"], "conflicts": len(lres["conflicts"]), "links": len(lres["links"])} if lres else None}

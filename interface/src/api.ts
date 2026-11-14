@@ -1,5 +1,5 @@
 import type {
-  ChatReply, ConvoysResult, RouteChatReply, SavedScenario, ExplainLevel, OrderAnalysis, OrderInfo, OrdersStatus, Capabilities, ItinerariesResult, BackendStatus, BBox, CompareResult, ExtractResult, LonLat, Options, PdfResult, RouteResult, Scenario, SheetInfo,
+  ChatReply, ConvoysResult, RouteChatReply, TextOrderResult, MapContext, OrderLinksResult, SavedScenario, ExplainLevel, OrderAnalysis, OrderInfo, OrdersStatus, Capabilities, ItinerariesResult, BackendStatus, BBox, CompareResult, ExtractResult, LonLat, Options, PdfResult, RouteResult, Scenario, SheetInfo,
 } from './types';
 
 /** Le back end est servi par la même origine (FastAPI sert aussi l'interface ; proxy Vite en développement). */
@@ -39,6 +39,7 @@ export function postRoute(sheet: string, sc: Scenario, o: Options, signal?: Abor
     use_osm: o.useOsm, osm_mode: o.osmMode, use_bdtopo: o.useBdtopo,
     prob_threshold: o.penalize && o.model !== 'none' ? o.tau : null, prob_penalty: o.strength,
     uncertainty_cost: o.uncertaintyCost, uncertainty_strength: o.lambda,
+    previous_legs: (sc.missionLog ?? []).flatMap((l) => l.lines), history_mode: sc.historyMode ?? 'forbid',
   };
   return fetch(`${API}/api/route`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
     .then((r) => json<RouteResult>(r));
@@ -125,3 +126,17 @@ export function chatOrder(id: string, messages: { role: string; content: string 
 export const bboxOfPolygon = (pts: LonLat[]): BBox => [
   Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1])),
 ];
+
+/** Ordre écrit → modifications proposées (rien n'est appliqué côté serveur). ``auto`` : renvoie is_command = false pour une question. */
+export function parseTextOrder(text: string, sheet: string, mode: 'command' | 'auto' = 'command', map?: MapContext) {
+  return fetch(`${API}/api/order-text`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, sheet, mode, map }),
+  }).then((r) => json<TextOrderResult>(r));
+}
+
+/** Liens entre ordres et valeurs en vigueur sur ``ids`` et leur chaîne (ordres liés ajoutés). */
+export const getOrderLinks = (ids: string[]) => fetch(`${API}/api/orders/links?ids=${encodeURIComponent(ids.join(','))}`).then((r) => json<OrderLinksResult>(r));
+export const setOrderLink = (from_id: string, to_id: string, action: 'add' | 'reject' | 'reset', relation?: string) =>
+  fetch(`${API}/api/orders/links`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from_id, to_id, action, relation }) })
+    .then((r) => json<unknown>(r));

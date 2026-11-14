@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { chatRoute, getOrders } from '../api';
-import type { BBox, ConvoysResult, ExplainLevel, OrderInfo, RouteChatReply, RouteResult, RouteSegment } from '../types';
+import { chatRoute, getOrderLinks, getOrders, parseTextOrder } from '../api';
+import { TextOrderPreview, type ApplyTextOrder } from './TextOrder';
+import type { BBox, ConvoysResult, ExplainLevel, MapContext, OrderInfo, OrderLinksResult, RouteChatReply, RouteResult, RouteSegment, TextOrderResult } from '../types';
 import { IT_COLORS } from './MapView';
 
 const VERDICT: Record<RouteSegment['verdict'], { label: string; cls: string; hint: string }> = {
@@ -73,10 +74,11 @@ export function WhyPanel({ route, onFocus }: { route: RouteResult; onFocus: (b: 
 
 const QUICK = ['Pourquoi cet itinéraire ?', 'Détaille l’itinéraire segment par segment', 'Quelles alternatives ont été rejetées ?', 'Quelles sont les limites et incertitudes ?'];
 
-interface Msg { role: 'user' | 'assistant'; content: string; reply?: RouteChatReply }
+interface Msg { role: 'user' | 'assistant'; content: string; reply?: RouteChatReply; order?: TextOrderResult }
 
 /** Questions sur l'itinéraire : réponses tirées de la trace du solveur (sans modèle) ou du modèle local, avec les ordres choisis. */
-export function RouteChat({ route, uiContext }: { route: RouteResult; uiContext: () => Record<string, unknown> }) {
+export function RouteChat({ route, uiContext, sheetId, onTextOrder, mapCtx }: { route: RouteResult; uiContext: () => Record<string, unknown>;
+  sheetId?: string; onTextOrder?: ApplyTextOrder; mapCtx?: () => MapContext }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);
@@ -84,6 +86,11 @@ export function RouteChat({ route, uiContext }: { route: RouteResult; uiContext:
   const [orders, setOrders] = useState<OrderInfo[]>([]);
   const [picked, setPicked] = useState<string[]>([]);
   const [showOrders, setShowOrders] = useState(false);
+  const [linked, setLinked] = useState<OrderLinksResult | null>(null);
+  useEffect(() => {
+    if (!picked.length) { setLinked(null); return; }
+    getOrderLinks(picked).then(setLinked).catch(() => setLinked(null));
+  }, [picked.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => { getOrders().then((r) => setOrders(r.orders.filter((o) => o.extracted))).catch(() => setOrders([])); }, []);
   useEffect(() => { setMsgs([]); }, [route.route_id]);
@@ -96,6 +103,13 @@ export function RouteChat({ route, uiContext }: { route: RouteResult; uiContext:
     setQ('');
     setBusy(true);
     try {
+      if (sheetId && onTextOrder) {  // an order ("de PD4 à PA4, le plus rapide") is previewed, not answered
+        const o = await parseTextOrder(text.trim(), sheetId, 'auto', mapCtx?.()).catch(() => null);
+        if (o?.is_command) {
+          setMsgs([...next, { role: 'assistant', content: 'Ordre reconnu : voici ce qui changerait dans le scénario.', order: o }]);
+          return;
+        }
+      }
       const r = await chatRoute(route.route_id, next.map(({ role, content }) => ({ role, content })), level, picked, uiContext());
       setMsgs([...next, { role: 'assistant', content: r.answer, reply: r }]);
     } catch (e) {
@@ -125,6 +139,11 @@ export function RouteChat({ route, uiContext }: { route: RouteResult; uiContext:
               {o.label}
             </label>
           ))}
+          {linked && linked.added.length > 0 && (
+            <p className="small">+ ordres liés ajoutés automatiquement : <b>{linked.added.map((o) => linked.orders.find((h) => h.order === o)?.ref ?? o).join(', ')}</b>
+              {linked.effective.some((e) => e.replaced.length) && <> · valeurs en vigueur calculées par le code</>}
+              {linked.conflicts.length > 0 && <span className="txt-doubt"> · {linked.conflicts.length} conflit(s) à faire trancher</span>}</p>
+          )}
           <p className="muted">Avec beaucoup d’ordres, seuls les fragments et règles les plus liés à la question sont envoyés au modèle (budget de contexte) ; la réponse indique ce qui a été omis.</p>
         </div>
       )}
@@ -135,12 +154,14 @@ export function RouteChat({ route, uiContext }: { route: RouteResult; uiContext:
         {msgs.map((m, i) => (
           <div key={i} className={`msg ${m.role}`}>
             <div className="bubble" style={{ whiteSpace: 'pre-line' }}>{m.content.replace(/\*\*/g, '')}</div>
+            {m.order && onTextOrder && <TextOrderPreview r={m.order} onApply={onTextOrder} />}
             {m.reply && (
               <div className="meta small muted">
                 {m.reply.mode === 'trace' ? 'Réponse tirée de la trace du solveur (sans modèle)' : m.reply.model ? `Modèle ${m.reply.model}` : m.reply.mode}
                 {' · '}{m.reply.seconds} s
                 {m.reply.cited_segments.length > 0 && <> · segments {m.reply.cited_segments.join(', ')}</>}
                 {m.reply.cited_rules.length > 0 && <> · règles {m.reply.cited_rules.join(', ')}</>}
+                {m.reply.context?.linked_orders_added && m.reply.context.linked_orders_added.length > 0 && <> · ordres liés ajoutés : {m.reply.context.linked_orders_added.join(', ')}</>}
                 {m.reply.context && <> · contexte {m.reply.context.used_tokens}/{m.reply.context.budget_tokens} jetons
                   {m.reply.context.omitted.length > 0 && <> (omis : {m.reply.context.omitted.join(', ')})</>}
                   {m.reply.context.shortened.length > 0 && <> (raccourcis : {m.reply.context.shortened.join(', ')})</>}</>}
@@ -152,7 +173,7 @@ export function RouteChat({ route, uiContext }: { route: RouteResult; uiContext:
         <div ref={end} />
       </div>
       <div className="row">
-        <input className="chat-input" value={q} placeholder="Ex. : pourquoi le segment 3 ? et la route plus courte ?" onChange={(e) => setQ(e.target.value)}
+        <input className="chat-input" value={q} placeholder="Ex. : pourquoi le segment 3 ? — ou un ordre : de PD4 à PA4, le plus rapide" onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); ask(q); } }} disabled={busy} />
         <button className="btn primary" onClick={() => ask(q)} disabled={busy || !q.trim()}>Envoyer</button>
       </div>

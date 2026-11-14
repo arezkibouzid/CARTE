@@ -7,7 +7,7 @@ import OrdersPanel from './components/OrdersPanel';
 import MapView, { STAGES } from './components/MapView';
 import { ExtractionPlayer, HINTS, LayerControl, Toolbar } from './components/MapOverlays';
 import type {
-  BackendStatus, BBox, CompareResult, ConvoysResult, ExtractResult, ItinerariesResult, LayerState, LonLat, Options, PdfExercise, RouteResult, Scenario, SheetInfo, ToolId,
+  BackendStatus, BBox, CompareResult, ConvoysResult, ExtractResult, ItinerariesResult, LayerState, LonLat, MapContext, MissionLeg, Options, PdfExercise, RouteResult, Scenario, SheetInfo, TextOrderResult, ToolId,
 } from './types';
 
 type Tab = 'config' | 'scenario' | 'results' | 'orders';
@@ -20,7 +20,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 const STORE = 'amiad-ui-v2';
 const EMPTY_SCENARIO: Scenario = {
-  waypoints: [], waypointOrder: 'fixed', roundTrip: false, avoid: [], mode: 'single',
+  waypoints: [], waypointOrder: 'fixed', roundTrip: false, avoid: [], mode: 'single', missionLog: [], historyMode: 'forbid',
   convoys: [], deconflict: 'penalize', sharePenalty: 2,
   distinct: { k: 3, sepKm: 5, noIntersect: true, vehicle: 'pfm_carrier', turns: true, zoneRadiusKm: 8 },
 };
@@ -287,8 +287,54 @@ export default function App() {
     setFocus(bboxOfPolygon(all));
   };
 
+  // ------------------------------------------------------------------ ordre écrit (prévisualisé, appliqué sur confirmation)
+  const [pendingCompute, setPendingCompute] = useState(0);
+  const [pointed, setPointed] = useState<LonLat | null>(null);
+  const mapCtx = (): MapContext => ({ start: scenario.start, end: scenario.end, waypoints: scenario.waypoints, avoid: scenario.avoid,
+    area: scenario.area, rect, pointed });
+  // ------------------------------------------------------------------ journal de mission : étape suivante depuis l'arrivée
+  const legOf = (r: RouteResult, s: Scenario): MissionLeg => ({
+    name: s.label ?? `Étape ${(s.missionLog?.length ?? 0) + 1}`, start: s.start!, end: s.end!, waypoints: s.waypoints,
+    lines: r.route.features.flatMap((f) => (f.geometry.type === 'LineString' ? [f.geometry.coordinates as LonLat[]]
+      : f.geometry.type === 'MultiLineString' ? (f.geometry.coordinates as LonLat[][]) : [])),
+    length_km: r.total.length_km, duration_min: r.total.duration_min,
+  });
+  const continueFromHere = () => {
+    if (!route) return;
+    const r = route;
+    setScenario((s) => ({ ...s, missionLog: [...(s.missionLog ?? []), legOf(r, s)], start: s.roundTrip ? s.start : s.end, end: undefined, waypoints: [],
+      roundTrip: false, label: undefined, requirements: undefined, historyMode: s.historyMode ?? 'forbid', mode: 'single' }));
+    setRoute(null);
+    setTab('scenario');
+  };
+
+  const applyTextOrder = (r: TextOrderResult, run: boolean) => {
+    const { _avoid_mode, _continue, ...sp } = (r.scenario ?? {}) as NonNullable<TextOrderResult['scenario']> & { _continue?: boolean };
+    const done = route;
+    setScenario((s) => {
+      const base: Scenario = _continue && done && s.start && s.end
+        ? { ...s, missionLog: [...(s.missionLog ?? []), legOf(done, s)], start: s.roundTrip ? s.start : s.end, waypoints: [], roundTrip: false, label: undefined }
+        : s;
+      const n: Scenario = { ...base, ...sp, mode: 'single', area: 'area' in sp ? (sp.area ?? undefined) : base.area } as Scenario;
+      if (_avoid_mode === 'add' && sp.avoid) n.avoid = [...base.avoid, ...sp.avoid];
+      return n;
+    });
+    if (r.options && Object.keys(r.options).length) setOptions((o) => ({ ...o, ...r.options }));
+    setRoute(null);
+    setMulti(null);
+    setConvoyRes(null);
+    const pts = [sp.start, sp.end, ...(sp.waypoints ?? []), ...((sp.avoid ?? []).flat())].filter(Boolean) as LonLat[];
+    if (pts.length) setFocus(bboxOfPolygon(pts));
+    if (r.map_refs?.some((m) => m.id === 'R')) setRect(null);  // the rectangle became a zone
+    if (run) setPendingCompute((k) => k + 1);
+  };
+  useEffect(() => {
+    if (pendingCompute) compute();
+  }, [pendingCompute]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const clearAll = () => {
     setScenario((s) => ({ ...EMPTY_SCENARIO, mode: s.mode, distinct: s.distinct }));
+    setPointed(null);
     setRoute(null);
     setMulti(null);
     setConvoyRes(null);
@@ -355,7 +401,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>AMIAD</h1>
+        <h1 title="Constraint-Aware Routing with Trust Estimation">CARTE</h1>
         <select value={sheet?.id ?? ''} onChange={(e) => { setSheetId(e.target.value); clearAll(); }} title="Feuille de carte">
           {sheets.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
@@ -376,7 +422,7 @@ export default function App() {
           {tab === 'config' && <ConfigPanel sheet={sheet} options={options} onChange={patchOptions} />}
           {tab === 'scenario' && (
             <ScenarioPanel sheet={sheet} scenario={scenario} tool={tool} setTool={changeTool} onChange={patchScenario}
-              onLoadExercise={loadExercise} onCompute={compute} computing={computing} options={options}
+              onLoadExercise={loadExercise} onCompute={compute} computing={computing} options={options} onTextOrder={applyTextOrder} mapCtx={mapCtx}
               onReplace={(sc, o) => { setScenario({ ...EMPTY_SCENARIO, ...sc }); setOptions({ ...DEFAULT_OPTIONS, ...o }); setRoute(null); setMulti(null); setConvoyRes(null);
                 const pts = [sc.start, sc.end, ...(sc.waypoints ?? []), ...(sc.convoys ?? []).flatMap((c) => [c.start, c.end])].filter(Boolean) as LonLat[];
                 if (pts.length) setFocus(bboxOfPolygon(pts)); }} />
@@ -392,7 +438,7 @@ export default function App() {
             />
           )}
           {tab === 'results' && <ResultsPanel route={route} multi={multi} compares={compares} extraction={extraction?.result ?? null} error={error}
-            convoys={convoyRes} onFocus={(b) => setFocus(b)} uiContext={uiContext} />}
+            convoys={convoyRes} onFocus={(b) => setFocus(b)} uiContext={uiContext} sheetId={sheet?.id} onTextOrder={applyTextOrder} mapCtx={mapCtx} onContinue={scenario.mode === 'single' ? continueFromHere : undefined} />}
           {tab !== 'scenario' && tab !== 'orders' && (scenario.mode === 'convoys' ? scenario.convoys.length > 0 : scenario.mode === 'distinct' ? (scenario.zoneFrom || scenario.start) && (scenario.zoneTo || scenario.end) : scenario.start && scenario.end) && (
             <button className="btn primary big sticky" onClick={compute} disabled={computing}>{computing ? 'Calcul en cours…' : scenario.mode === 'convoys' ? 'Planifier les convois' : scenario.mode === 'distinct' ? 'Calculer les itinéraires' : 'Calculer l’itinéraire'}</button>
           )}
@@ -402,7 +448,7 @@ export default function App() {
             sheet={sheet} options={options} layers={layers} scenario={scenario} tool={tool} draftPolygon={draft} rect={rect}
             rectMenu={rectMenu} route={route} multi={multi ?? convoysAsMulti} compares={readyCompares} extraction={extraction} fitKey={fitKey} focus={focus}
             onPoint={onPoint} onMovePoint={onMovePoint} onPolygonVertex={(p) => setDraft((d) => [...d, p])} onPolygonClose={onPolygonClose}
-            onRectangle={(b) => { setRect(b); setTool('pan'); }} onLoading={onLoading}
+            onRectangle={(b) => { setRect(b); setTool('pan'); }} onLoading={onLoading} pointed={pointed} onPointed={setPointed}
           />
           <Toolbar tool={tool} setTool={changeTool} onFit={() => setFitKey((k) => k + 1)} onClear={clearAll} />
           <LayerControl layers={layers} setLayers={setLayers} options={options} setTau={(t) => patchOptions({ tau: t })} loading={loadingLayers} />
