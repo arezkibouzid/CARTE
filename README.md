@@ -1,22 +1,99 @@
-# CARTE — Constraint-Aware Routing with Trust Estimation
+<div align="center">
 
-Convoy route planning on a scanned 1:100,000 map: one cost function and one solver for every constraint, the doubt of the
-road reading priced in, and every decision explained. *Carte* is French for map. Built for the AMIAD hackathon
-(Rennes, November 2026); the hackathon design (COA-Net) is kept below.
+# CARTE
 
-- **Routing core** (`src/coa_net/pdfexercises.py`, `interface/backend/`): hard constraints remove road sections (deployment
-  area, zones to avoid, vehicle limits, earlier legs of the mission), soft ones price them (the U-Net's doubt, convoy
-  deconfliction, turns); Dijkstra on a sparse graph, 0.14 s per route on one CPU core.
-- **Explanation** (`src/coa_net/route_explain.py`, `interface/backend/route_chat.py`, `orders.py`, `order_links.py`): segment
-  by segment, with the rejected alternative; NATO doctrine rules matched to each order (`RAG/`); one frozen local language
-  model (Qwen3-VL-8B, 131,072-token window, context up to 100,000 tokens) with grammar-constrained decoding, checked;
-  orders that amend orders; written orders (`text_order.py`). A long-context model of the same size (Qwen2.5-7B-1M) was
-  compared and answered worse (`experiments/README.md`).
-- **Vision extension** (`scripts/prc_unet.py`, `src/coa_net/scanunet.py`): a fine-tuned Attention Res-U-Net reads the roads
-  from the scan, with their probability, for when no road database exists.
-- **Interface** (`interface/`, React + FastAPI): `interface/run.sh`, then http://localhost:8008. See `interface/README.md`.
-- **Evidence**: `experiments/` (every run kept: config, environment, metrics, figures; `experiments/INDEX.md`),
-  `docs/technical_overview.md`, the presentation in `docs/presentation/`.
+**C**onstraint-**A**ware **R**outing with **T**rust **E**stimation
+
+*Constraint-aware convoy routing on scanned maps, which prices its own doubt and explains every decision.*
+
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Tests: pytest](https://img.shields.io/badge/tests-pytest-0A9EDC?logo=pytest&logoColor=white)](tests/)
+[![Interface: React + FastAPI](https://img.shields.io/badge/interface-React%20%2B%20FastAPI-61DAFB?logo=react&logoColor=white)](interface/)
+
+[**Presentation (PDF)**](docs/presentation/CARTE_presentation.pdf) ·
+[**Technical report (PDF)**](docs/jury_report/CARTE_technical_report.pdf) ·
+[**Technical overview**](docs/technical_overview.md) ·
+[**Experiments**](experiments/INDEX.md)
+
+![CARTE: convoy route planning on scanned maps](docs/presentation/preview/slide-01.png)
+
+</div>
+
+*Carte* is French for map. CARTE plans convoy routes on a scanned IGN 1:100,000 map. It handles every constraint with one
+cost function and one solver, and it adds a cost for how unsure it is that it read each road correctly. Every route
+comes with an explanation. It was built for the AMIAD hackathon (Rennes, 12–14 November 2026) on the Hackathon sheet
+(Châlons / Verdun / Bar-le-Duc).
+
+| **0.14 s** | **64 convoys** | **214 rules** | **−9 %** |
+|:---:|:---:|:---:|:---:|
+| per route on the whole sheet, one CPU core | planned in 33 s | quoted from NATO doctrine, each checked against its source | km on roads that are missing from BD TOPO |
+
+## Contents
+
+- [What it does](#what-it-does)
+- [How it works](#how-it-works)
+- [Quick start](#quick-start)
+- [Data and models](#data-and-models)
+- [Language model: GPU or CPU](#language-model-gpu-or-cpu)
+- [Repository map](#repository-map)
+- [Documentation](#documentation)
+- [Background: COA-Net, the hackathon design](#background-coa-net-the-hackathon-design)
+
+## What it does
+
+| | |
+|---|---|
+| **Routing core**<br>`src/coa_net/pdfexercises.py`, `interface/backend/` | Hard constraints remove road sections: the deployment area, zones to avoid, vehicle limits and the earlier legs of the mission. Soft constraints add cost: the U-Net's doubt, convoy deconfliction and turns. Routes are found with Dijkstra on a sparse graph, in 0.14 s per route on one CPU core. |
+| **Explanation**<br>`src/coa_net/route_explain.py`, `interface/backend/route_chat.py`, `orders.py`, `order_links.py` | Each route is explained segment by segment, with the alternative it rejected. NATO doctrine rules are matched to each order ([`RAG/`](RAG/)). One frozen local language model (Qwen3-VL-8B, 131,072-token window, context of up to 100,000 tokens) uses grammar-constrained decoding, and its output is checked. It also handles orders that amend earlier orders, and written orders (`text_order.py`). |
+| **Vision extension**<br>`scripts/prc_unet.py`, `src/coa_net/scanunet.py` | A fine-tuned Attention Res-U-Net reads the roads from the scan, with a probability for each, for when no road database exists. |
+| **Interface**<br>[`interface/`](interface/) | React and FastAPI. Run `interface/run.sh`, then open http://localhost:8008. |
+| **Evidence**<br>[`experiments/`](experiments/) | Every run is kept, with its config, environment, metrics and figures ([`experiments/INDEX.md`](experiments/INDEX.md)). A long-context model of the same size (Qwen2.5-7B-1M) was compared and gave worse answers ([`experiments/README.md`](experiments/README.md)). |
+
+<table>
+<tr>
+<td width="50%"><img src="docs/presentation/img/route_map.png" alt="A mission route with waypoints on the 1:100,000 scan"><br><sub>A mission route through four waypoints on the scan.</sub></td>
+<td width="50%"><img src="docs/presentation/img/convoys_map.png" alt="Several deconflicted convoys"><br><sub>Several convoys, kept apart from each other.</sub></td>
+</tr>
+<tr>
+<td><img src="docs/presentation/img/chat.png" alt="Chat that explains the route"><br><sub>The chat answers from the route's own record first.</sub></td>
+<td><img src="docs/presentation/img/step_2_probability.png" alt="U-Net road probability"><br><sub>U-Net road probability read from the scan.</sub></td>
+</tr>
+</table>
+
+## How it works
+
+```
+ scanned map (GeoTIFF) ──► U-Net (PRC Attention Res-U-Net, fine-tuned) ──► road probability, importance, structures
+                           calibration (isotonic, BD TOPO labels)       ──► calibrated road probability
+ probability raster    ──► tracing (skeleton → graph) ──► network with legal speeds, built-up share, cost per section
+ [or] BD TOPO / OSM roads, with no model at all
+
+ order / exercise ──► points, deployment area, zones to avoid, waypoints, round trip, objective, convoys
+                  ──► cost = base × (1 + threshold penalty) × (1 + λ · risk)
+                  ──► Dijkstra per leg, all waypoint orders, distinct round trip, convoy deconfliction
+                  ──► route + facts + decision log + segment trace ──► checks against BD TOPO / OSM
+
+ NATO doctrine (5 PDFs) ──► 214 rules with quotes (docrag, no LLM) ──► BM25 rule search per order
+ orders (PDF)           ──► extraction (Qwen3-VL-8B) ──► explanations + chat (local LLM, within a token budget)
+```
+
+The full pipeline, with the measured cost of each stage, is in [docs/technical_overview.md](docs/technical_overview.md).
+
+## Quick start
+
+```bash
+python -m venv .venv && .venv/bin/pip install -e ".[dev]"        # Python 3.10+
+.venv/bin/python scripts/fetch_data.py --all                      # open data and the PRC weights
+# unzip the release archive at the repository root (examples/, outputs/), then:
+interface/run.sh                                                  # http://localhost:8008 (Node.js 18+ builds the interface)
+sbatch deploy/serve_llm.sbatch                                    # optional: the local language model (one GPU)
+sbatch deploy/serve_llm_cpu.sbatch                                # or the same model without a GPU (32 cores, slower)
+.venv/bin/python -m pytest -q                                     # test suite
+```
+
+The routing core runs without the release archive, on BD TOPO or OSM roads alone. In the interface, pick « Sans modèle
+de segmentation ». The vision part needs the scan and the U-Net rasters.
 
 ## Data and models
 
@@ -30,40 +107,78 @@ road reading priced in, and every decision explained. *Carte* is French for map.
 | Scanned IGN 1:100,000 sheet, exercise and order PDFs | handed out at the hackathon, not open | release archive, `examples/` |
 | Our fine-tuned U-Nets (2 sheets, 2 sheets without Dice, 1 sheet), safetensors | MIT (trained on the hackathon scans, not included) | [`arezkibouzid/carte-unet`](https://huggingface.co/arezkibouzid/carte-unet): fetched by the app when its U-Net outputs are missing, or `python scripts/fetch_data.py --unet` |
 | Our U-Net rasters, calibration and network caches | ours (derived from the sheet) | release archive, `outputs/` |
+| Demo video `CARTE_demo.webm` (3:51, 145 MB) | ours | release archive, `docs/presentation/demo/` (too large for GitHub; chapters in [`demo_chapters.md`](docs/presentation/demo/demo_chapters.md)) |
 
-`fetch_data.py` writes the BD TOPO and OSM roads in the fields of the hackathon extracts, so the code reads them unchanged;
-they are today's data, not the organisers' snapshot.
-
-**GPU or not, chosen automatically.** `interface/run.sh --llm` (or `python deploy/llm_launch.py`) starts the language
-model on what the machine has: Qwen3-VL-8B, the best measured, with vLLM on a GPU (131,072 tokens); on CPU only, the
-same model as the official 4-bit build with llama.cpp when `llama-server` is installed (`deploy/README.md`), else with
-`deploy/cpu_llm_server.py` (transformers, bfloat16). Missing weights are downloaded from Hugging Face. On the cluster: `sbatch deploy/serve_llm.sbatch` (GPU) or `deploy/serve_llm_cpu.sbatch`.
-Measured on 32 cores: with llama.cpp (4-bit) a written order in 7 s and a chat answer of about 500 words in 50–60 s (0.7 s
-and 3–6 s on an H100); with the transformers fallback 22 s and about 9 minutes; past `COA_LLM_TIMEOUT` (90 s) the chat gives the deterministic answer. Routing, the solver's explanations and the rule engine never need a GPU.
+`fetch_data.py` writes the BD TOPO and OSM roads with the same fields as the hackathon extracts, so the code reads them
+unchanged. They are today's data, not the organisers' snapshot.
 
 **U-Net outputs fetched from Hugging Face.** When a model's probability raster is missing (no release archive), the app
 downloads its weights from [`arezkibouzid/carte-unet`](https://huggingface.co/arezkibouzid/carte-unet) (`hf_repo` and
-each model's `hf` in `interface/backend/sheets.json`; `CARTE_HF_REPO` to change), clones the PRC architecture code if
-needed, and computes the raster once on the sheet: GPU if there is one, else CPU (about 70 s per sheet, 8 times more for
-the « 8 orientations » variants). These rasters come from the final models, which saw the training sheets: on the
-Hackathon sheet they are not out of fold like the archive's. The repository is private for now: `hf auth login` first.
+each model's `hf` in `interface/backend/sheets.json`; set `CARTE_HF_REPO` to change it). It clones the PRC architecture
+code if needed and computes the raster once for the sheet, on the GPU if there is one, otherwise on the CPU (about 70 s
+per sheet, 8 times longer for the « 8 orientations » variants). These rasters come from the final models, which saw the
+training sheets, so on the Hackathon sheet they are not out of fold like the archive's. The Hugging Face repository is
+private for now: run `hf auth login` first.
 
-Without the release archive the routing core still runs on BD TOPO or
-OSM alone (« Sans modèle de segmentation » in the interface); the scan and the U-Net rasters are needed for the vision part.
+## Language model: GPU or CPU
 
-```bash
-python -m venv .venv && .venv/bin/pip install -e ".[dev]"        # Python 3.10+
-.venv/bin/python scripts/fetch_data.py --all                      # open data and the PRC weights
-# unzip the release archive at the repository root (examples/, outputs/), then:
-interface/run.sh                                                  # http://localhost:8008 (Node.js 18+ builds the interface)
-sbatch deploy/serve_llm.sbatch                                    # optional: the local language model (one GPU)
-sbatch deploy/serve_llm_cpu.sbatch                                # or the same model without GPU (32 cores; slower)
-.venv/bin/python -m pytest -q                                     # 160 tests
-```
+`interface/run.sh --llm` (or `python deploy/llm_launch.py`) chooses automatically and starts the language model on
+whatever the machine has:
+
+| machine | how it runs | written order | chat answer (~500 words) |
+|---|---|---|---|
+| GPU (H100) | Qwen3-VL-8B with vLLM, 131,072 tokens | 0.7 s | 3–6 s |
+| CPU, `llama-server` installed | same model, official 4-bit build, llama.cpp ([deploy/README.md](deploy/README.md)) | 7 s | 50–60 s |
+| CPU, fallback | `deploy/cpu_llm_server.py` (transformers, bfloat16) | 22 s | about 9 min |
+
+CPU times were measured on 32 cores. Missing weights are downloaded from Hugging Face. On the cluster, run
+`sbatch deploy/serve_llm.sbatch` (GPU) or `deploy/serve_llm_cpu.sbatch`. If the model takes longer than
+`COA_LLM_TIMEOUT` (90 s), the chat gives the deterministic answer instead. Routing, the solver's explanations and the
+rule engine never need a GPU.
+
+## Repository map
+
+| folder | what is inside |
+|---|---|
+| [`src/coa_net/`](src/coa_net/README.md) | the Python package: road network, solver, scan reading, U-Net, route explanation, CLI (`coa-net`) |
+| [`interface/`](interface/README.md) | web app: React front end (`src/`), FastAPI back end (`backend/`), `run.sh` |
+| [`RAG/`](RAG/README.md) | rule finder: exercise extraction JSON in, ranked doctrine rules out (`rule_finder.html`) |
+| [`amiad-doctrine-rag/`](amiad-doctrine-rag/README.md) | DocRAG: NATO doctrine to 214 rules with quotes, deterministic, no LLM |
+| [`extraction/`](extraction/README.md) | extraction of exercise documents with Qwen3-VL-8B (one `rag_input.json` per exercise) |
+| [`experiments/`](experiments/INDEX.md) | ablations, stress tests, LLM comparison, context stress; every run kept in `runs/` |
+| [`scripts/`](scripts/) | U-Net training and inference (`prc_unet.py`, `prc_slurm.sh`), data download (`fetch_data.py`), reports |
+| [`deploy/`](deploy/README.md) | serving the language model locally: vLLM, llama.cpp, CPU fallback, Slurm jobs |
+| [`docs/`](docs/README.md) | technical overview, methodology, U-Net results, jury report, presentation |
+| [`tests/`](tests/) | pytest suite |
+| [`examples/`](examples/README.md) | Python API example and sample inputs; the hackathon data goes here (release archive) |
+
+## Documentation
+
+- **Presentation:** [CARTE_presentation.pdf](docs/presentation/CARTE_presentation.pdf), 20 slides for a 10-minute talk,
+  with [speaker notes](docs/presentation/speaker_notes.md) and the [HTML deck](docs/presentation/slides.html)
+  ([how it is built](docs/presentation/README.md)).
+- **Jury technical report:** [CARTE_technical_report.pdf](docs/jury_report/CARTE_technical_report.pdf), 4 pages of
+  measured figures.
+- **Technical overview:** [docs/technical_overview.md](docs/technical_overview.md), the architecture, every decision
+  and its trace, run costs and what the experiments measured.
+- **Vision (U-Net):** [best configuration](docs/prc_best_config.md), [calibration](docs/prc_calibration.md),
+  [uncertainty](docs/prc_uncertainty.md), [U-Net and PDF exercises](docs/prc_unet_and_pdf_exercises.md).
+- **Hackathon brief and methodology:** [docs/hackathon_brief.md](docs/hackathon_brief.md),
+  [docs/COA-Net_methodology.md](docs/COA-Net_methodology.md).
+- **Release notes:** [RELEASE_README.txt](RELEASE_README.txt), what is in the release archive.
+
+### Licence
+
+Built at the AMIAD hackathon (November 2026). Code released under the [MIT licence](LICENSE); data licences are listed
+in [Data and models](#data-and-models).
 
 ---
 
 ## Background: COA-Net, the hackathon design
+
+> This section describes COA-Net, the design the team prepared **before** the event. CARTE grew out of it. The numbers
+> and commands below are from that phase (for example the 109-test count and the Mistral Small model), and the
+> « Next steps » at the end are the plan as it stood before the hackathon.
 
 
 Prototype for the AMIAD hackathon (Rennes, 12-14 Nov 2026): design the maneuver road network for military logistic convoys from a map, doctrine, a logistic order and live incident reports, with language models of at most a few tens of billions of parameters.
@@ -87,7 +202,7 @@ coa-net plan --order ORDER --scan "DATA/Scenario1 100K.tif" --corrector outputs/
 coa-net pdf-exercises --data DATA --pdf exercises.pdf --network prc-alone --unet OUT/prc/T --out outputs/ex  # route exercises of a PDF (docs/prc_unet_and_pdf_exercises.md)
 ```
 
-## Quick start
+## Quick start (COA-Net synthetic demo)
 
 ```bash
 pip install -e ".[dev]"          # networkx, pydantic, requests, ortools, pytest
@@ -334,7 +449,7 @@ Each code folder has a README that lists its public interface, the rules develop
   - Optional local BD TOPO GeoPackage and DEM files.
 - **Figures:** `docs/figures/make_figures.py` rewrites the figure HTML and PNG files in `docs/figures/`.
 
-## Next steps before the event
+## Next steps before the event (plan at the time)
 
 1. Ask the ETLO for the PFM characteristics (weight, MLC, width, height, length) and any bridge classification, and calibrate the turn costs and difficult-turn thresholds with them (see [docs/real_data_validation.md](docs/real_data_validation.md), section 9).
 2. Run the language-model roles with Mistral Small 3.2 24B on a local server: the 4-bit build on a team machine first, then bf16 on the H100; L1, L2 and L9 first; measure tokens, generation rates and the precision of the compiled requirements and readbacks. Copy the weights and the server software onto two disks for the event. Give `parse_exercise` a model path (same schema, verbatim quotes checked, patterns as the fallback).

@@ -10,8 +10,8 @@ A 10-minute talk (20 slides, speaker notes timed to 10:00) and a 3:51 demo video
 | `speaker_notes.md` | what to say on each slide, with times |
 | `../../interface/scripts/demo_video.py` | records `demo/CARTE_demo.webm` and `demo/demo_chapters.md` (chapter times and pause points) from the running app |
 
-Built files (`slides.html`, the PDF, `preview/`, `charts/`), the images cut from the map scan (`img/`) and the demo video
-are not in git: they are in the release archive. To rebuild them you need the data of the release archive (see the main
+Built files (`slides.html`, the PDF, `preview/`, `charts/`) and the images cut from the map scan (`img/`) are in git.
+The demo video (145 MB, over GitHub's file limit) is only in the release archive. To rebuild them you need the data of the release archive (see the main
 README, « Data and models ») and Chromium for Playwright:
 
 ```bash
