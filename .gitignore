@@ -22,12 +22,7 @@ examples/otherdata/
 experiments/runs/*/orders_store/
 # downloads in progress (scripts/fetch_data.py)
 *.part
-# presentation: built files, previews, demo video and images cut from the map scan (in the release archive)
-docs/presentation/slides.html
-docs/presentation/*.pdf
-docs/presentation/preview/
-docs/presentation/demo/
-docs/presentation/img/
-docs/presentation/charts/
+# presentation: the demo video is over GitHub's 100 MB limit (in the release archive)
+docs/presentation/demo/*.webm
 experiments/runs/*/work_doctrine/
 experiments/runs/*/work_index/

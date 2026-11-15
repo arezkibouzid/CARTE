@@ -1,0 +1,354 @@
+{
+ "risk_curve": {
+  "source": "formula: risk = -ln(clip(p / 0.78, 0.05, 1))",
+  "data": {
+   "p_ref": 0.78
+  }
+ },
+ "lambda_km": {
+  "source": "experiments/runs/20261113-204810_routing_ablation_6ff7618/metrics.json",
+  "data": {
+   "0": 117.64,
+   "0.1": 117.01,
+   "0.25": 117.58,
+   "0.5": 107.26,
+   "1": 106.83,
+   "2": 113.32,
+   "4": 112.5,
+   "8": 122.74
+  }
+ },
+ "lambda_overlap": {
+  "source": "experiments/runs/20261113-204810_routing_ablation_6ff7618/metrics.json",
+  "data": {
+   "0": 0.721,
+   "0.1": 0.7224,
+   "0.25": 0.7239,
+   "0.5": 0.676,
+   "1": 0.5194,
+   "2": 0.3855,
+   "4": 0.3312,
+   "8": 0.2739
+  }
+ },
+ "network_ablation": {
+  "source": "experiments/runs/20261113-204810_routing_ablation_6ff7618/metrics.json",
+  "data": {
+   "unet_nodice": {
+    "km_off": 117.64,
+    "abs_gap": 0.04
+   },
+   "unet_nodice_tta": {
+    "km_off": 106.26,
+    "abs_gap": 0.0514
+   },
+   "unet_mix12k_tta": {
+    "km_off": 105.84,
+    "abs_gap": 0.0566
+   },
+   "unet_mix12k": {
+    "km_off": 112.89,
+    "abs_gap": 0.0512
+   },
+   "unet_nodice+osm_fill": {
+    "km_off": 107.6,
+    "abs_gap": 0.0414
+   },
+   "no_model_osm": {
+    "km_off": 35.36,
+    "abs_gap": 0.0203
+   }
+  }
+ },
+ "deconflict": {
+  "source": "experiments/runs/20261113-202358_stress_test_6ff7618/metrics.json",
+  "data": {
+   "none": {
+    "shared_km": 139.0,
+    "total_km": 876.47
+   },
+   "penalize": {
+    "shared_km": 3.62,
+    "total_km": 885.61
+   },
+   "forbid": {
+    "shared_km": 0.63,
+    "total_km": 1041.24
+   }
+  }
+ },
+ "scale_distance": {
+  "source": "experiments/runs/20261113-202358_stress_test_6ff7618/metrics.json",
+  "data": {
+   "points": [
+    [
+     4.3,
+     0.18
+    ],
+    [
+     4.2,
+     0.14
+    ],
+    [
+     5.2,
+     0.14
+    ],
+    [
+     6.7,
+     0.14
+    ],
+    [
+     3.2,
+     0.14
+    ],
+    [
+     11.9,
+     0.14
+    ],
+    [
+     8.5,
+     0.13
+    ],
+    [
+     9.4,
+     0.13
+    ],
+    [
+     8.4,
+     0.14
+    ],
+    [
+     10.4,
+     0.14
+    ],
+    [
+     27.9,
+     0.14
+    ],
+    [
+     20.6,
+     0.14
+    ],
+    [
+     27.7,
+     0.14
+    ],
+    [
+     27.1,
+     0.14
+    ],
+    [
+     25.1,
+     0.14
+    ],
+    [
+     47.0,
+     0.14
+    ],
+    [
+     49.5,
+     0.14
+    ],
+    [
+     54.0,
+     0.14
+    ],
+    [
+     45.6,
+     0.13
+    ],
+    [
+     46.1,
+     0.14
+    ],
+    [
+     99.0,
+     0.14
+    ],
+    [
+     91.9,
+     0.14
+    ],
+    [
+     100.9,
+     0.14
+    ],
+    [
+     97.3,
+     0.13
+    ],
+    [
+     109.7,
+     0.14
+    ]
+   ]
+  }
+ },
+ "scale_convoys": {
+  "source": "experiments/runs/20261113-202358_stress_test_6ff7618/metrics.json",
+  "data": {
+   "1": 0.4641,
+   "2": 0.6757,
+   "4": 1.6351,
+   "8": 3.1831,
+   "16": 5.959,
+   "32": 14.4334,
+   "64": 33.324
+  }
+ },
+ "scale_cores": {
+  "source": "experiments/runs/20261113-202358_stress_test_6ff7618/metrics.json",
+  "data": {
+   "1": 5.01,
+   "2": 5.1,
+   "4": 5.04,
+   "8": 5.06,
+   "16": 4.92
+  }
+ },
+ "robust_random": {
+  "source": "experiments/analysis/stress_test_feasibility_relative.json",
+  "data": {
+   "0.01": 100.0,
+   "0.02": 100.0,
+   "0.05": 73.3,
+   "0.1": 6.7
+  }
+ },
+ "robust_patches": {
+  "source": "experiments/analysis/stress_test_feasibility_relative.json",
+  "data": {
+   "0.05": 93.30000000000001,
+   "0.1": 100.0,
+   "0.2": 86.7,
+   "0.3": 40.0
+  }
+ },
+ "imagery_f1": {
+  "source": "experiments/runs/20261113-202429_imagery_ablation_6ff7618/metrics.json",
+  "data": {
+   "zeroshot / original": 0.0909,
+   "zeroshot / jpeg_q20": 0.1101,
+   "zeroshot / noise_12": 0.0609,
+   "zeroshot / grayscale": 0.018,
+   "zeroshot / other_palette": 0.0528,
+   "zeroshot / half_resolution": 0.0196,
+   "zeroshot / blur": 0.0078,
+   "zeroshot / quarter_resolution": 0.0001,
+   "zeroshot / low_contrast": 0.0367,
+   "finetuned_hack / original": 0.5898,
+   "finetuned_hack / jpeg_q20": 0.5861,
+   "finetuned_hack / noise_12": 0.5894,
+   "finetuned_hack / grayscale": 0.4763,
+   "finetuned_hack / other_palette": 0.4608,
+   "finetuned_hack / half_resolution": 0.3356,
+   "finetuned_hack / blur": 0.3202,
+   "finetuned_hack / quarter_resolution": 0.2263,
+   "finetuned_hack / low_contrast": 0.23,
+   "mix12k_nodice / original": 0.5771,
+   "mix12k_nodice / jpeg_q20": 0.5753,
+   "mix12k_nodice / noise_12": 0.5767,
+   "mix12k_nodice / grayscale": 0.4614,
+   "mix12k_nodice / other_palette": 0.4401,
+   "mix12k_nodice / half_resolution": 0.34,
+   "mix12k_nodice / blur": 0.3352,
+   "mix12k_nodice / quarter_resolution": 0.2957,
+   "mix12k_nodice / low_contrast": 0.2154
+  }
+ },
+ "ctx_needle": {
+  "source": "experiments/runs/20261114-073055_llm_compare_21e1fd5/metrics.json",
+  "data": {
+   "10 orders @ 6000": 3,
+   "10 orders @ 32000": 3,
+   "10 orders @ 100000": 3,
+   "40 orders @ 6000": 2,
+   "40 orders @ 32000": 3,
+   "40 orders @ 100000": 3,
+   "100 orders @ 6000": 1,
+   "100 orders @ 32000": 3,
+   "100 orders @ 100000": 3,
+   "200 orders @ 6000": 1,
+   "200 orders @ 32000": 2,
+   "200 orders @ 100000": 3,
+   "400 orders @ 6000": 0,
+   "400 orders @ 32000": 2,
+   "400 orders @ 100000": 3
+  }
+ },
+ "llm_models": {
+  "source": "experiments/runs/20261114-071816_llm_compare_21e1fd5/metrics.json",
+  "data": {
+   "Qwen3-VL-8B": {
+    "retrieval": [
+     37,
+     37
+    ],
+    "value in force": [
+     9,
+     9
+    ],
+    "conflict reported": [
+     3,
+     3
+    ],
+    "written orders": [
+     10,
+     10
+    ]
+   },
+   "Qwen2.5-7B-Instruct-1M (run 20261114-072142_llm_compare_21e1fd5)": {
+    "retrieval": [
+     31,
+     37
+    ],
+    "value in force": [
+     8,
+     9
+    ],
+    "conflict reported": [
+     0,
+     3
+    ],
+    "written orders": [
+     9,
+     10
+    ]
+   }
+  }
+ },
+ "ctx_cost": {
+  "source": "experiments/runs/20261114-073055_llm_compare_21e1fd5/metrics.json",
+  "data": {
+   "10": {
+    "prompt_tokens": 9421,
+    "seconds": 0.73
+   },
+   "40": {
+    "prompt_tokens": 24332,
+    "seconds": 1.79
+   },
+   "100": {
+    "prompt_tokens": 54157,
+    "seconds": 3.47
+   },
+   "200": {
+    "prompt_tokens": 77057,
+    "seconds": 5.69
+   },
+   "400": {
+    "prompt_tokens": 78881,
+    "seconds": 6.09
+   }
+  }
+ },
+ "doctrine_docs": {
+  "source": "RAG/rules/doctrine_final_unique_rules.csv",
+  "data": {
+   "FM 55-30 / STANAG 2174": 72,
+   "AEP-3.12.1.5": 57,
+   "AJP-4.4": 22,
+   "FM 5-36 / STANAG 2015": 63
+  }
+ }
+}
